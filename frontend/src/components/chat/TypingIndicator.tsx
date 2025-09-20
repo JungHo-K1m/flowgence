@@ -11,20 +11,16 @@ export function TypingIndicator() {
           className="p-4 rounded-lg shadow-sm border inline-block max-w-[60%]"
           style={{ backgroundColor: "#EAEBFA", borderColor: "#E5E7EB" }}
         >
-          <div className="flex items-center space-x-1">
-            <span className="text-gray-500 text-sm">AI가 입력 중</span>
-            <div className="flex space-x-1">
+          <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-1">
+              <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></div>
               <div
-                className="w-1 h-1 bg-gray-400 rounded-full animate-bounce"
-                style={{ animationDelay: "0ms" }}
+                className="w-2 h-2 bg-purple-300 rounded-full animate-pulse"
+                style={{ animationDelay: "0.5s" }}
               ></div>
               <div
-                className="w-1 h-1 bg-gray-400 rounded-full animate-bounce"
-                style={{ animationDelay: "150ms" }}
-              ></div>
-              <div
-                className="w-1 h-1 bg-gray-400 rounded-full animate-bounce"
-                style={{ animationDelay: "300ms" }}
+                className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"
+                style={{ animationDelay: "1s" }}
               ></div>
             </div>
           </div>
