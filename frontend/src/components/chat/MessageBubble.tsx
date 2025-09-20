@@ -32,7 +32,10 @@ export function MessageBubble({ message, onOptionSelect }: MessageBubbleProps) {
           <span className="text-lg">{message.icon}</span>
         </div>
         <div className="flex-1">
-          <div className="bg-white p-4 rounded-lg shadow-sm border">
+          <div
+            className="p-4 rounded-lg shadow-sm border"
+            style={{ backgroundColor: "#EAEBFA", borderColor: "#E5E7EB" }}
+          >
             <p className="text-gray-900">{message.content}</p>
             {message.description && (
               <p className="text-sm text-gray-600 mt-2">
@@ -62,12 +65,15 @@ export function MessageBubble({ message, onOptionSelect }: MessageBubbleProps) {
 
   if (message.type === "user") {
     return (
-      <div className="flex justify-end">
-        <div className="bg-blue-600 text-white px-4 py-2 rounded-lg max-w-[60%]">
-          <div className="flex items-center space-x-2">
-            <span className="text-sm">👤</span>
-            <span>{message.content}</span>
-          </div>
+      <div className="flex items-end justify-end space-x-2">
+        <div
+          className="px-4 py-2 rounded-lg max-w-[60%] border"
+          style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E7EB" }}
+        >
+          <span className="text-gray-900">{message.content}</span>
+        </div>
+        <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
+          <span className="text-lg">{message.icon || "👤"}</span>
         </div>
       </div>
     );

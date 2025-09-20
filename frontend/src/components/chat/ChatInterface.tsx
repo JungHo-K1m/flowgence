@@ -62,6 +62,7 @@ export function ChatInterface({
       id: `user-${Date.now()}`,
       type: "user" as const,
       content: message,
+      icon: "👤",
     };
 
     setMessages((prev) => [...prev, userMessage]);
