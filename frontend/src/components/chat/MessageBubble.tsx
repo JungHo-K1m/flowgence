@@ -27,18 +27,18 @@ export function MessageBubble({ message, onOptionSelect }: MessageBubbleProps) {
 
   if (message.type === "ai") {
     return (
-      <div className="flex items-start space-x-3 max-w-[80%]">
+      <div className="flex items-start space-x-3">
         <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
           <span className="text-lg">{message.icon}</span>
         </div>
         <div className="flex-1">
           <div
-            className="p-4 rounded-lg shadow-sm border"
+            className="p-4 rounded-lg shadow-sm border inline-block max-w-[60%]"
             style={{ backgroundColor: "#EAEBFA", borderColor: "#E5E7EB" }}
           >
-            <p className="text-gray-900">{message.content}</p>
+            <p className="text-gray-900 break-words">{message.content}</p>
             {message.description && (
-              <p className="text-sm text-gray-600 mt-2">
+              <p className="text-sm text-gray-600 mt-2 break-words">
                 {message.description}
               </p>
             )}
@@ -67,10 +67,10 @@ export function MessageBubble({ message, onOptionSelect }: MessageBubbleProps) {
     return (
       <div className="flex items-end justify-end space-x-2">
         <div
-          className="px-4 py-2 rounded-lg max-w-[60%] border"
+          className="px-4 py-2 rounded-lg border inline-block max-w-[60%]"
           style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E7EB" }}
         >
-          <span className="text-gray-900">{message.content}</span>
+          <span className="text-gray-900 break-words">{message.content}</span>
         </div>
         <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
           <span className="text-lg">{message.icon || "👤"}</span>
