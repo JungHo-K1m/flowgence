@@ -4,6 +4,15 @@ import { useState } from "react";
 import { MessageBubble } from "./MessageBubble";
 import { ChatInput } from "./ChatInput";
 
+interface Message {
+  id: string;
+  type: "system" | "ai" | "user";
+  content: string;
+  description?: string;
+  icon?: string;
+  options?: Array<{ id: string; label: string }>;
+}
+
 interface ChatInterfaceProps {
   initialMessage?: string;
   serviceType?: string;
@@ -17,7 +26,7 @@ export function ChatInterface({
   onNextStep,
   currentStep = 1,
 }: ChatInterfaceProps) {
-  const [messages, setMessages] = useState([
+  const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
       type: "system" as const,
