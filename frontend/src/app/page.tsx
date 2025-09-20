@@ -1,20 +1,32 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { ServiceTypeButtons } from "@/components/project/ServiceTypeButtons";
 import { FileUpload } from "@/components/project/FileUpload";
 import { ChatInterface } from "@/components/chat/ChatInterface";
 import { ProjectOverviewPanel } from "@/components/project/ProjectOverviewPanel";
+import { RequirementsPanel } from "@/components/requirements/RequirementsPanel";
+import { RequirementsLoading } from "@/components/requirements/RequirementsLoading";
 import { ProgressBar } from "@/components/layout/ProgressBar";
 
+interface Message {
+  id: string;
+  type: "system" | "ai" | "user";
+  content: string;
+  description?: string;
+  icon?: string;
+  options?: Array<{ id: string; label: string }>;
+}
+
 export default function HomePage() {
-  const router = useRouter();
   const [projectDescription, setProjectDescription] = useState("");
   const [selectedServiceType, setSelectedServiceType] = useState<string>("");
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [showChatInterface, setShowChatInterface] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
+  const [showRequirements, setShowRequirements] = useState(false);
+  const [isRequirementsLoading, setIsRequirementsLoading] = useState(false);
+  const [chatMessages, setChatMessages] = useState<Message[]>([]);
 
   const steps = [
     {
@@ -52,6 +64,33 @@ export default function HomePage() {
 
   const handleServiceTypeSelect = (serviceType: string) => {
     setSelectedServiceType(serviceType);
+  };
+
+  const handleNextStep = () => {
+    if (currentStep === 1) {
+      // 프로젝트 개요에서 요구사항 관리로 전환
+      setShowRequirements(true);
+      setIsRequirementsLoading(true);
+      setCurrentStep(2);
+
+      // 5초 후 로딩 완료
+      setTimeout(() => {
+        setIsRequirementsLoading(false);
+      }, 5000);
+    } else {
+      setCurrentStep((prev) => Math.min(prev + 1, 4));
+    }
+  };
+
+  const handlePrevStep = () => {
+    if (currentStep === 2) {
+      // 요구사항 관리에서 프로젝트 개요로 돌아가기
+      setShowRequirements(false);
+      setIsRequirementsLoading(false);
+      setCurrentStep(1);
+    } else {
+      setCurrentStep((prev) => Math.max(prev - 1, 1));
+    }
   };
 
   return (
@@ -136,31 +175,45 @@ export default function HomePage() {
         <div className="flex h-screen">
           {/* Left Chat Interface */}
           <div
-            className={`flex-1 transition-all duration-700 ease-in-out ${
+            className={`transition-all duration-700 ease-in-out ${
               showChatInterface ? "translate-x-0" : "-translate-x-full"
-            }`}
+            } ${showRequirements ? "w-1/3" : "flex-1"}`}
           >
             <ChatInterface
               initialMessage={projectDescription}
               serviceType={selectedServiceType}
-              onNextStep={() => setCurrentStep((prev) => Math.min(prev + 1, 4))}
+              onNextStep={handleNextStep}
               currentStep={currentStep}
+              messages={chatMessages}
+              onMessagesChange={setChatMessages}
             />
           </div>
 
-          {/* Right Project Overview Panel */}
+          {/* Right Panel - Project Overview or Requirements */}
           <div
-            className={`w-1/3 border-l border-gray-200 transition-all duration-700 ease-in-out ${
+            className={`border-l border-gray-200 transition-all duration-700 ease-in-out ${
               showChatInterface ? "translate-x-0" : "translate-x-full"
-            }`}
+            } ${showRequirements ? "w-2/3" : "w-1/3"}`}
           >
-            <ProjectOverviewPanel
-              projectDescription={projectDescription}
-              serviceType={selectedServiceType}
-              uploadedFiles={uploadedFiles}
-              onNextStep={() => setCurrentStep((prev) => Math.min(prev + 1, 4))}
-              currentStep={currentStep}
-            />
+            {showRequirements ? (
+              isRequirementsLoading ? (
+                <RequirementsLoading />
+              ) : (
+                <RequirementsPanel
+                  onNextStep={handleNextStep}
+                  onPrevStep={handlePrevStep}
+                  currentStep={currentStep}
+                />
+              )
+            ) : (
+              <ProjectOverviewPanel
+                projectDescription={projectDescription}
+                serviceType={selectedServiceType}
+                uploadedFiles={uploadedFiles}
+                onNextStep={handleNextStep}
+                currentStep={currentStep}
+              />
+            )}
           </div>
         </div>
       </div>

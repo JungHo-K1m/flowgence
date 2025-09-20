@@ -4,9 +4,13 @@ import { useState } from "react";
 
 interface ChatInputProps {
   onSendMessage: (message: string) => void;
+  placeholder?: string;
 }
 
-export function ChatInput({ onSendMessage }: ChatInputProps) {
+export function ChatInput({
+  onSendMessage,
+  placeholder = "여기에 답변을 입력하세요",
+}: ChatInputProps) {
   const [message, setMessage] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -23,17 +27,19 @@ export function ChatInput({ onSendMessage }: ChatInputProps) {
         type="text"
         value={message}
         onChange={(e) => setMessage(e.target.value)}
-        placeholder="여기에 답변을 입력하세요"
+        placeholder={placeholder}
         className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:border-transparent"
-        style={{
-          '--tw-ring-color': '#6366F1'
-        } as React.CSSProperties}
+        style={
+          {
+            "--tw-ring-color": "#6366F1",
+          } as React.CSSProperties
+        }
       />
       <button
         type="submit"
         className="text-white px-6 py-2 rounded-lg transition-colors duration-200"
         style={{
-          backgroundColor: "#6366F1"
+          backgroundColor: "#6366F1",
         }}
       >
         보내기
