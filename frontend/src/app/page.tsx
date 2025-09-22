@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { ServiceTypeButtons } from "@/components/project/ServiceTypeButtons";
 import { FileUpload } from "@/components/project/FileUpload";
 import { ChatInterface } from "@/components/chat/ChatInterface";
@@ -8,6 +9,10 @@ import { ProjectOverviewPanel } from "@/components/project/ProjectOverviewPanel"
 import { RequirementsPanel } from "@/components/requirements/RequirementsPanel";
 import { RequirementsLoading } from "@/components/requirements/RequirementsLoading";
 import { ProgressBar } from "@/components/layout/ProgressBar";
+import { LoginRequiredModal } from "@/components/auth/LoginRequiredModal";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
+import { useStatePersistence } from "@/hooks/useStatePersistence";
+import { SimpleRequirementModal } from "@/components/requirements/SimpleRequirementModal";
 
 interface Message {
   id: string;
@@ -27,6 +32,50 @@ export default function HomePage() {
   const [showRequirements, setShowRequirements] = useState(false);
   const [isRequirementsLoading, setIsRequirementsLoading] = useState(false);
   const [chatMessages, setChatMessages] = useState<Message[]>([]);
+
+  // 요구사항 편집 모달 상태
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<string>("");
+
+  // 인증 가드 및 상태 유지
+  const { showLoginModal, requireAuth, closeLoginModal } = useAuthGuard();
+  const { restoreState, clearState } = useStatePersistence();
+  const searchParams = useSearchParams();
+  const targetStep = searchParams.get("step");
+
+  // 로그인 후 상태 복원 및 자동 단계 이동
+  useEffect(() => {
+    const savedState = restoreState();
+    if (savedState?.projectData) {
+      const { projectData, targetStep: savedTargetStep } = savedState;
+
+      // 상태 복원
+      setProjectDescription(projectData.description || "");
+      setSelectedServiceType(projectData.serviceType || "");
+      setUploadedFiles(projectData.uploadedFiles || []);
+      setChatMessages(projectData.chatMessages || []);
+
+      // 채팅 인터페이스가 활성화되어 있었다면 복원
+      if (projectData.chatMessages?.length > 0) {
+        setShowChatInterface(true);
+      }
+
+      // 자동 단계 이동 (URL 파라미터 또는 저장된 targetStep 사용)
+      const stepToMove = targetStep || savedTargetStep;
+      if (stepToMove === "2" || stepToMove === 2) {
+        setShowRequirements(true);
+        setIsRequirementsLoading(true);
+        setCurrentStep(2);
+
+        // 로딩 완료 (시간 단축)
+        setTimeout(() => {
+          setIsRequirementsLoading(false);
+        }, 2000);
+      }
+
+      clearState(); // 복원 후 상태 초기화
+    }
+  }, [restoreState, clearState, targetStep]);
 
   const steps = [
     {
@@ -68,7 +117,7 @@ export default function HomePage() {
 
   const handleNextStep = () => {
     if (currentStep === 1) {
-      // 프로젝트 개요에서 요구사항 관리로 전환
+      // 프로젝트 개요에서 요구사항 관리로 전환 (로그인 체크 없음)
       setShowRequirements(true);
       setIsRequirementsLoading(true);
       setCurrentStep(2);
@@ -78,7 +127,18 @@ export default function HomePage() {
         setIsRequirementsLoading(false);
       }, 5000);
     } else {
-      setCurrentStep((prev) => Math.min(prev + 1, 4));
+      // 2단계 이후부터는 로그인 체크
+      const currentProjectData = {
+        description: projectDescription,
+        serviceType: selectedServiceType,
+        uploadedFiles,
+        chatMessages,
+        requirements: [], // 요구사항은 아직 없음
+      };
+
+      requireAuth(() => {
+        setCurrentStep((prev) => Math.min(prev + 1, 4));
+      }, currentProjectData);
     }
   };
 
@@ -203,6 +263,16 @@ export default function HomePage() {
                   onNextStep={handleNextStep}
                   onPrevStep={handlePrevStep}
                   currentStep={currentStep}
+                  projectData={{
+                    description: projectDescription,
+                    serviceType: selectedServiceType,
+                    uploadedFiles,
+                    chatMessages,
+                  }}
+                  onOpenEditModal={(category) => {
+                    setEditingCategory(category);
+                    setShowEditModal(true);
+                  }}
                 />
               )
             ) : (
@@ -217,6 +287,50 @@ export default function HomePage() {
           </div>
         </div>
       </div>
+
+      {/* 로그인 안내 모달 */}
+      <LoginRequiredModal
+        isOpen={showLoginModal}
+        onClose={closeLoginModal}
+        title="로그인이 필요한 서비스입니다"
+        description="프로젝트 진행 및 요구사항 관리를 위해 로그인이 필요합니다. 로그인 후 계속 진행하시겠습니까?"
+      />
+
+      {/* 요구사항 편집 모달 */}
+      <SimpleRequirementModal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        requirements={[
+          {
+            id: "1",
+            title: "상품 등록/수정",
+            description: "상품 기본 정보 등록 및 옵션 관리",
+            category: "product",
+            priority: "high",
+          },
+          {
+            id: "2",
+            title: "성분/영양 관리",
+            description: "성분 비교 필터, 알러지 태그 등록",
+            category: "product",
+            priority: "medium",
+          },
+          {
+            id: "3",
+            title: "재고 부족 알림",
+            description: "재고 임계치 도달 시 자동 알림",
+            category: "product",
+            priority: "high",
+          },
+        ]}
+        onRequirementsChange={(newRequirements) => {
+          console.log("요구사항 업데이트:", newRequirements);
+        }}
+        categoryTitle={editingCategory === "product" ? "상품 관리" : "기타"}
+        onCategoryTitleChange={(newTitle) => {
+          console.log("카테고리 제목 변경:", newTitle);
+        }}
+      />
     </div>
   );
 }

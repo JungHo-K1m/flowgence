@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { LoginRequiredModal } from "@/components/auth/LoginRequiredModal";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
 
 interface Requirement {
   id: string;
@@ -14,18 +16,25 @@ interface RequirementsPanelProps {
   onNextStep?: () => void;
   onPrevStep?: () => void;
   currentStep?: number;
+  projectData?: any; // 프로젝트 데이터 전달
+  onOpenEditModal?: (category: string) => void; // 편집 모달 열기
 }
 
 export function RequirementsPanel({
   onNextStep,
   onPrevStep,
   currentStep = 2,
+  projectData,
+  onOpenEditModal,
 }: RequirementsPanelProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
     new Set(["product"])
   );
+
+  // 인증 가드
+  const { showLoginModal, requireAuth, closeLoginModal } = useAuthGuard();
 
   // 샘플 요구사항 데이터
   const requirements: Requirement[] = [
@@ -171,10 +180,25 @@ export function RequirementsPanel({
                         </div>
                       </div>
                       <div className="flex items-center space-x-2 ml-4">
-                        <button className="p-1 text-gray-400 hover:text-gray-600">
+                        <button
+                          onClick={() =>
+                            requireAuth(() => {
+                              onOpenEditModal?.(req.category);
+                            })
+                          }
+                          className="p-1 text-gray-400 hover:text-gray-600"
+                        >
                           📝
                         </button>
-                        <button className="p-1 text-gray-400 hover:text-red-600">
+                        <button
+                          onClick={() =>
+                            requireAuth(() => {
+                              // 삭제 로직
+                              console.log("삭제:", req.title);
+                            })
+                          }
+                          className="p-1 text-gray-400 hover:text-red-600"
+                        >
                           🗑️
                         </button>
                       </div>
@@ -250,12 +274,20 @@ export function RequirementsPanel({
         </button>
 
         <div className="flex items-center space-x-4">
-          <button className="px-4 py-2 text-purple-600 border border-purple-600 rounded-lg hover:bg-purple-50 transition-colors">
+          <button
+            onClick={() =>
+              requireAuth(() => {
+                // 새 요구사항 추가 로직
+                console.log("새 요구사항 추가");
+              })
+            }
+            className="px-4 py-2 text-purple-600 border border-purple-600 rounded-lg hover:bg-purple-50 transition-colors"
+          >
             + 새 요구사항
           </button>
 
           <button
-            onClick={onNextStep}
+            onClick={() => requireAuth(() => onNextStep?.())}
             disabled={currentStep >= 4}
             className={`px-6 py-3 rounded-lg transition-colors ${
               currentStep >= 4
@@ -270,6 +302,16 @@ export function RequirementsPanel({
           </button>
         </div>
       </div>
+
+      {/* 로그인 안내 모달 */}
+      <LoginRequiredModal
+        isOpen={showLoginModal}
+        onClose={closeLoginModal}
+        title="로그인이 필요한 서비스입니다"
+        description="프로젝트 진행 및 요구사항 관리를 위해 로그인이 필요합니다. 로그인 후 계속 진행하시겠습니까?"
+        targetStep={2}
+        projectData={projectData}
+      />
     </div>
   );
 }

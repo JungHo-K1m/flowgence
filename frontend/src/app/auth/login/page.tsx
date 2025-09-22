@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectStep = searchParams.get("step");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,8 +37,14 @@ export default function LoginPage() {
       if (error) {
         setError(error.message);
       } else {
-        // 로그인 성공 시 홈페이지로 리다이렉트
-        router.push("/");
+        // 로그인 성공 시 리다이렉트 처리
+        if (redirectStep) {
+          // 특정 단계로 리다이렉트 (쿼리 파라미터 포함)
+          router.push(`/?step=${redirectStep}`);
+        } else {
+          // 기본 홈페이지로 리다이렉트
+          router.push("/");
+        }
       }
     } catch (err) {
       setError("로그인 중 오류가 발생했습니다.");
