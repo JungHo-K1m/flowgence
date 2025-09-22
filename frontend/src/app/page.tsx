@@ -8,6 +8,7 @@ import { ChatInterface } from "@/components/chat/ChatInterface";
 import { ProjectOverviewPanel } from "@/components/project/ProjectOverviewPanel";
 import { RequirementsPanel } from "@/components/requirements/RequirementsPanel";
 import { RequirementsLoading } from "@/components/requirements/RequirementsLoading";
+import { ConfirmationPanel } from "@/components/project/ConfirmationPanel";
 import { ProgressBar } from "@/components/layout/ProgressBar";
 import { LoginRequiredModal } from "@/components/auth/LoginRequiredModal";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
@@ -30,6 +31,7 @@ export default function HomePage() {
   const [showChatInterface, setShowChatInterface] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [showRequirements, setShowRequirements] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
   const [isRequirementsLoading, setIsRequirementsLoading] = useState(false);
   const [chatMessages, setChatMessages] = useState<Message[]>([]);
 
@@ -71,6 +73,9 @@ export default function HomePage() {
         setTimeout(() => {
           setIsRequirementsLoading(false);
         }, 2000);
+      } else if (stepToMove === "3" || stepToMove === 3) {
+        setShowConfirmation(true);
+        setCurrentStep(3);
       }
 
       clearState(); // 복원 후 상태 초기화
@@ -126,8 +131,23 @@ export default function HomePage() {
       setTimeout(() => {
         setIsRequirementsLoading(false);
       }, 5000);
+    } else if (currentStep === 2) {
+      // 요구사항 관리에서 기능 구성으로 전환
+      const currentProjectData = {
+        description: projectDescription,
+        serviceType: selectedServiceType,
+        uploadedFiles,
+        chatMessages,
+        requirements: [], // 요구사항은 아직 없음
+      };
+
+      requireAuth(() => {
+        setShowRequirements(false);
+        setShowConfirmation(true);
+        setCurrentStep(3);
+      }, currentProjectData);
     } else {
-      // 2단계 이후부터는 로그인 체크
+      // 3단계 이후부터는 로그인 체크
       const currentProjectData = {
         description: projectDescription,
         serviceType: selectedServiceType,
@@ -148,6 +168,11 @@ export default function HomePage() {
       setShowRequirements(false);
       setIsRequirementsLoading(false);
       setCurrentStep(1);
+    } else if (currentStep === 3) {
+      // 기능 구성에서 요구사항 관리로 돌아가기
+      setShowConfirmation(false);
+      setShowRequirements(true);
+      setCurrentStep(2);
     } else {
       setCurrentStep((prev) => Math.max(prev - 1, 1));
     }
@@ -155,13 +180,13 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Progress Bar - Show only when chat interface is active */}
-      {showChatInterface && (
+      {/* Progress Bar - Show when any interface is active */}
+      {(showChatInterface || showRequirements || showConfirmation) && (
         <ProgressBar currentStep={currentStep} steps={steps} />
       )}
 
-      {/* Initial Landing Page */}
-      {!showChatInterface && (
+      {/* Initial Landing Page - Only show when no interface is active */}
+      {!showChatInterface && !showRequirements && !showConfirmation && (
         <div className="max-w-4xl mx-auto px-4 py-16">
           <div className="text-center">
             {/* Main Title */}
@@ -224,69 +249,88 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Chat Interface with Slide Animation */}
-      <div
-        className={`transition-all duration-700 ease-in-out ${
-          showChatInterface
-            ? "opacity-100 translate-x-0"
-            : "opacity-0 -translate-x-full pointer-events-none"
-        }`}
-      >
-        <div className="flex h-screen">
-          {/* Left Chat Interface */}
-          <div
-            className={`transition-all duration-700 ease-in-out ${
-              showChatInterface ? "translate-x-0" : "-translate-x-full"
-            } ${showRequirements ? "w-1/3" : "flex-1"}`}
-          >
-            <ChatInterface
-              initialMessage={projectDescription}
-              serviceType={selectedServiceType}
-              onNextStep={handleNextStep}
-              currentStep={currentStep}
-              messages={chatMessages}
-              onMessagesChange={setChatMessages}
-            />
-          </div>
-
-          {/* Right Panel - Project Overview or Requirements */}
-          <div
-            className={`border-l border-gray-200 transition-all duration-700 ease-in-out ${
-              showChatInterface ? "translate-x-0" : "translate-x-full"
-            } ${showRequirements ? "w-2/3" : "w-1/3"}`}
-          >
-            {showRequirements ? (
-              isRequirementsLoading ? (
-                <RequirementsLoading />
-              ) : (
-                <RequirementsPanel
-                  onNextStep={handleNextStep}
-                  onPrevStep={handlePrevStep}
-                  currentStep={currentStep}
-                  projectData={{
-                    description: projectDescription,
-                    serviceType: selectedServiceType,
-                    uploadedFiles,
-                    chatMessages,
-                  }}
-                  onOpenEditModal={(category) => {
-                    setEditingCategory(category);
-                    setShowEditModal(true);
-                  }}
-                />
-              )
-            ) : (
-              <ProjectOverviewPanel
-                projectDescription={projectDescription}
+      {/* Chat Interface with Slide Animation - Hide in confirmation step */}
+      {!showConfirmation && (
+        <div
+          className={`transition-all duration-700 ease-in-out ${
+            showChatInterface
+              ? "opacity-100 translate-x-0"
+              : "opacity-0 -translate-x-full pointer-events-none"
+          }`}
+        >
+          <div className="flex h-screen">
+            {/* Left Chat Interface */}
+            <div
+              className={`transition-all duration-700 ease-in-out ${
+                showChatInterface ? "translate-x-0" : "-translate-x-full"
+              } ${showRequirements ? "w-1/3" : "flex-1"}`}
+            >
+              <ChatInterface
+                initialMessage={projectDescription}
                 serviceType={selectedServiceType}
-                uploadedFiles={uploadedFiles}
                 onNextStep={handleNextStep}
                 currentStep={currentStep}
+                messages={chatMessages}
+                onMessagesChange={setChatMessages}
               />
-            )}
+            </div>
+
+            {/* Right Panel - Project Overview or Requirements */}
+            <div
+              className={`border-l border-gray-200 transition-all duration-700 ease-in-out ${
+                showChatInterface ? "translate-x-0" : "translate-x-full"
+              } ${showRequirements ? "w-2/3" : "w-1/3"}`}
+            >
+              {showRequirements ? (
+                isRequirementsLoading ? (
+                  <RequirementsLoading />
+                ) : (
+                  <RequirementsPanel
+                    onNextStep={handleNextStep}
+                    onPrevStep={handlePrevStep}
+                    currentStep={currentStep}
+                    projectData={{
+                      description: projectDescription,
+                      serviceType: selectedServiceType,
+                      uploadedFiles,
+                      chatMessages,
+                    }}
+                    onOpenEditModal={(category) => {
+                      setEditingCategory(category);
+                      setShowEditModal(true);
+                    }}
+                  />
+                )
+              ) : (
+                <ProjectOverviewPanel
+                  projectDescription={projectDescription}
+                  serviceType={selectedServiceType}
+                  uploadedFiles={uploadedFiles}
+                  onNextStep={handleNextStep}
+                  currentStep={currentStep}
+                />
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Confirmation Panel - Full Screen */}
+      {showConfirmation && (
+        <div className="h-screen">
+          <ConfirmationPanel
+            onNextStep={handleNextStep}
+            onPrevStep={handlePrevStep}
+            currentStep={currentStep}
+            projectData={{
+              description: projectDescription,
+              serviceType: selectedServiceType,
+              uploadedFiles,
+              chatMessages,
+            }}
+          />
+        </div>
+      )}
 
       {/* 로그인 안내 모달 */}
       <LoginRequiredModal
