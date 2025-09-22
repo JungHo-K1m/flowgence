@@ -9,6 +9,8 @@ import { ProjectOverviewPanel } from "@/components/project/ProjectOverviewPanel"
 import { RequirementsPanel } from "@/components/requirements/RequirementsPanel";
 import { RequirementsLoading } from "@/components/requirements/RequirementsLoading";
 import { ConfirmationPanel } from "@/components/project/ConfirmationPanel";
+import { RequirementsResultPanel } from "@/components/project/RequirementsResultPanel";
+import { FinalConfirmationModal } from "@/components/project/FinalConfirmationModal";
 import { ProgressBar } from "@/components/layout/ProgressBar";
 import { LoginRequiredModal } from "@/components/auth/LoginRequiredModal";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
@@ -32,6 +34,8 @@ export default function HomePage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [showRequirements, setShowRequirements] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [showFinalResult, setShowFinalResult] = useState(false);
+  const [showFinalModal, setShowFinalModal] = useState(false);
   const [isRequirementsLoading, setIsRequirementsLoading] = useState(false);
   const [chatMessages, setChatMessages] = useState<Message[]>([]);
 
@@ -76,6 +80,9 @@ export default function HomePage() {
       } else if (stepToMove === "3" || stepToMove === 3) {
         setShowConfirmation(true);
         setCurrentStep(3);
+      } else if (stepToMove === "4" || stepToMove === 4) {
+        setShowFinalResult(true);
+        setCurrentStep(4);
       }
 
       clearState(); // 복원 후 상태 초기화
@@ -146,20 +153,20 @@ export default function HomePage() {
         setShowConfirmation(true);
         setCurrentStep(3);
       }, currentProjectData);
+    } else if (currentStep === 3) {
+      // 3단계에서 최종 확인 모달 표시
+      setShowFinalModal(true);
     } else {
-      // 3단계 이후부터는 로그인 체크
-      const currentProjectData = {
-        description: projectDescription,
-        serviceType: selectedServiceType,
-        uploadedFiles,
-        chatMessages,
-        requirements: [], // 요구사항은 아직 없음
-      };
-
-      requireAuth(() => {
-        setCurrentStep((prev) => Math.min(prev + 1, 4));
-      }, currentProjectData);
+      // 4단계 이후는 더 이상 진행하지 않음
+      setCurrentStep((prev) => Math.min(prev + 1, 4));
     }
+  };
+
+  const handleFinalConfirm = () => {
+    setShowFinalModal(false);
+    setShowConfirmation(false);
+    setShowFinalResult(true);
+    setCurrentStep(4);
   };
 
   const handlePrevStep = () => {
@@ -173,6 +180,11 @@ export default function HomePage() {
       setShowConfirmation(false);
       setShowRequirements(true);
       setCurrentStep(2);
+    } else if (currentStep === 4) {
+      // 최종 결과에서 기능 구성으로 돌아가기
+      setShowFinalResult(false);
+      setShowConfirmation(true);
+      setCurrentStep(3);
     } else {
       setCurrentStep((prev) => Math.max(prev - 1, 1));
     }
@@ -181,76 +193,82 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-white">
       {/* Progress Bar - Show when any interface is active */}
-      {(showChatInterface || showRequirements || showConfirmation) && (
+      {(showChatInterface ||
+        showRequirements ||
+        showConfirmation ||
+        showFinalResult) && (
         <ProgressBar currentStep={currentStep} steps={steps} />
       )}
 
       {/* Initial Landing Page - Only show when no interface is active */}
-      {!showChatInterface && !showRequirements && !showConfirmation && (
-        <div className="max-w-4xl mx-auto px-4 py-16">
-          <div className="text-center">
-            {/* Main Title */}
-            <h1 className="text-[48px] font-bold text-black mb-4">
-              당신이 만들고 싶은 서비스를 말하거나
-              <br /> 자료를 업로드해보세요!
-            </h1>
+      {!showChatInterface &&
+        !showRequirements &&
+        !showConfirmation &&
+        !showFinalResult && (
+          <div className="max-w-4xl mx-auto px-4 py-16">
+            <div className="text-center">
+              {/* Main Title */}
+              <h1 className="text-[48px] font-bold text-black mb-4">
+                당신이 만들고 싶은 서비스를 말하거나
+                <br /> 자료를 업로드해보세요!
+              </h1>
 
-            {/* Subtitle */}
-            <p className="text-[20px] text-[#4B5563] mb-12 max-w-2xl mx-auto">
-              사업계획서 없이도 한 문장만 적어도 됩니다.
-              <br />
-              자료가 있다면 더 정확한 초안을 만들어 드려요.
-            </p>
+              {/* Subtitle */}
+              <p className="text-[20px] text-[#4B5563] mb-12 max-w-2xl mx-auto">
+                사업계획서 없이도 한 문장만 적어도 됩니다.
+                <br />
+                자료가 있다면 더 정확한 초안을 만들어 드려요.
+              </p>
 
-            {/* Text Input Section */}
-            <div className="mb-8">
-              <div className="relative max-w-[760px] w-full mx-auto mb-8 px-4 sm:px-0">
-                <div
-                  className="relative flex items-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden focus-within:ring-2 focus-within:border-blue-500"
-                  style={
-                    {
-                      "--tw-ring-color": "#6366F1",
-                    } as React.CSSProperties
-                  }
-                >
-                  <input
-                    type="text"
-                    value={projectDescription}
-                    onChange={(e) => setProjectDescription(e.target.value)}
-                    placeholder="예: 음식 배달 앱을 만들고 싶어요"
-                    className="flex-1 px-6 py-4 bg-transparent border-0 focus:outline-none text-gray-700 placeholder-gray-500"
-                  />
-                  <button
-                    onClick={handleStart}
-                    className="bg-[#6366F1] text-white px-8 hover:bg-[#6366F1] transition-colors duration-200 font-medium m-2 rounded-lg h-[40px] flex items-center justify-center"
+              {/* Text Input Section */}
+              <div className="mb-8">
+                <div className="relative max-w-[760px] w-full mx-auto mb-8 px-4 sm:px-0">
+                  <div
+                    className="relative flex items-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden focus-within:ring-2 focus-within:border-blue-500"
+                    style={
+                      {
+                        "--tw-ring-color": "#6366F1",
+                      } as React.CSSProperties
+                    }
                   >
-                    시작하기
-                  </button>
+                    <input
+                      type="text"
+                      value={projectDescription}
+                      onChange={(e) => setProjectDescription(e.target.value)}
+                      placeholder="예: 음식 배달 앱을 만들고 싶어요"
+                      className="flex-1 px-6 py-4 bg-transparent border-0 focus:outline-none text-gray-700 placeholder-gray-500"
+                    />
+                    <button
+                      onClick={handleStart}
+                      className="bg-[#6366F1] text-white px-8 hover:bg-[#6366F1] transition-colors duration-200 font-medium m-2 rounded-lg h-[40px] flex items-center justify-center"
+                    >
+                      시작하기
+                    </button>
+                  </div>
                 </div>
+
+                {/* Service Type Buttons */}
+                <ServiceTypeButtons
+                  onSelect={handleServiceTypeSelect}
+                  selectedType={selectedServiceType}
+                />
               </div>
 
-              {/* Service Type Buttons */}
-              <ServiceTypeButtons
-                onSelect={handleServiceTypeSelect}
-                selectedType={selectedServiceType}
-              />
-            </div>
+              {/* Separator */}
+              <div className="flex items-center justify-center mb-8">
+                <span className="text-gray-500 font-medium">또는</span>
+              </div>
 
-            {/* Separator */}
-            <div className="flex items-center justify-center mb-8">
-              <span className="text-gray-500 font-medium">또는</span>
-            </div>
-
-            {/* File Upload Section */}
-            <div className="max-w-2xl mx-auto">
-              <FileUpload onFileSelect={handleFileSelect} />
+              {/* File Upload Section */}
+              <div className="max-w-2xl mx-auto">
+                <FileUpload onFileSelect={handleFileSelect} />
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Chat Interface with Slide Animation - Hide in confirmation step */}
-      {!showConfirmation && (
+      {/* Chat Interface with Slide Animation - Hide in confirmation and final result steps */}
+      {!showConfirmation && !showFinalResult && (
         <div
           className={`transition-all duration-700 ease-in-out ${
             showChatInterface
@@ -332,6 +350,20 @@ export default function HomePage() {
         </div>
       )}
 
+      {/* Final Result Panel - Full Screen */}
+      {showFinalResult && (
+        <div className="h-screen">
+          <RequirementsResultPanel
+            projectData={{
+              description: projectDescription,
+              serviceType: selectedServiceType,
+              uploadedFiles,
+              chatMessages,
+            }}
+          />
+        </div>
+      )}
+
       {/* 로그인 안내 모달 */}
       <LoginRequiredModal
         isOpen={showLoginModal}
@@ -374,6 +406,13 @@ export default function HomePage() {
         onCategoryTitleChange={(newTitle) => {
           console.log("카테고리 제목 변경:", newTitle);
         }}
+      />
+
+      {/* 최종 확인 모달 */}
+      <FinalConfirmationModal
+        isOpen={showFinalModal}
+        onClose={() => setShowFinalModal(false)}
+        onConfirm={handleFinalConfirm}
       />
     </div>
   );
