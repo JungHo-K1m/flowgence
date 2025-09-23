@@ -60,6 +60,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ overview });
     }
     
+    if (type === 'requirements_extraction') {
+      console.log('요구사항 추출 시작');
+      const requirements = await extractRequirements(input, messages);
+      console.log('요구사항 추출 완료:', requirements);
+      return NextResponse.json({ requirements });
+    }
+    
     return NextResponse.json({ error: 'Invalid request type' }, { status: 400 });
   } catch (error) {
     console.error('Chat API error:', error);
@@ -239,7 +246,9 @@ const generateProjectOverview = async (input: ProjectInput, messages: ChatMessag
       throw new Error('No content received from Claude');
     }
     
+    console.log('=== Claude API 응답 ===');
     console.log('Claude 응답 원본:', content);
+    console.log('=======================');
     
     // 여러 패턴으로 JSON 추출 시도
     let jsonContent = content;
@@ -302,6 +311,324 @@ const generateProjectOverview = async (input: ProjectInput, messages: ChatMessag
           }
         ]
       }
+    };
+  }
+};
+
+const extractRequirements = async (input: ProjectInput, messages: ChatMessage[]) => {
+  // Claude API 키 확인
+  if (!process.env.ANTHROPIC_API_KEY) {
+    console.warn('ANTHROPIC_API_KEY가 설정되지 않았습니다. 테스트 모드로 실행합니다.');
+    
+    // 테스트 모드: 샘플 요구사항 데이터 반환 (계층적 구조)
+    return {
+      categories: [
+        {
+          majorCategory: "사용자 관리",
+          subCategories: [
+            {
+              subCategory: "인증",
+              requirements: [
+                {
+                  id: "req_1",
+                  title: "이메일/비밀번호 로그인",
+                  description: "사용자가 이메일과 비밀번호로 로그인할 수 있어야 함",
+                  priority: "high",
+                  needsClarification: true,
+                  clarificationQuestions: ["2단계 인증이 필요한가요?", "소셜 로그인도 지원하나요?"],
+                  status: "draft"
+                },
+                {
+                  id: "req_2",
+                  title: "비밀번호 찾기",
+                  description: "비밀번호를 잊은 사용자가 이메일로 재설정할 수 있어야 함",
+                  priority: "medium",
+                  needsClarification: false,
+                  clarificationQuestions: [],
+                  status: "draft"
+                }
+              ]
+            },
+            {
+              subCategory: "프로필 관리",
+              requirements: [
+                {
+                  id: "req_3",
+                  title: "개인정보 수정",
+                  description: "사용자가 자신의 개인정보를 수정할 수 있어야 함",
+                  priority: "medium",
+                  needsClarification: false,
+                  clarificationQuestions: [],
+                  status: "draft"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          majorCategory: "핵심 기능",
+          subCategories: [
+            {
+              subCategory: "알림 시스템",
+              requirements: [
+                {
+                  id: "req_4",
+                  title: "스트레칭 알림",
+                  description: "일정 시간마다 스트레칭 알림을 보내는 기능",
+                  priority: "high",
+                  needsClarification: true,
+                  clarificationQuestions: ["알림 주기는 어떻게 설정하나요?", "직무별로 다른 알림이 필요한가요?"],
+                  status: "draft"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      extractedAt: new Date().toISOString(),
+      totalCount: 4,
+      needsReview: true
+    };
+  }
+
+  console.log('요구사항 추출 API 호출 시작');
+  console.log('입력 데이터:', { 
+    description: input.description, 
+    serviceType: input.serviceType,
+    messagesCount: messages.length,
+    hasProjectOverview: !!input.projectOverview
+  });
+
+  if (input.projectOverview) {
+    console.log('=== 프로젝트 개요 정보 ===');
+    console.log('프로젝트 제목:', input.projectOverview.serviceCoreElements?.title);
+    console.log('핵심 기능:', input.projectOverview.serviceCoreElements?.keyFeatures);
+    console.log('기술 스택:', input.projectOverview.serviceCoreElements?.techStack);
+    console.log('사용자 여정 단계 수:', input.projectOverview.userJourney?.steps?.length);
+    console.log('========================');
+  } else {
+    console.log('⚠️ 프로젝트 개요가 없습니다. 기본 정보만으로 요구사항을 추출합니다.');
+  }
+
+  const systemPrompt = `당신은 Flowgence의 SI 프로젝트 요구사항 분석 전문가입니다.
+
+## 역할 및 전문성
+- **요구사항 도출 전문가**: 프로젝트 설명과 대화 내용에서 기능적/비기능적 요구사항을 체계적으로 도출
+- **분류 체계 전문가**: 대분류(인증, 상품관리, 주문결제 등) → 중분류(로그인, 상품등록 등) → 소분류(이메일로그인, 상품정보등록 등)로 체계적 분류
+- **우선순위 평가 전문가**: 각 요구사항의 비즈니스 중요도와 기술적 복잡도를 고려한 우선순위 설정
+- **명확화 질문 생성 전문가**: 모호한 요구사항에 대한 구체적이고 실용적인 질문 생성
+
+## 분석 기준
+1. **대분류**: 인증, 상품관리, 주문결제, 배송관리, 사용자관리, 관리자기능, 결제시스템, 알림시스템, 보안, 성능
+2. **중분류**: 각 대분류 내에서 세부 기능 영역
+3. **소분류**: 구체적인 기능 단위
+4. **우선순위**: high(핵심기능), medium(중요기능), low(부가기능)
+5. **명확화 필요**: 사용자 추가 입력이 필요한 요구사항 식별
+
+사용자가 입력한 프로젝트 정보와 대화 내용을 바탕으로 **오직 JSON 형식으로만** 응답해주세요. 
+다른 텍스트나 설명 없이 순수한 JSON만 반환해야 합니다.
+
+반환할 JSON 형식:
+{
+  "categories": [
+    {
+      "majorCategory": "대분류 (예: 사용자 관리)",
+      "subCategories": [
+        {
+          "subCategory": "중분류 (예: 인증)",
+          "requirements": [
+            {
+              "id": "req_1",
+              "title": "소분류 (예: 이메일/비밀번호 로그인)",
+              "description": "상세 설명",
+              "priority": "high|medium|low",
+              "needsClarification": true,
+              "clarificationQuestions": ["구체적인 질문1", "구체적인 질문2"],
+              "status": "draft"
+            },
+            {
+              "id": "req_2", 
+              "title": "소분류 (예: 소셜 로그인)",
+              "description": "상세 설명",
+              "priority": "medium",
+              "needsClarification": false,
+              "clarificationQuestions": [],
+              "status": "draft"
+            }
+          ]
+        },
+        {
+          "subCategory": "중분류 (예: 프로필 관리)",
+          "requirements": [
+            {
+              "id": "req_3",
+              "title": "소분류 (예: 개인정보 수정)",
+              "description": "상세 설명",
+              "priority": "high",
+              "needsClarification": false,
+              "clarificationQuestions": [],
+              "status": "draft"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "majorCategory": "대분류 (예: 핵심 기능)",
+      "subCategories": [
+        {
+          "subCategory": "중분류 (예: 알림 시스템)",
+          "requirements": [
+            {
+              "id": "req_4",
+              "title": "소분류 (예: 스트레칭 알림)",
+              "description": "상세 설명",
+              "priority": "high",
+              "needsClarification": true,
+              "clarificationQuestions": ["알림 주기는 어떻게 설정하나요?", "직무별로 다른 알림이 필요한가요?"],
+              "status": "draft"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "extractedAt": "2025-01-22T10:30:00Z",
+  "totalCount": 4,
+  "needsReview": true
+}`;
+
+  // 대화 히스토리를 텍스트로 변환
+  const conversationHistory = messages.map(msg => 
+    `${msg.type === 'user' ? '사용자' : 'AI'}: ${msg.content}`
+  ).join('\n');
+
+  const userPrompt = `프로젝트 정보:
+- 설명: ${input.description}
+- 서비스 타입: ${input.serviceType}
+- 업로드된 파일: ${input.uploadedFiles?.length || 0}개
+
+프로젝트 개요 (이전 단계에서 생성된 상세 분석):
+${input.projectOverview ? JSON.stringify(input.projectOverview, null, 2) : '프로젝트 개요가 아직 생성되지 않았습니다.'}
+
+대화 내용:
+${conversationHistory}
+
+위 정보와 대화 내용을 바탕으로 다음을 수행해주세요:
+
+1. **요구사항 도출**: 프로젝트 설명과 대화에서 언급된 모든 기능적 요구사항을 도출
+2. **체계적 분류**: 대분류 → 중분류 → 소분류로 체계적으로 분류
+3. **우선순위 설정**: 각 요구사항의 비즈니스 중요도에 따른 우선순위 설정
+4. **명확화 질문**: 모호하거나 추가 정보가 필요한 요구사항에 대한 구체적 질문 생성
+5. **완성도 평가**: 현재 정보로 도출 가능한 요구사항의 완성도 평가
+
+특히 SI 프로젝트의 특성을 고려하여 실무적이고 정확한 요구사항을 도출해주세요.
+
+**중요**: 
+- 대화 내용에서 사용자가 언급한 모든 기능과 요구사항을 반드시 포함
+- 프로젝트 개요가 있다면 해당 정보를 적극 활용하여 더 정확하고 구체적인 요구사항 도출
+- 프로젝트 개요의 기술 스택, 사용자 여정, 예상 비용 등을 참고하여 실현 가능한 요구사항으로 변환
+- 누락된 부분이 있다면 "needsClarification": true로 표시하고 구체적 질문 생성
+- 각 요구사항은 개발 가능한 단위로 세분화
+- 우선순위는 비즈니스 임팩트와 기술적 복잡도를 종합 고려`;
+
+  console.log('=== 요구사항 추출 프롬프트 ===');
+  console.log('System Prompt:', systemPrompt);
+  console.log('User Prompt:', userPrompt);
+  console.log('===============================');
+
+  const response = await callClaudeAPI(systemPrompt, userPrompt);
+
+  try {
+    const content = response;
+    if (!content) {
+      throw new Error('No content received from Claude');
+    }
+    
+    console.log('Claude 요구사항 추출 응답 원본:', content);
+    
+    // 여러 패턴으로 JSON 추출 시도
+    let jsonContent = content;
+    
+    // 1. ```json``` 코드 블록에서 추출
+    const jsonBlockMatch = content.match(/```json\s*([\s\S]*?)\s*```/);
+    if (jsonBlockMatch) {
+      jsonContent = jsonBlockMatch[1].trim();
+      console.log('JSON 블록에서 추출:', jsonContent);
+    }
+    
+    // 2. ``` 코드 블록에서 추출 (json 태그 없이)
+    if (jsonContent === content) {
+      const codeBlockMatch = content.match(/```\s*([\s\S]*?)\s*```/);
+      if (codeBlockMatch) {
+        const extracted = codeBlockMatch[1].trim();
+        // JSON 형태인지 확인
+        if (extracted.startsWith('{') && extracted.endsWith('}')) {
+          jsonContent = extracted;
+          console.log('코드 블록에서 JSON 추출:', jsonContent);
+        }
+      }
+    }
+    
+    // 3. 첫 번째 { 부터 마지막 } 까지 추출
+    if (jsonContent === content) {
+      const firstBrace = content.indexOf('{');
+      const lastBrace = content.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        jsonContent = content.substring(firstBrace, lastBrace + 1);
+        console.log('중괄호로 JSON 추출:', jsonContent);
+      }
+    }
+    
+    // JSON 파싱 시도
+    const parsedData = JSON.parse(jsonContent);
+    console.log('=== 요구사항 JSON 파싱 성공 ===');
+    console.log('파싱된 데이터:', parsedData);
+    console.log('카테고리 개수:', parsedData.categories?.length || 0);
+    console.log('===============================');
+    
+    // 응답 데이터 검증 및 보완
+    const validatedData = {
+      categories: parsedData.categories || [],
+      extractedAt: parsedData.extractedAt || new Date().toISOString(),
+      totalCount: parsedData.totalCount || parsedData.categories?.reduce((total: number, cat: any) => 
+        total + (cat.subCategories?.reduce((subTotal: number, subCat: any) => 
+          subTotal + (subCat.requirements?.length || 0), 0) || 0), 0) || 0,
+      needsReview: parsedData.needsReview !== undefined ? parsedData.needsReview : true
+    };
+    
+    console.log('=== 최종 검증된 데이터 ===');
+    console.log('검증된 데이터:', validatedData);
+    console.log('========================');
+    
+    return validatedData;
+    
+  } catch (parseError) {
+    console.error('요구사항 JSON parse error:', parseError);
+    console.error('Raw response:', response);
+    
+    // 파싱 실패 시 기본 구조 반환
+    return {
+      categories: [
+        {
+          category: "분석 중",
+          subcategory: "요구사항 도출 중",
+          requirements: [
+            {
+              id: "req_temp",
+              title: "요구사항 분석 중",
+              description: "AI가 요구사항을 분석하고 있습니다.",
+              priority: "medium",
+              needsClarification: true,
+              clarificationQuestions: ["추가 정보가 필요합니다."],
+              status: "draft"
+            }
+          ]
+        }
+      ],
+      extractedAt: new Date().toISOString(),
+      totalCount: 1,
+      needsReview: true
     };
   }
 };

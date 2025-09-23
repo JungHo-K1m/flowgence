@@ -22,6 +22,8 @@ interface SimpleRequirementModalProps {
   onRequirementsChange: (requirements: Requirement[]) => void;
   categoryTitle: string;
   onCategoryTitleChange: (title: string) => void;
+  isSaving?: boolean;
+  saveError?: string | null;
 }
 
 export function SimpleRequirementModal({
@@ -31,6 +33,8 @@ export function SimpleRequirementModal({
   onRequirementsChange,
   categoryTitle,
   onCategoryTitleChange,
+  isSaving = false,
+  saveError = null,
 }: SimpleRequirementModalProps) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -91,133 +95,162 @@ export function SimpleRequirementModal({
   if (!isOpen) return null;
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        zIndex: 99999,
-        backgroundColor: "rgba(0, 0, 0, 0.5)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "20px",
-      }}
-      onClick={onClose}
-    >
+    <>
+      <style jsx>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
       <div
         style={{
-          backgroundColor: "white",
-          borderRadius: "8px",
-          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-          width: "100%",
-          height: "100%",
-          maxWidth: "1400px",
-          maxHeight: "900px",
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 99999,
+          backgroundColor: "rgba(0, 0, 0, 0.5)",
           display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "20px",
         }}
-        onClick={(e) => e.stopPropagation()}
+        onClick={onClose}
       >
-        {/* Header */}
         <div
           style={{
-            padding: "16px 20px",
-            borderBottom: "1px solid #e5e7eb",
+            backgroundColor: "white",
+            borderRadius: "8px",
+            boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+            width: "100%",
+            height: "100%",
+            maxWidth: "1400px",
+            maxHeight: "900px",
             display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            flexShrink: 0,
-          }}
-        >
-          <h2
-            style={{
-              fontSize: "20px",
-              fontWeight: "600",
-              color: "#111827",
-              margin: 0,
-            }}
-          >
-            소분류 카드 관리
-          </h2>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onClose}
-            style={{ padding: "8px" }}
-          >
-            ✕
-          </Button>
-        </div>
-
-        {/* Content */}
-        <div
-          style={{
-            flex: 1,
-            display: "flex",
+            flexDirection: "column",
             overflow: "hidden",
           }}
+          onClick={(e) => e.stopPropagation()}
         >
-          {/* Left Panel - AI Recommendations */}
+          {/* Header */}
           <div
             style={{
-              width: "50%",
-              borderRight: "1px solid #e5e7eb",
+              padding: "16px 20px",
+              borderBottom: "1px solid #e5e7eb",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              flexShrink: 0,
+            }}
+          >
+            <h2
+              style={{
+                fontSize: "20px",
+                fontWeight: "600",
+                color: "#111827",
+                margin: 0,
+              }}
+            >
+              소분류 카드 관리
+            </h2>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClose}
+              style={{ padding: "8px" }}
+            >
+              ✕
+            </Button>
+          </div>
+
+          {/* Content */}
+          <div
+            style={{
+              flex: 1,
+              display: "flex",
               overflow: "hidden",
             }}
           >
-            <AIRecommendationsPanel onAddRequirement={handleAddRequirement} />
+            {/* Left Panel - AI Recommendations */}
+            <div
+              style={{
+                width: "50%",
+                borderRight: "1px solid #e5e7eb",
+                overflow: "hidden",
+              }}
+            >
+              <AIRecommendationsPanel onAddRequirement={handleAddRequirement} />
+            </div>
+
+            {/* Right Panel - Requirement Management */}
+            <div
+              style={{
+                width: "50%",
+                overflow: "hidden",
+              }}
+            >
+              <RequirementManagementPanel
+                requirements={requirements}
+                categoryTitle={categoryTitle}
+                onCategoryTitleChange={onCategoryTitleChange}
+                onUpdateRequirement={handleUpdateRequirement}
+                onDeleteRequirement={handleDeleteRequirement}
+                onAddNew={() => setShowAddModal(true)}
+              />
+            </div>
           </div>
 
-          {/* Right Panel - Requirement Management */}
+          {/* Footer */}
           <div
             style={{
-              width: "50%",
-              overflow: "hidden",
+              padding: "16px 20px",
+              borderTop: "1px solid #e5e7eb",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexShrink: 0,
             }}
           >
-            <RequirementManagementPanel
-              requirements={requirements}
-              categoryTitle={categoryTitle}
-              onCategoryTitleChange={onCategoryTitleChange}
-              onUpdateRequirement={handleUpdateRequirement}
-              onDeleteRequirement={handleDeleteRequirement}
-              onAddNew={() => setShowAddModal(true)}
-            />
+            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+              <div style={{ fontSize: "14px", color: "#6b7280" }}>
+                변경사항은 자동 저장됩니다
+              </div>
+              {isSaving && (
+                <div style={{ fontSize: "12px", color: "#6366F1", display: "flex", alignItems: "center", gap: "4px" }}>
+                  <div style={{ width: "12px", height: "12px", border: "2px solid #e5e7eb", borderTop: "2px solid #6366F1", borderRadius: "50%", animation: "spin 1s linear infinite" }}></div>
+                  저장 중...
+                </div>
+              )}
+              {saveError && (
+                <div style={{ fontSize: "12px", color: "#ef4444" }}>
+                  저장 실패: {saveError}
+                </div>
+              )}
+            </div>
+            <div style={{ display: "flex", gap: "8px" }}>
+              <Button variant="outline" onClick={onClose} disabled={isSaving}>
+                닫기
+              </Button>
+              <Button
+                onClick={onClose}
+                disabled={isSaving}
+                style={{
+                  backgroundColor: isSaving ? "#9ca3af" : "#6366F1",
+                  color: "white",
+                  border: "none",
+                }}
+                onMouseEnter={(e) => {
+                  if (!isSaving) e.currentTarget.style.backgroundColor = "#5B5BD6";
+                }}
+                onMouseLeave={(e) => {
+                  if (!isSaving) e.currentTarget.style.backgroundColor = "#6366F1";
+                }}
+              >
+                {isSaving ? "저장 중..." : "변경 완료"}
+              </Button>
+            </div>
           </div>
-        </div>
-
-        {/* Footer */}
-        <div
-          style={{
-            padding: "16px 20px",
-            borderTop: "1px solid #e5e7eb",
-            display: "flex",
-            justifyContent: "space-between",
-            flexShrink: 0,
-          }}
-        >
-          <Button variant="outline" onClick={onClose}>
-            닫기
-          </Button>
-          <Button
-            onClick={onClose}
-            style={{
-              backgroundColor: "#6366F1",
-              color: "white",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = "#5B5BD6";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "#6366F1";
-            }}
-          >
-            변경 완료
-          </Button>
         </div>
       </div>
 
@@ -235,6 +268,6 @@ export function SimpleRequirementModal({
         onConfirm={confirmDelete}
         requirement={requirementToDelete}
       />
-    </div>
+    </>
   );
 }

@@ -13,6 +13,7 @@ interface TempState {
     uploadedFiles: File[];
     chatMessages: any[];
     requirements: any[];
+    projectOverview?: any; // 프로젝트 개요 추가
   };
 }
 

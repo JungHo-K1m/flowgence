@@ -16,6 +16,8 @@ import { LoginRequiredModal } from "@/components/auth/LoginRequiredModal";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useStatePersistence } from "@/hooks/useStatePersistence";
 import { SimpleRequirementModal } from "@/components/requirements/SimpleRequirementModal";
+import { useRequirementsExtraction } from "@/hooks/useRequirementsExtraction";
+import { useProjectStorage } from "@/hooks/useProjectStorage";
 import { useProjectOverview } from "@/hooks/useProjectOverview";
 
 interface Message {
@@ -42,6 +44,26 @@ export default function HomePage() {
 
   // useProjectOverview 훅 사용
   const { overview, updateOverview } = useProjectOverview();
+
+  // 요구사항 추출 및 저장 훅 사용
+  const { 
+    extractRequirements, 
+    isLoading: isExtractingRequirements, 
+    error: extractionError,
+    extractedRequirements 
+  } = useRequirementsExtraction();
+
+  const { 
+    saveProjectWithMessages, 
+    saveRequirements,
+    isLoading: isSaving,
+    error: saveError,
+    savedProjectId,
+    isSaved
+  } = useProjectStorage();
+
+  // 통합 로딩 상태 (요구사항 추출 + 저장)
+  const isProcessing = isExtractingRequirements || isSaving || isRequirementsLoading;
 
   // onProjectUpdate 콜백을 useCallback으로 감싸서 불필요한 리렌더링 방지
   const handleProjectUpdate = useCallback(
@@ -71,6 +93,138 @@ export default function HomePage() {
   // 요구사항 편집 모달 상태
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<string>("");
+  // 로컬 편집용 요구사항 상태 (AI 추출 값을 기반으로 편집 반영)
+  const [editableRequirements, setEditableRequirements] = useState<any | null>(null);
+
+  // AI 추출 결과가 들어오면 편집용 상태 초기화
+  useEffect(() => {
+    if (extractedRequirements && !editableRequirements) {
+      setEditableRequirements(extractedRequirements);
+    }
+  }, [extractedRequirements, editableRequirements]);
+
+  // 카테고리 id 정규화 유틸리티
+  const normalizeId = useCallback((name: string) => name.toLowerCase().replace(/\s+/g, '_'), []);
+
+  // 특정 대분류의 소분류 요구사항을 평탄화하여 모달에 제공
+  const getModalRequirementsForCategory = useCallback((categoryId: string) => {
+    const base = editableRequirements || extractedRequirements;
+    if (!base?.categories) return [] as Array<{ id: string; title: string; description: string; category: string; priority: 'high' | 'medium' | 'low'; }>;
+    const target = base.categories.find((cat: any) => normalizeId(cat.majorCategory) === categoryId);
+    if (!target) return [];
+    const flat = target.subCategories.flatMap((sub: any) =>
+      (sub.requirements || []).map((req: any, index: number) => ({
+        id: req.id || `${target.majorCategory}-${sub.subCategory}-${index}`,
+        title: req.title,
+        description: req.description,
+        category: categoryId,
+        // 모달 컴포넌트 타입 요구에 맞추기 위한 기본값 유지 (UI에서는 사용 안 함)
+        priority: (req.priority === 'high' || req.priority === 'medium') ? req.priority : 'low',
+      }))
+    );
+    return flat;
+  }, [editableRequirements, extractedRequirements, normalizeId]);
+
+  // 모달 타이틀용 대분류 이름 가져오기
+  const getCategoryTitle = useCallback((categoryId: string) => {
+    const base = editableRequirements || extractedRequirements;
+    const target = base?.categories?.find((cat: any) => normalizeId(cat.majorCategory) === categoryId);
+    return target?.majorCategory || '기타';
+  }, [editableRequirements, extractedRequirements, normalizeId]);
+
+  // 편집된 요구사항을 DB에 저장
+  const saveEditedRequirements = useCallback(async (updatedRequirements: any) => {
+    if (!savedProjectId) {
+      console.warn('저장된 프로젝트 ID가 없습니다. DB 저장을 건너뜁니다.');
+      return;
+    }
+
+    try {
+      console.log('편집된 요구사항 DB 저장 시작:', savedProjectId);
+      const result = await saveRequirements(savedProjectId, updatedRequirements);
+      
+      if (result.status === 'success') {
+        console.log('편집된 요구사항 DB 저장 성공');
+        // 성공 토스트 표시 (추후 구현)
+      } else {
+        console.error('편집된 요구사항 DB 저장 실패:', result.message);
+        // 실패 토스트 표시 (추후 구현)
+      }
+    } catch (error) {
+      console.error('편집된 요구사항 DB 저장 중 오류:', error);
+      // 오류 토스트 표시 (추후 구현)
+    }
+  }, [savedProjectId, saveRequirements]);
+
+  // 모달에서 편집된 평탄화 리스트를 원본 구조에 반영
+  const applyModalChangesToStructure = useCallback((categoryId: string, updatedFlatList: Array<{ id: string; title: string; description: string; category: string; priority: 'high' | 'medium' | 'low'; }>) => {
+    const base = (editableRequirements || extractedRequirements);
+    if (!base?.categories) return;
+
+    const next = {
+      ...base,
+      categories: base.categories.map((cat: any) => {
+        if (normalizeId(cat.majorCategory) !== categoryId) return cat;
+
+        // 기존 요구사항을 id -> 위치 매핑으로 빠르게 찾도록 준비
+        const requirementIndexMap = new Map<string, { subIndex: number; reqIndex: number }>();
+        cat.subCategories.forEach((sub: any, si: number) => {
+          (sub.requirements || []).forEach((req: any, ri: number) => {
+            if (req.id) requirementIndexMap.set(req.id, { subIndex: si, reqIndex: ri });
+          });
+        });
+
+        // 변환용 얕은 복사
+        const newSubCategories = cat.subCategories.map((s: any) => ({
+          ...s,
+          requirements: [...(s.requirements || [])],
+        }));
+
+        // 1) 기존 요구사항 업데이트/삭제 처리
+        //    유지할 id 집합
+        const keepIds = new Set(updatedFlatList.filter(i => i.id).map(i => i.id));
+        newSubCategories.forEach((sub: any, si: number) => {
+          sub.requirements = sub.requirements.filter((req: any) => !req.id || keepIds.has(req.id));
+        });
+
+        // 2) 업데이트/추가 처리
+        updatedFlatList.forEach((item) => {
+          const found = item.id && requirementIndexMap.get(item.id);
+          if (found) {
+            const { subIndex, reqIndex } = found;
+            const prev = newSubCategories[subIndex].requirements[reqIndex] || {};
+            newSubCategories[subIndex].requirements[reqIndex] = {
+              ...prev,
+              id: item.id,
+              title: item.title,
+              description: item.description,
+            };
+          } else {
+            // 새 항목은 첫 번째 중분류에 추가 (추후 UI에서 이동 기능 추가 가능)
+            if (newSubCategories.length === 0) {
+              newSubCategories.push({ subCategory: '기본', requirements: [] });
+            }
+            newSubCategories[0].requirements.push({
+              id: item.id,
+              title: item.title,
+              description: item.description,
+              status: 'draft',
+            });
+          }
+        });
+
+        return {
+          ...cat,
+          subCategories: newSubCategories,
+        };
+      })
+    };
+
+    setEditableRequirements(next);
+    
+    // 변경사항을 즉시 DB에 저장 (낙관적 업데이트)
+    saveEditedRequirements(next);
+  }, [editableRequirements, extractedRequirements, normalizeId, saveEditedRequirements]);
 
   // 프로젝트 개요 생성 함수 ref
   const generateOverviewRef = useRef<(() => void) | null>(null);
@@ -83,50 +237,103 @@ export default function HomePage() {
   }, []);
 
   // 인증 가드 및 상태 유지
-  const { showLoginModal, requireAuth, closeLoginModal } = useAuthGuard();
+  const { 
+    showLoginModal, 
+    requireAuth, 
+    closeLoginModal, 
+    processLoginState,
+    isProcessingLogin,
+    tempState,
+    hasTempState 
+  } = useAuthGuard();
   const { restoreState, clearState } = useStatePersistence();
   const searchParams = useSearchParams();
   const targetStep = searchParams.get("step");
 
   // 로그인 후 상태 복원 및 자동 단계 이동
   useEffect(() => {
-    const savedState = restoreState();
-    if (savedState?.projectData) {
-      const { projectData, targetStep: savedTargetStep } = savedState;
+    const handleLoginStateRestore = async () => {
+      if (hasTempState && tempState?.projectData) {
+        console.log('로그인 후 상태 복원 시작:', tempState);
+        
+        try {
+          // 1. 임시 상태를 실제 DB로 이전
+          const result = await processLoginState();
+          
+          if (result?.success) {
+            console.log('로그인 후 상태 이전 성공:', result);
+            
+            // 2. UI 상태 복원
+            const { projectData, targetStep: savedTargetStep } = tempState;
+            
+            setProjectDescription(projectData.description || "");
+            setSelectedServiceType(projectData.serviceType || "");
+            setUploadedFiles(projectData.uploadedFiles || []);
+            setChatMessages(projectData.chatMessages || []);
 
-      // 상태 복원
-      setProjectDescription(projectData.description || "");
-      setSelectedServiceType(projectData.serviceType || "");
-      setUploadedFiles(projectData.uploadedFiles || []);
-      setChatMessages(projectData.chatMessages || []);
+            // 채팅 인터페이스가 활성화되어 있었다면 복원
+            if (projectData.chatMessages?.length > 0) {
+              setShowChatInterface(true);
+            }
 
-      // 채팅 인터페이스가 활성화되어 있었다면 복원
-      if (projectData.chatMessages?.length > 0) {
-        setShowChatInterface(true);
+            // 3. 단계 이동 (URL 파라미터 또는 저장된 targetStep 사용)
+            const stepToMove = targetStep || savedTargetStep || result.targetStep;
+            if (stepToMove === "2" || stepToMove === 2) {
+              setShowRequirements(true);
+              setCurrentStep(2);
+            } else if (stepToMove === "3" || stepToMove === 3) {
+              setShowConfirmation(true);
+              setCurrentStep(3);
+            } else if (stepToMove === "4" || stepToMove === 4) {
+              setShowFinalResult(true);
+              setCurrentStep(4);
+            }
+          } else {
+            console.error('로그인 후 상태 이전 실패:', result?.error);
+            // 실패해도 기본 상태 복원은 진행
+            const { projectData, targetStep: savedTargetStep } = tempState;
+            
+            setProjectDescription(projectData.description || "");
+            setSelectedServiceType(projectData.serviceType || "");
+            setUploadedFiles(projectData.uploadedFiles || []);
+            setChatMessages(projectData.chatMessages || []);
+
+            if (projectData.chatMessages?.length > 0) {
+              setShowChatInterface(true);
+            }
+
+            const stepToMove = targetStep || savedTargetStep || 2;
+            if (stepToMove === "2" || stepToMove === 2) {
+              setShowRequirements(true);
+              setCurrentStep(2);
+            } else if (stepToMove === "3" || stepToMove === 3) {
+              setShowConfirmation(true);
+              setCurrentStep(3);
+            }
+          }
+        } catch (error) {
+          console.error('로그인 후 상태 복원 중 오류:', error);
+          // 오류 발생 시 기본 상태 복원
+          const { projectData } = tempState;
+          if (projectData) {
+            setProjectDescription(projectData.description || "");
+            setSelectedServiceType(projectData.serviceType || "");
+            setUploadedFiles(projectData.uploadedFiles || []);
+            setChatMessages(projectData.chatMessages || []);
+            
+            if (projectData.chatMessages?.length > 0) {
+              setShowChatInterface(true);
+            }
+            
+            setShowRequirements(true);
+            setCurrentStep(2);
+          }
+        }
       }
+    };
 
-      // 자동 단계 이동 (URL 파라미터 또는 저장된 targetStep 사용)
-      const stepToMove = targetStep || savedTargetStep;
-      if (stepToMove === "2" || stepToMove === 2) {
-        setShowRequirements(true);
-        setIsRequirementsLoading(true);
-        setCurrentStep(2);
-
-        // 로딩 완료 (시간 단축)
-        setTimeout(() => {
-          setIsRequirementsLoading(false);
-        }, 2000);
-      } else if (stepToMove === "3" || stepToMove === 3) {
-        setShowConfirmation(true);
-        setCurrentStep(3);
-      } else if (stepToMove === "4" || stepToMove === 4) {
-        setShowFinalResult(true);
-        setCurrentStep(4);
-      }
-
-      clearState(); // 복원 후 상태 초기화
-    }
-  }, [restoreState, clearState, targetStep]);
+    handleLoginStateRestore();
+  }, [hasTempState, tempState, processLoginState, targetStep]);
 
   const steps = [
     {
@@ -208,32 +415,93 @@ export default function HomePage() {
     // 프로젝트 개요 업데이트는 onProjectUpdate에서 처리하므로 여기서는 제거
   }, []);
 
-  const handleNextStep = () => {
+  const handleNextStep = async () => {
     if (currentStep === 1) {
-      // 프로젝트 개요에서 요구사항 관리로 전환 (로그인 체크 없음)
-      setShowRequirements(true);
-      setIsRequirementsLoading(true);
-      setCurrentStep(2);
-
-      // 5초 후 로딩 완료
-      setTimeout(() => {
-        setIsRequirementsLoading(false);
-      }, 5000);
-    } else if (currentStep === 2) {
-      // 요구사항 관리에서 기능 구성으로 전환
+      // 프로젝트 개요에서 요구사항 관리로 전환 (즉시 페이지 전환)
       const currentProjectData = {
         description: projectDescription,
         serviceType: selectedServiceType,
         uploadedFiles,
         chatMessages,
         requirements: [], // 요구사항은 아직 없음
+        projectOverview: overview, // 프로젝트 개요 추가
       };
 
-      requireAuth(() => {
-        setShowRequirements(false);
-        setShowConfirmation(true);
-        setCurrentStep(3);
+      requireAuth(async () => {
+        // 1. 즉시 페이지 전환
+        setShowRequirements(true);
+        setCurrentStep(2);
+        setIsRequirementsLoading(true);
+        
+        try {
+          console.log('1단계 → 2단계 전환: 요구사항 추출 시작');
+          
+          // 2. 요구사항 추출
+          const requirements = await extractRequirements(
+            {
+              description: projectDescription,
+              serviceType: selectedServiceType,
+              uploadedFiles,
+              projectOverview: overview, // 프로젝트 개요 정보 추가
+            },
+            chatMessages.map(msg => ({
+              type: msg.type === 'ai' ? 'ai' : msg.type,
+              content: msg.content
+            }))
+          );
+
+          console.log('요구사항 추출 완료:', requirements);
+
+          // 3. 프로젝트 데이터 저장
+          const projectData = {
+            title: projectDescription.substring(0, 100),
+            description: projectDescription,
+            serviceType: selectedServiceType,
+            project_overview: overview,
+            uploadedFiles,
+          };
+
+          const messages = chatMessages.map(msg => ({
+            role: msg.type === 'user' ? 'user' : 'assistant' as const,
+            content: msg.content,
+            metadata: {
+              message_index: chatMessages.indexOf(msg),
+              timestamp: new Date().toISOString()
+            }
+          }));
+
+          console.log('프로젝트 저장 시작');
+          const projectResult = await saveProjectWithMessages(projectData, messages);
+          
+          if (projectResult.status === 'success') {
+            console.log('프로젝트 저장 성공:', projectResult.project_id);
+            
+            // 4. 요구사항 저장
+            if (requirements) {
+              console.log('요구사항 저장 시작');
+              const requirementsResult = await saveRequirements(projectResult.project_id, requirements);
+              
+              if (requirementsResult.status === 'success') {
+                console.log('요구사항 저장 성공');
+              } else {
+                console.error('요구사항 저장 실패:', requirementsResult.message);
+              }
+            }
+          } else {
+            console.error('프로젝트 저장 실패:', projectResult.message);
+          }
+          
+        } catch (error) {
+          console.error('요구사항 추출 또는 저장 중 오류:', error);
+        } finally {
+          setIsRequirementsLoading(false);
+        }
       }, currentProjectData);
+    } else if (currentStep === 2) {
+      // 요구사항 관리에서 기능 구성으로 전환 (단순 전환만)
+      setShowRequirements(false);
+      setShowConfirmation(true);
+      setCurrentStep(3);
     } else if (currentStep === 3) {
       // 3단계에서 최종 확인 모달 표시
       setShowFinalModal(true);
@@ -381,8 +649,14 @@ export default function HomePage() {
               } ${showRequirements ? "w-2/3" : "w-1/3"}`}
             >
               {showRequirements ? (
-                isRequirementsLoading ? (
-                  <RequirementsLoading />
+                isProcessing ? (
+                  <RequirementsLoading 
+                    stage={
+                      isExtractingRequirements ? 'extracting' : 
+                      isSaving ? 'saving' : 
+                      'processing'
+                    }
+                  />
                 ) : (
                   <RequirementsPanel
                     onNextStep={handleNextStep}
@@ -394,6 +668,7 @@ export default function HomePage() {
                       uploadedFiles,
                       chatMessages,
                     }}
+                    extractedRequirements={editableRequirements || extractedRequirements}
                     onOpenEditModal={(category) => {
                       setEditingCategory(category);
                       setShowEditModal(true);
@@ -454,42 +729,37 @@ export default function HomePage() {
         onClose={closeLoginModal}
         title="로그인이 필요한 서비스입니다"
         description="프로젝트 진행 및 요구사항 관리를 위해 로그인이 필요합니다. 로그인 후 계속 진행하시겠습니까?"
+        isProcessing={isProcessingLogin}
       />
 
-      {/* 요구사항 편집 모달 */}
+      {/* 요구사항 편집 모달 (선택된 대분류의 소분류 리스트 표시/편집) */}
       <SimpleRequirementModal
         isOpen={showEditModal}
         onClose={() => setShowEditModal(false)}
-        requirements={[
-          {
-            id: "1",
-            title: "상품 등록/수정",
-            description: "상품 기본 정보 등록 및 옵션 관리",
-            category: "product",
-            priority: "high",
-          },
-          {
-            id: "2",
-            title: "성분/영양 관리",
-            description: "성분 비교 필터, 알러지 태그 등록",
-            category: "product",
-            priority: "medium",
-          },
-          {
-            id: "3",
-            title: "재고 부족 알림",
-            description: "재고 임계치 도달 시 자동 알림",
-            category: "product",
-            priority: "high",
-          },
-        ]}
+        requirements={getModalRequirementsForCategory(editingCategory)}
         onRequirementsChange={(newRequirements) => {
-          console.log("요구사항 업데이트:", newRequirements);
+          applyModalChangesToStructure(editingCategory, newRequirements as any);
         }}
-        categoryTitle={editingCategory === "product" ? "상품 관리" : "기타"}
+        categoryTitle={getCategoryTitle(editingCategory)}
         onCategoryTitleChange={(newTitle) => {
-          console.log("카테고리 제목 변경:", newTitle);
+          // 대분류 제목 변경 반영
+          const base = (editableRequirements || extractedRequirements);
+          if (!base?.categories) return;
+          const next = {
+            ...base,
+            categories: base.categories.map((cat: any) =>
+              normalizeId(cat.majorCategory) === editingCategory
+                ? { ...cat, majorCategory: newTitle }
+                : cat
+            ),
+          };
+          setEditableRequirements(next);
+          
+          // 변경사항을 즉시 DB에 저장
+          saveEditedRequirements(next);
         }}
+        isSaving={isSaving}
+        saveError={saveError}
       />
 
       {/* 최종 확인 모달 */}
