@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { ServiceTypeButtons } from "@/components/project/ServiceTypeButtons";
 import { FileUpload } from "@/components/project/FileUpload";
@@ -16,6 +16,7 @@ import { LoginRequiredModal } from "@/components/auth/LoginRequiredModal";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useStatePersistence } from "@/hooks/useStatePersistence";
 import { SimpleRequirementModal } from "@/components/requirements/SimpleRequirementModal";
+import { useProjectOverview } from "@/hooks/useProjectOverview";
 
 interface Message {
   id: string;
@@ -39,9 +40,47 @@ export default function HomePage() {
   const [isRequirementsLoading, setIsRequirementsLoading] = useState(false);
   const [chatMessages, setChatMessages] = useState<Message[]>([]);
 
+  // useProjectOverview 훅 사용
+  const { overview, updateOverview } = useProjectOverview();
+
+  // onProjectUpdate 콜백을 useCallback으로 감싸서 불필요한 리렌더링 방지
+  const handleProjectUpdate = useCallback(
+    (data: {
+      description: string;
+      serviceType: string;
+      uploadedFiles: File[];
+      messages: Message[];
+    }) => {
+      console.log("프로젝트 개요 업데이트 트리거:", data);
+      console.log("updateOverview 함수 호출 시작");
+
+      // updateOverview 함수 호출하여 실제 API 요청 실행
+      updateOverview(
+        {
+          description: data.description,
+          serviceType: data.serviceType,
+          uploadedFiles: data.uploadedFiles,
+        },
+        data.messages
+      );
+      console.log("updateOverview 함수 호출 완료");
+    },
+    [updateOverview]
+  );
+
   // 요구사항 편집 모달 상태
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<string>("");
+
+  // 프로젝트 개요 생성 함수 ref
+  const generateOverviewRef = useRef<(() => void) | null>(null);
+
+  // 프로젝트 개요 생성 함수
+  const generateProjectOverview = useCallback(() => {
+    if (generateOverviewRef.current) {
+      generateOverviewRef.current();
+    }
+  }, []);
 
   // 인증 가드 및 상태 유지
   const { showLoginModal, requireAuth, closeLoginModal } = useAuthGuard();
@@ -116,6 +155,42 @@ export default function HomePage() {
     // 채팅 인터페이스와 프로젝트 개요 패널 표시
     setShowChatInterface(true);
     setCurrentStep(1); // 1단계 유지
+
+    // 초기 메시지 설정 (중복 호출 방지)
+    const initialMessages: Message[] = [
+      {
+        id: "initial-user-message",
+        type: "user",
+        content: projectDescription,
+        icon: "👤",
+      },
+      {
+        id: "1",
+        type: "ai",
+        content:
+          "좋아요! 좀 더 구체적으로 이해하기 위해 몇 가지 질문을 드릴게요. 이 서비스는 사용자들이 어떤 문제를 해결하고 싶어하는지, 그리고 기존 서비스에서 어떤 불편함을 겪고 있는지 파악하는 것이 중요합니다. 또한 타겟 고객층의 특성과 니즈를 정확히 이해해야 더 나은 솔루션을 제안할 수 있습니다.",
+        icon: "🤖",
+      },
+      {
+        id: "2",
+        type: "ai",
+        content: "당신의 서비스는 어떤 문제를 해결하고 싶나요?",
+        description: "아래 옵션을 선택하거나 직접 입력해주세요.",
+        icon: "🤖",
+        options: [
+          { id: "price", label: "가격 문제" },
+          { id: "convenience", label: "편리성 문제" },
+          { id: "dissatisfaction", label: "기존 서비스 불만" },
+          { id: "unknown", label: "잘 모르겠음" },
+        ],
+      },
+    ];
+    setChatMessages(initialMessages);
+
+    // 프로젝트 개요 생성
+    setTimeout(() => {
+      generateProjectOverview();
+    }, 100); // 컴포넌트 마운트 후 실행
   };
 
   const handleFileSelect = (files: File[]) => {
@@ -126,6 +201,12 @@ export default function HomePage() {
   const handleServiceTypeSelect = (serviceType: string) => {
     setSelectedServiceType(serviceType);
   };
+
+  // 메시지 변경 핸들러 (useCallback으로 최적화)
+  const handleMessagesChange = useCallback((newMessages: Message[]) => {
+    setChatMessages(newMessages);
+    // 프로젝트 개요 업데이트는 onProjectUpdate에서 처리하므로 여기서는 제거
+  }, []);
 
   const handleNextStep = () => {
     if (currentStep === 1) {
@@ -284,12 +365,12 @@ export default function HomePage() {
               } ${showRequirements ? "w-1/3" : "flex-1"}`}
             >
               <ChatInterface
-                initialMessage={projectDescription}
+                initialMessage=""
                 serviceType={selectedServiceType}
-                onNextStep={handleNextStep}
                 currentStep={currentStep}
                 messages={chatMessages}
-                onMessagesChange={setChatMessages}
+                onMessagesChange={handleMessagesChange}
+                onProjectUpdate={handleProjectUpdate}
               />
             </div>
 
@@ -326,6 +407,9 @@ export default function HomePage() {
                   uploadedFiles={uploadedFiles}
                   onNextStep={handleNextStep}
                   currentStep={currentStep}
+                  messages={chatMessages}
+                  onGenerateOverview={generateOverviewRef}
+                  realtimeOverview={overview || undefined}
                 />
               )}
             </div>
