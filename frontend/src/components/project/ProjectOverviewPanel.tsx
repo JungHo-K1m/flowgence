@@ -84,6 +84,16 @@ export function ProjectOverviewPanel({
   // 실시간 업데이트된 개요가 있으면 우선 사용
   const displayOverview = realtimeOverview || overview;
 
+  // 버튼 활성화를 위한 상태 (realtimeOverview가 있으면 즉시 활성화)
+  const isButtonEnabled = realtimeOverview ? true : !!overview && !isLoading;
+
+  console.log("=== ProjectOverviewPanel 버튼 활성화 상태 ===");
+  console.log("realtimeOverview:", !!realtimeOverview);
+  console.log("overview:", !!overview);
+  console.log("isLoading:", isLoading);
+  console.log("isButtonEnabled:", isButtonEnabled);
+  console.log("=============================================");
+
   // 수동으로 프로젝트 개요 생성하는 함수 (useCallback으로 최적화)
   const handleGenerateOverview = useCallback(() => {
     if (
@@ -529,14 +539,15 @@ export function ProjectOverviewPanel({
       <div className="absolute bottom-4 right-4">
         <button
           onClick={onNextStep}
-          disabled={currentStep >= 4}
+          disabled={currentStep >= 4 || !isButtonEnabled}
           className={`px-6 py-3 rounded-lg transition-colors duration-200 ${
-            currentStep >= 4
+            currentStep >= 4 || !isButtonEnabled
               ? "bg-gray-300 text-gray-500 cursor-not-allowed"
               : "text-white"
           }`}
           style={{
-            backgroundColor: currentStep >= 4 ? undefined : "#6366F1",
+            backgroundColor:
+              currentStep >= 4 || !isButtonEnabled ? undefined : "#6366F1",
           }}
         >
           {currentStep >= 4 ? "완료" : "다음 단계"}

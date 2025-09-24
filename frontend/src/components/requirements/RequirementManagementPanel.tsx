@@ -10,15 +10,24 @@ interface Requirement {
   description: string;
   category: string;
   priority: "high" | "medium" | "low";
+  needsClarification?: boolean;
+  clarificationQuestions?: string[];
+  status?: "approved" | "rejected" | "draft";
 }
 
 interface RequirementManagementPanelProps {
   requirements: Requirement[];
   categoryTitle: string;
-  onCategoryTitleChange: (title: string) => void;
-  onUpdateRequirement: (requirement: Requirement) => void;
-  onDeleteRequirement: (requirement: Requirement) => void;
+  onCategoryTitleChange: (title: string) => Promise<void>;
+  onUpdateRequirement: (requirement: Requirement) => Promise<void>;
+  onDeleteRequirement: (requirement: Requirement) => Promise<void>;
   onAddNew: () => void;
+  onRequirementStatusChange?: (
+    requirementId: string,
+    status: "approved" | "rejected" | "draft"
+  ) => Promise<void>;
+  isSaving?: boolean;
+  saveError?: string | null;
 }
 
 export function RequirementManagementPanel({
@@ -28,22 +37,85 @@ export function RequirementManagementPanel({
   onUpdateRequirement,
   onDeleteRequirement,
   onAddNew,
+  onRequirementStatusChange,
+  isSaving = false,
+  saveError = null,
 }: RequirementManagementPanelProps) {
   const [editingRequirement, setEditingRequirement] = useState<string | null>(
     null
   );
+  const [savingStates, setSavingStates] = useState<Record<string, boolean>>({});
+  const [errorStates, setErrorStates] = useState<Record<string, string | null>>(
+    {}
+  );
 
-  const handleTitleEdit = (requirement: Requirement, newTitle: string) => {
-    onUpdateRequirement({ ...requirement, title: newTitle });
-    setEditingRequirement(null);
+  const handleTitleEdit = async (
+    requirement: Requirement,
+    newTitle: string
+  ) => {
+    const requirementId = `${requirement.id}-title`;
+    setSavingStates((prev) => ({ ...prev, [requirementId]: true }));
+    setErrorStates((prev) => ({ ...prev, [requirementId]: null }));
+
+    try {
+      // 편집 시 자동 승인
+      const updatedRequirement = {
+        ...requirement,
+        title: newTitle,
+        status: "approved" as const,
+        needsClarification: false,
+        clarificationQuestions: [],
+      };
+      await onUpdateRequirement(updatedRequirement);
+      setEditingRequirement(null);
+    } catch (error) {
+      setErrorStates((prev) => ({
+        ...prev,
+        [requirementId]:
+          error instanceof Error ? error.message : "저장에 실패했습니다",
+      }));
+    } finally {
+      setSavingStates((prev) => ({ ...prev, [requirementId]: false }));
+    }
   };
 
-  const handleDescriptionEdit = (
+  const handleDescriptionEdit = async (
     requirement: Requirement,
     newDescription: string
   ) => {
-    onUpdateRequirement({ ...requirement, description: newDescription });
-    setEditingRequirement(null);
+    const requirementId = `${requirement.id}-description`;
+    setSavingStates((prev) => ({ ...prev, [requirementId]: true }));
+    setErrorStates((prev) => ({ ...prev, [requirementId]: null }));
+
+    try {
+      // 편집 시 자동 승인
+      const updatedRequirement = {
+        ...requirement,
+        description: newDescription,
+        status: "approved" as const,
+        needsClarification: false,
+        clarificationQuestions: [],
+      };
+      await onUpdateRequirement(updatedRequirement);
+      setEditingRequirement(null);
+    } catch (error) {
+      setErrorStates((prev) => ({
+        ...prev,
+        [requirementId]:
+          error instanceof Error ? error.message : "저장에 실패했습니다",
+      }));
+    } finally {
+      setSavingStates((prev) => ({ ...prev, [requirementId]: false }));
+    }
+  };
+
+  const handleCategoryTitleEdit = async (newTitle: string) => {
+    try {
+      await onCategoryTitleChange(newTitle);
+    } catch (error) {
+      console.error("카테고리 제목 저장 실패:", error);
+      throw error;
+    }
   };
 
   const getPriorityColor = (priority: string) => {
@@ -79,21 +151,31 @@ export function RequirementManagementPanel({
         <div className="flex items-center justify-between">
           <InlineEditInput
             value={categoryTitle}
-            onSave={onCategoryTitleChange}
+            onSave={handleCategoryTitleEdit}
             className="text-lg font-semibold text-gray-900"
             placeholder="카테고리 제목"
+            isSaving={isSaving}
+            saveError={saveError}
           />
-          <Button
-            variant="outline"
-            size="sm"
-            className="p-2"
-            onClick={() => {
-              // 편집 모드 토글 로직
-              console.log("편집 모드");
-            }}
-          >
-            ✏️
-          </Button>
+          <div className="flex items-center space-x-2">
+            {isSaving && (
+              <div className="flex items-center text-blue-600 text-sm">
+                <div className="animate-spin w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full mr-2"></div>
+                저장중...
+              </div>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              className="p-2"
+              onClick={() => {
+                // 편집 모드 토글 로직
+                console.log("편집 모드");
+              }}
+            >
+              ✏️
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -116,80 +198,126 @@ export function RequirementManagementPanel({
                 <div className="flex-1">
                   {/* Title */}
                   <div className="mb-2">
-                    {editingRequirement === `${requirement.id}-title` ? (
-                      <InlineEditInput
-                        value={requirement.title}
-                        onSave={(newTitle) =>
-                          handleTitleEdit(requirement, newTitle)
-                        }
-                        onCancel={() => setEditingRequirement(null)}
-                        className="font-medium text-gray-900"
-                        placeholder="요구사항 제목"
-                      />
-                    ) : (
-                      <h4
-                        className="font-medium text-gray-900 cursor-pointer hover:text-blue-600"
-                        onClick={() =>
-                          setEditingRequirement(`${requirement.id}-title`)
-                        }
-                      >
-                        {requirement.title}
-                      </h4>
-                    )}
+                    <InlineEditInput
+                      value={requirement.title}
+                      onSave={(newTitle) =>
+                        handleTitleEdit(requirement, newTitle)
+                      }
+                      className="font-medium text-gray-900"
+                      placeholder="요구사항 제목"
+                      isSaving={savingStates[`${requirement.id}-title`]}
+                      saveError={errorStates[`${requirement.id}-title`]}
+                    />
                   </div>
 
                   {/* Description */}
                   <div className="mb-3">
-                    {editingRequirement === `${requirement.id}-description` ? (
-                      <InlineEditInput
-                        value={requirement.description}
-                        onSave={(newDescription) =>
-                          handleDescriptionEdit(requirement, newDescription)
-                        }
-                        onCancel={() => setEditingRequirement(null)}
-                        className="text-sm text-gray-600"
-                        placeholder="요구사항 설명"
-                        multiline
-                      />
-                    ) : (
-                      <p
-                        className="text-sm text-gray-600 cursor-pointer hover:text-blue-600"
-                        onClick={() =>
-                          setEditingRequirement(`${requirement.id}-description`)
-                        }
-                      >
-                        {requirement.description}
-                      </p>
-                    )}
+                    <InlineEditInput
+                      value={requirement.description}
+                      onSave={(newDescription) =>
+                        handleDescriptionEdit(requirement, newDescription)
+                      }
+                      className="text-sm text-gray-600"
+                      placeholder="요구사항 설명"
+                      multiline
+                      isSaving={savingStates[`${requirement.id}-description`]}
+                      saveError={errorStates[`${requirement.id}-description`]}
+                    />
                   </div>
 
-                  {/* Priority Badge */}
-                  <span
-                    className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(
-                      requirement.priority
-                    )}`}
-                  >
-                    {getPriorityText(requirement.priority)}
-                  </span>
+                  {/* Priority Badge and Status */}
+                  <div className="flex items-center space-x-2">
+                    <span
+                      className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(
+                        requirement.priority
+                      )}`}
+                    >
+                      {getPriorityText(requirement.priority)}
+                    </span>
+
+                    {/* Status Badge */}
+                    <span
+                      className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                        requirement.needsClarification
+                          ? "bg-orange-100 text-orange-800"
+                          : requirement.status === "approved"
+                          ? "bg-green-100 text-green-800"
+                          : "bg-gray-100 text-gray-800"
+                      }`}
+                    >
+                      {requirement.needsClarification
+                        ? "결정 필요"
+                        : requirement.status === "approved"
+                        ? "승인됨"
+                        : "검토중"}
+                    </span>
+                  </div>
+
+                  {/* 명확화 질문 표시 */}
+                  {requirement.needsClarification &&
+                    requirement.clarificationQuestions &&
+                    requirement.clarificationQuestions.length > 0 && (
+                      <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                        <h5 className="text-sm font-medium text-orange-800 mb-2">
+                          명확화 질문:
+                        </h5>
+                        <ul className="text-sm text-orange-700 space-y-1">
+                          {requirement.clarificationQuestions.map(
+                            (question: string, index: number) => (
+                              <li key={index} className="flex items-start">
+                                <span className="mr-2">•</span>
+                                <span>{question}</span>
+                              </li>
+                            )
+                          )}
+                        </ul>
+                      </div>
+                    )}
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex items-center space-x-2 ml-4">
+                <div className="flex items-center space-x-6 ml-8">
+                  {/* Status Change Button */}
+                  {requirement.needsClarification &&
+                    onRequirementStatusChange && (
+                      <Button
+                        size="sm"
+                        onClick={async () => {
+                          try {
+                            await onRequirementStatusChange(
+                              requirement.id,
+                              "approved"
+                            );
+                          } catch (error) {
+                            console.error("상태 변경 실패:", error);
+                          }
+                        }}
+                        className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 text-xs"
+                        disabled={
+                          savingStates[`${requirement.id}-title`] ||
+                          savingStates[`${requirement.id}-description`]
+                        }
+                      >
+                        ✓ 승인
+                      </Button>
+                    )}
+
+                  {/* Delete Button */}
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() =>
-                      setEditingRequirement(`${requirement.id}-title`)
-                    }
-                    className="p-1 text-gray-400 hover:text-gray-600"
-                  >
-                    ✏️
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => onDeleteRequirement(requirement)}
+                    onClick={async () => {
+                      try {
+                        await onDeleteRequirement(requirement);
+                      } catch (error) {
+                        console.error("삭제 실패:", error);
+                      }
+                    }}
                     className="p-1 text-gray-400 hover:text-red-600"
+                    disabled={
+                      savingStates[`${requirement.id}-title`] ||
+                      savingStates[`${requirement.id}-description`]
+                    }
                   >
                     🗑️
                   </Button>

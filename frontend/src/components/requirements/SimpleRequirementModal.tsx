@@ -6,6 +6,7 @@ import { AIRecommendationsPanel } from "./AIRecommendationsPanel";
 import { RequirementManagementPanel } from "./RequirementManagementPanel";
 import { AddRequirementModal } from "./AddRequirementModal";
 import { DeleteConfirmModal } from "./DeleteConfirmModal";
+import { RequirementDeleteConfirmModal } from "./RequirementDeleteConfirmModal";
 
 interface Requirement {
   id: string;
@@ -13,15 +14,22 @@ interface Requirement {
   description: string;
   category: string;
   priority: "high" | "medium" | "low";
+  needsClarification?: boolean;
+  clarificationQuestions?: string[];
+  status?: "approved" | "rejected" | "draft";
 }
 
 interface SimpleRequirementModalProps {
   isOpen: boolean;
   onClose: () => void;
   requirements: Requirement[];
-  onRequirementsChange: (requirements: Requirement[]) => void;
+  onRequirementsChange: (requirements: Requirement[]) => Promise<void>;
   categoryTitle: string;
-  onCategoryTitleChange: (title: string) => void;
+  onCategoryTitleChange: (title: string) => Promise<void>;
+  onRequirementStatusChange?: (
+    requirementId: string,
+    status: "approved" | "rejected" | "draft"
+  ) => Promise<void>;
   isSaving?: boolean;
   saveError?: string | null;
 }
@@ -33,12 +41,19 @@ export function SimpleRequirementModal({
   onRequirementsChange,
   categoryTitle,
   onCategoryTitleChange,
+  onRequirementStatusChange,
   isSaving = false,
   saveError = null,
 }: SimpleRequirementModalProps) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [requirementToDelete, setRequirementToDelete] =
+    useState<Requirement | null>(null);
+
+  // 소분류 삭제 확인 모달 상태
+  const [showRequirementDeleteModal, setShowRequirementDeleteModal] =
+    useState(false);
+  const [requirementToDeleteConfirm, setRequirementToDeleteConfirm] =
     useState<Requirement | null>(null);
 
   // ESC 키로 모달 닫기
@@ -60,36 +75,49 @@ export function SimpleRequirementModal({
     };
   }, [isOpen, onClose]);
 
-  const handleAddRequirement = (newRequirement: Omit<Requirement, "id">) => {
+  const handleAddRequirement = async (
+    newRequirement: Omit<Requirement, "id">
+  ) => {
     const requirement: Requirement = {
       ...newRequirement,
       id: Date.now().toString(),
     };
-    onRequirementsChange([...requirements, requirement]);
+    await onRequirementsChange([...requirements, requirement]);
     setShowAddModal(false);
   };
 
   const handleDeleteRequirement = (requirement: Requirement) => {
-    setRequirementToDelete(requirement);
-    setShowDeleteModal(true);
+    setRequirementToDeleteConfirm(requirement);
+    setShowRequirementDeleteModal(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (requirementToDelete) {
-      onRequirementsChange(
-        requirements.filter((req) => req.id !== requirementToDelete.id)
+      const updatedRequirements = requirements.filter(
+        (req) => req.id !== requirementToDelete.id
       );
+      await onRequirementsChange(updatedRequirements);
       setRequirementToDelete(null);
     }
     setShowDeleteModal(false);
   };
 
-  const handleUpdateRequirement = (updatedRequirement: Requirement) => {
-    onRequirementsChange(
-      requirements.map((req) =>
-        req.id === updatedRequirement.id ? updatedRequirement : req
-      )
+  const confirmRequirementDelete = async () => {
+    if (requirementToDeleteConfirm) {
+      const updatedRequirements = requirements.filter(
+        (req) => req.id !== requirementToDeleteConfirm.id
+      );
+      await onRequirementsChange(updatedRequirements);
+      setRequirementToDeleteConfirm(null);
+    }
+    setShowRequirementDeleteModal(false);
+  };
+
+  const handleUpdateRequirement = async (updatedRequirement: Requirement) => {
+    const updatedRequirements = requirements.map((req) =>
+      req.id === updatedRequirement.id ? updatedRequirement : req
     );
+    await onRequirementsChange(updatedRequirements);
   };
 
   if (!isOpen) return null;
@@ -98,8 +126,12 @@ export function SimpleRequirementModal({
     <>
       <style jsx>{`
         @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
+          0% {
+            transform: rotate(0deg);
+          }
+          100% {
+            transform: rotate(360deg);
+          }
         }
       `}</style>
       <div
@@ -175,7 +207,7 @@ export function SimpleRequirementModal({
             {/* Left Panel - AI Recommendations */}
             <div
               style={{
-                width: "50%",
+                width: "33.33%",
                 borderRight: "1px solid #e5e7eb",
                 overflow: "hidden",
               }}
@@ -186,7 +218,7 @@ export function SimpleRequirementModal({
             {/* Right Panel - Requirement Management */}
             <div
               style={{
-                width: "50%",
+                width: "66.67%",
                 overflow: "hidden",
               }}
             >
@@ -197,6 +229,9 @@ export function SimpleRequirementModal({
                 onUpdateRequirement={handleUpdateRequirement}
                 onDeleteRequirement={handleDeleteRequirement}
                 onAddNew={() => setShowAddModal(true)}
+                onRequirementStatusChange={onRequirementStatusChange}
+                isSaving={isSaving}
+                saveError={saveError}
               />
             </div>
           </div>
@@ -212,13 +247,32 @@ export function SimpleRequirementModal({
               flexShrink: 0,
             }}
           >
-            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+            <div
+              style={{ display: "flex", flexDirection: "column", gap: "4px" }}
+            >
               <div style={{ fontSize: "14px", color: "#6b7280" }}>
                 변경사항은 자동 저장됩니다
               </div>
               {isSaving && (
-                <div style={{ fontSize: "12px", color: "#6366F1", display: "flex", alignItems: "center", gap: "4px" }}>
-                  <div style={{ width: "12px", height: "12px", border: "2px solid #e5e7eb", borderTop: "2px solid #6366F1", borderRadius: "50%", animation: "spin 1s linear infinite" }}></div>
+                <div
+                  style={{
+                    fontSize: "12px",
+                    color: "#6366F1",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: "12px",
+                      height: "12px",
+                      border: "2px solid #e5e7eb",
+                      borderTop: "2px solid #6366F1",
+                      borderRadius: "50%",
+                      animation: "spin 1s linear infinite",
+                    }}
+                  ></div>
                   저장 중...
                 </div>
               )}
@@ -241,10 +295,12 @@ export function SimpleRequirementModal({
                   border: "none",
                 }}
                 onMouseEnter={(e) => {
-                  if (!isSaving) e.currentTarget.style.backgroundColor = "#5B5BD6";
+                  if (!isSaving)
+                    e.currentTarget.style.backgroundColor = "#5B5BD6";
                 }}
                 onMouseLeave={(e) => {
-                  if (!isSaving) e.currentTarget.style.backgroundColor = "#6366F1";
+                  if (!isSaving)
+                    e.currentTarget.style.backgroundColor = "#6366F1";
                 }}
               >
                 {isSaving ? "저장 중..." : "변경 완료"}
@@ -267,6 +323,18 @@ export function SimpleRequirementModal({
         onClose={() => setShowDeleteModal(false)}
         onConfirm={confirmDelete}
         requirement={requirementToDelete}
+      />
+
+      {/* 소분류 삭제 확인 모달 */}
+      <RequirementDeleteConfirmModal
+        isOpen={showRequirementDeleteModal}
+        onClose={() => {
+          setShowRequirementDeleteModal(false);
+          setRequirementToDeleteConfirm(null);
+        }}
+        onConfirm={confirmRequirementDelete}
+        requirementTitle={requirementToDeleteConfirm?.title || ""}
+        requirementDescription={requirementToDeleteConfirm?.description || ""}
       />
     </>
   );

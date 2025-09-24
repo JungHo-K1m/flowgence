@@ -112,7 +112,11 @@ export const useProjectOverview = () => {
       
       const data = await response.json();
       console.log('API 응답 데이터:', data);
+      console.log('=== useProjectOverview 훅에서 overview 설정 ===');
+      console.log('설정할 overview 데이터:', data.overview);
       setOverview(data.overview);
+      console.log('overview 상태 설정 완료');
+      console.log('===============================================');
     } catch (err) {
       console.error('프로젝트 개요 생성 오류:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');

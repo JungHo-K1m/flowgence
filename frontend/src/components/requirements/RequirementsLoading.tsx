@@ -1,32 +1,45 @@
 "use client";
 
 interface RequirementsLoadingProps {
-  stage?: 'extracting' | 'saving' | 'processing';
+  stage?: "extracting" | "updating" | "saving" | "processing";
 }
 
-export function RequirementsLoading({ stage = 'processing' }: RequirementsLoadingProps) {
+export function RequirementsLoading({
+  stage = "processing",
+}: RequirementsLoadingProps) {
   const getStageInfo = () => {
     switch (stage) {
-      case 'extracting':
+      case "extracting":
         return {
-          title: '요구사항을 추출하고 있습니다',
-          description: 'AI가 프로젝트 내용을 분석하여 요구사항을 도출하고 있습니다',
-          icon: '🧠',
-          color: 'purple'
+          title: "요구사항을 추출하고 있습니다",
+          description:
+            "AI가 프로젝트 내용을 분석하여 요구사항을 도출하고 있습니다",
+          icon: "🧠",
+          color: "purple",
         };
-      case 'saving':
+      case "updating":
         return {
-          title: '데이터를 저장하고 있습니다',
-          description: '프로젝트 정보와 요구사항을 데이터베이스에 저장하고 있습니다',
-          icon: '💾',
-          color: 'blue'
+          title: "요구사항을 업데이트하고 있습니다",
+          description:
+            "채팅 내용을 바탕으로 기존 요구사항을 업데이트하고 있습니다",
+          icon: "🔄",
+          color: "green",
+        };
+      case "saving":
+        return {
+          title: "데이터를 저장하고 있습니다",
+          description:
+            "프로젝트 정보와 요구사항을 데이터베이스에 저장하고 있습니다",
+          icon: "💾",
+          color: "blue",
         };
       default:
         return {
-          title: '요구사항을 처리하고 있습니다',
-          description: 'AI가 프로젝트 내용을 바탕으로 요구사항을 생성하고 있습니다',
-          icon: '📋',
-          color: 'purple'
+          title: "요구사항을 처리하고 있습니다",
+          description:
+            "AI가 프로젝트 내용을 바탕으로 요구사항을 생성하고 있습니다",
+          icon: "📋",
+          color: "purple",
         };
     }
   };
@@ -34,17 +47,23 @@ export function RequirementsLoading({ stage = 'processing' }: RequirementsLoadin
   const stageInfo = getStageInfo();
   const colorClasses = {
     purple: {
-      border: 'border-purple-200 border-t-purple-600',
-      bg: 'bg-purple-600',
-      bgLight: 'bg-purple-400',
-      bgLighter: 'bg-purple-300'
+      border: "border-purple-200 border-t-purple-600",
+      bg: "bg-purple-600",
+      bgLight: "bg-purple-400",
+      bgLighter: "bg-purple-300",
+    },
+    green: {
+      border: "border-green-200 border-t-green-600",
+      bg: "bg-green-600",
+      bgLight: "bg-green-400",
+      bgLighter: "bg-green-300",
     },
     blue: {
-      border: 'border-blue-200 border-t-blue-600',
-      bg: 'bg-blue-600',
-      bgLight: 'bg-blue-400',
-      bgLighter: 'bg-blue-300'
-    }
+      border: "border-blue-200 border-t-blue-600",
+      bg: "bg-blue-600",
+      bgLight: "bg-blue-400",
+      bgLighter: "bg-blue-300",
+    },
   };
 
   const colors = colorClasses[stageInfo.color as keyof typeof colorClasses];
@@ -81,7 +100,9 @@ export function RequirementsLoading({ stage = 'processing' }: RequirementsLoadin
         <div className="flex flex-col items-center justify-center h-full">
           <div className="relative">
             {/* Spinning Circle */}
-            <div className={`w-16 h-16 border-4 ${colors.border} rounded-full animate-spin`}></div>
+            <div
+              className={`w-16 h-16 border-4 ${colors.border} rounded-full animate-spin`}
+            ></div>
 
             {/* Center Icon */}
             <div className="absolute inset-0 flex items-center justify-center">
@@ -99,7 +120,9 @@ export function RequirementsLoading({ stage = 'processing' }: RequirementsLoadin
 
             {/* Progress Dots */}
             <div className="flex items-center justify-center space-x-2">
-              <div className={`w-2 h-2 ${colors.bg} rounded-full animate-pulse`}></div>
+              <div
+                className={`w-2 h-2 ${colors.bg} rounded-full animate-pulse`}
+              ></div>
               <div
                 className={`w-2 h-2 ${colors.bgLight} rounded-full animate-pulse`}
                 style={{ animationDelay: "0.2s" }}

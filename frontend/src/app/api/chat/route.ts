@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { ExtractedRequirements } from '@/types/requirements';
 
 // Claude AI API 호출 함수
 const callClaudeAPI = async (systemPrompt: string, userPrompt: string) => {
@@ -36,10 +37,115 @@ const callClaudeAPI = async (systemPrompt: string, userPrompt: string) => {
   return data.content[0].text;
 };
 
+// 요구사항 업데이트 함수
+const updateRequirements = async (input: ProjectInput, messages: ChatMessage[], existingRequirements: ExtractedRequirements) => {
+  // Claude API 키 확인
+  if (!process.env.ANTHROPIC_API_KEY) {
+    console.warn('ANTHROPIC_API_KEY가 설정되지 않았습니다. 테스트 모드로 실행합니다.');
+    
+    // 테스트 모드: 기존 요구사항에 새로운 요구사항 추가
+    const newRequirement = {
+      id: `req_${Date.now()}`,
+      title: "채팅에서 추가된 요구사항",
+      description: "사용자가 채팅을 통해 추가한 새로운 요구사항입니다.",
+      priority: "medium" as const,
+      needsClarification: false,
+      clarificationQuestions: [],
+      status: "draft" as const
+    };
+
+    // 기존 요구사항에 새 요구사항 추가
+    if (existingRequirements?.categories?.[0]?.subCategories?.[0]?.requirements) {
+      existingRequirements.categories[0].subCategories[0].requirements.push(newRequirement);
+      existingRequirements.totalCount = (existingRequirements.totalCount || 0) + 1;
+    }
+
+    return existingRequirements;
+  }
+
+  const systemPrompt = `당신은 Flowgence의 SI 프로젝트 요구사항 업데이트 전문가입니다.
+
+## 역할 및 전문성
+- **요구사항 병합 전문가**: 기존 요구사항과 새로운 채팅 정보를 지능적으로 병합
+- **충돌 해결 전문가**: 기존 요구사항과 새 정보 간의 충돌을 해결하고 최적의 결과 도출
+- **우선순위 재평가 전문가**: 새로운 정보를 바탕으로 기존 요구사항의 우선순위 재평가
+- **구조 유지 전문가**: 기존 요구사항의 체계적 구조를 유지하면서 새로운 정보 반영
+
+## 업데이트 원칙
+1. **기존 구조 유지**: 대분류/중분류 구조는 최대한 유지
+2. **중복 제거**: 새로운 정보가 기존 요구사항과 중복되면 기존 것을 업데이트
+3. **우선순위 조정**: 새로운 정보에 따라 우선순위 재평가
+4. **명확화 질문 업데이트**: 새로운 정보로 명확해진 요구사항의 질문 제거
+5. **새 요구사항 추가**: 완전히 새로운 요구사항은 적절한 위치에 추가
+
+사용자가 입력한 프로젝트 정보, 기존 요구사항, 새로운 대화 내용을 바탕으로 **오직 JSON 형식으로만** 응답해주세요. 
+다른 텍스트나 설명 없이 순수한 JSON만 반환해야 합니다.
+
+반환할 JSON 형식은 기존 요구사항과 동일한 구조를 유지하되, 새로운 정보를 반영하여 업데이트된 버전을 제공해주세요.`;
+
+  // 대화 히스토리를 텍스트로 변환
+  const conversationHistory = messages.map(msg => 
+    `${msg.type === 'user' ? '사용자' : 'AI'}: ${msg.content}`
+  ).join('\n');
+
+  const userPrompt = `프로젝트 정보:
+- 설명: ${input.description}
+- 서비스 타입: ${input.serviceType}
+- 업로드된 파일: ${input.uploadedFiles?.length || 0}개
+
+기존 요구사항:
+${JSON.stringify(existingRequirements, null, 2)}
+
+새로운 대화 내용:
+${conversationHistory}
+
+위 정보를 바탕으로 다음을 수행해주세요:
+
+1. **기존 요구사항 분석**: 현재 요구사항의 구조와 내용을 파악
+2. **새 정보 추출**: 대화에서 언급된 새로운 기능이나 요구사항 식별
+3. **지능적 병합**: 
+   - 기존 요구사항과 중복되는 새로운 정보는 기존 요구사항을 업데이트
+   - 완전히 새로운 요구사항은 적절한 위치에 추가
+   - 우선순위가 변경된 요구사항은 우선순위 재설정
+4. **명확화 질문 업데이트**: 새로운 정보로 명확해진 요구사항의 clarificationQuestions 제거
+5. **구조 최적화**: 필요시 대분류/중분류 구조 조정
+
+**중요**: 
+- 기존 요구사항의 ID는 최대한 유지
+- 사용자가 편집한 요구사항은 우선적으로 보존
+- 새로운 정보는 기존 구조에 자연스럽게 통합
+- 중복을 제거하고 일관성 유지
+- totalCount와 extractedAt 필드 업데이트`;
+
+  console.log('=== 요구사항 업데이트 프롬프트 ===');
+  console.log('기존 요구사항 개수:', existingRequirements?.totalCount || 0);
+  console.log('새 대화 메시지 개수:', messages.length);
+
+  try {
+    const response = await callClaudeAPI(systemPrompt, userPrompt);
+    console.log('Claude API 응답 (요구사항 업데이트):', response);
+    
+    // JSON 파싱
+    const jsonMatch = response.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error('JSON 형식의 응답을 찾을 수 없습니다.');
+    }
+    
+    const updatedRequirements = JSON.parse(jsonMatch[0]);
+    console.log('파싱된 업데이트된 요구사항:', updatedRequirements);
+    
+    return updatedRequirements;
+  } catch (error) {
+    console.error('요구사항 업데이트 오류:', error);
+    throw error;
+  }
+};
+
 interface ProjectInput {
   description: string;
   serviceType: string;
   uploadedFiles: File[];
+  projectOverview?: Record<string, unknown>;
 }
 
 interface ChatMessage {
@@ -50,7 +156,8 @@ interface ChatMessage {
 export async function POST(request: NextRequest) {
   try {
     console.log('API 호출 시작');
-    const { type, input, messages } = await request.json();
+    const requestBody = await request.json();
+    const { type, input, messages, existingRequirements } = requestBody;
     console.log('요청 데이터:', { type, input: input?.description, messagesCount: messages?.length });
     
     if (type === 'project_overview') {
@@ -65,6 +172,14 @@ export async function POST(request: NextRequest) {
       const requirements = await extractRequirements(input, messages);
       console.log('요구사항 추출 완료:', requirements);
       return NextResponse.json({ requirements });
+    }
+    
+    if (type === 'requirements_update') {
+      console.log('요구사항 업데이트 시작');
+      console.log('기존 요구사항 개수:', existingRequirements?.totalCount || 0);
+      const updatedRequirements = await updateRequirements(input, messages, existingRequirements);
+      console.log('요구사항 업데이트 완료:', updatedRequirements);
+      return NextResponse.json({ requirements: updatedRequirements });
     }
     
     return NextResponse.json({ error: 'Invalid request type' }, { status: 400 });
@@ -401,10 +516,11 @@ const extractRequirements = async (input: ProjectInput, messages: ChatMessage[])
 
   if (input.projectOverview) {
     console.log('=== 프로젝트 개요 정보 ===');
-    console.log('프로젝트 제목:', input.projectOverview.serviceCoreElements?.title);
-    console.log('핵심 기능:', input.projectOverview.serviceCoreElements?.keyFeatures);
-    console.log('기술 스택:', input.projectOverview.serviceCoreElements?.techStack);
-    console.log('사용자 여정 단계 수:', input.projectOverview.userJourney?.steps?.length);
+    const projectOverview = input.projectOverview as Record<string, unknown>;
+    console.log('프로젝트 제목:', (projectOverview.serviceCoreElements as Record<string, unknown>)?.title);
+    console.log('핵심 기능:', (projectOverview.serviceCoreElements as Record<string, unknown>)?.keyFeatures);
+    console.log('기술 스택:', (projectOverview.serviceCoreElements as Record<string, unknown>)?.techStack);
+    console.log('사용자 여정 단계 수:', ((projectOverview.userJourney as Record<string, unknown>)?.steps as unknown[])?.length);
     console.log('========================');
   } else {
     console.log('⚠️ 프로젝트 개요가 없습니다. 기본 정보만으로 요구사항을 추출합니다.');
@@ -591,9 +707,9 @@ ${conversationHistory}
     const validatedData = {
       categories: parsedData.categories || [],
       extractedAt: parsedData.extractedAt || new Date().toISOString(),
-      totalCount: parsedData.totalCount || parsedData.categories?.reduce((total: number, cat: any) => 
-        total + (cat.subCategories?.reduce((subTotal: number, subCat: any) => 
-          subTotal + (subCat.requirements?.length || 0), 0) || 0), 0) || 0,
+      totalCount: parsedData.totalCount || parsedData.categories?.reduce((total: number, cat: Record<string, unknown>) => 
+        total + ((cat.subCategories as Record<string, unknown>[])?.reduce((subTotal: number, subCat: Record<string, unknown>) => 
+          subTotal + ((subCat.requirements as unknown[])?.length || 0), 0) || 0), 0) || 0,
       needsReview: parsedData.needsReview !== undefined ? parsedData.needsReview : true
     };
     
