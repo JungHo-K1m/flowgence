@@ -1,0 +1,358 @@
+import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { ChatMessage } from '../entities/chat-message.entity';
+import { CreateChatMessageDto } from './dto/create-chat-message.dto';
+import { ExtractRequirementsDto } from './dto/extract-requirements.dto';
+import { UpdateRequirementsDto } from './dto/update-requirements.dto';
+
+@Injectable()
+export class ChatService {
+  constructor(
+    @InjectRepository(ChatMessage)
+    private chatMessageRepository: Repository<ChatMessage>,
+    private configService: ConfigService,
+  ) {}
+
+  async createMessage(createChatMessageDto: CreateChatMessageDto) {
+    try {
+      // Claude API 호출
+      const aiResponse = await this.callClaudeAPI(createChatMessageDto.message, createChatMessageDto.history || []);
+      
+      // 메시지 저장
+      const userMessage = this.chatMessageRepository.create({
+        projectId: createChatMessageDto.projectId,
+        role: 'user',
+        content: createChatMessageDto.message,
+        metadata: createChatMessageDto.metadata,
+      });
+
+      const aiMessage = this.chatMessageRepository.create({
+        projectId: createChatMessageDto.projectId,
+        role: 'assistant',
+        content: aiResponse.content,
+        metadata: aiResponse.metadata,
+      });
+
+      await this.chatMessageRepository.save([userMessage, aiMessage]);
+
+      return {
+        userMessage,
+        aiMessage,
+        projectOverview: aiResponse.projectOverview,
+        message: 'Chat message processed successfully',
+      };
+    } catch (error) {
+      console.error('Chat service error:', error);
+      throw new Error('Failed to process chat message');
+    }
+  }
+
+  async extractRequirements(extractRequirementsDto: ExtractRequirementsDto) {
+    try {
+      const requirements = await this.extractRequirementsFromHistory(extractRequirementsDto.history || []);
+      return requirements;
+    } catch (error) {
+      console.error('Requirements extraction error:', error);
+      throw new Error('Failed to extract requirements');
+    }
+  }
+
+  async updateRequirements(updateRequirementsDto: UpdateRequirementsDto) {
+    try {
+      const updatedRequirements = await this.updateRequirementsFromChat(
+        updateRequirementsDto.existingRequirements,
+        updateRequirementsDto.history || []
+      );
+      return updatedRequirements;
+    } catch (error) {
+      console.error('Requirements update error:', error);
+      throw new Error('Failed to update requirements');
+    }
+  }
+
+  async getMessagesByProject(projectId: string) {
+    return this.chatMessageRepository.find({
+      where: { projectId },
+      order: { createdAt: 'ASC' },
+    });
+  }
+
+  private async callClaudeAPI(message: string, history: any[]) {
+    const apiKey = this.configService.get<string>('ANTHROPIC_API_KEY');
+    
+    if (!apiKey) {
+      throw new Error('ANTHROPIC_API_KEY is not configured');
+    }
+
+    // 대화 히스토리를 Claude API 형식으로 변환
+    const messages = history.map(msg => ({
+      role: msg.role || (msg.type === 'user' ? 'user' : 'assistant'),
+      content: msg.content || msg.message
+    }));
+
+    // 현재 메시지 추가
+    messages.push({
+      role: 'user',
+      content: message
+    });
+
+    const systemPrompt = `당신은 SI 프로젝트 요구사항 분석 전문가입니다. 
+사용자와의 대화를 통해 프로젝트 개요를 실시간으로 업데이트하고, 
+구조화된 JSON 형식으로 응답해주세요.
+
+응답 형식:
+{
+  "content": "사용자에게 보여줄 자연어 응답",
+  "projectOverview": {
+    "title": "프로젝트 제목",
+    "description": "프로젝트 설명",
+    "keyFeatures": ["핵심 기능1", "핵심 기능2"],
+    "targetUsers": ["타겟 사용자1", "타겟 사용자2"],
+    "userJourney": {
+      "steps": [
+        {
+          "step": 1,
+          "title": "단계 제목",
+          "description": "단계 설명",
+          "userAction": "사용자 행동",
+          "systemResponse": "시스템 응답"
+        }
+      ]
+    }
+  }
+}`;
+
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+          model: 'claude-3-5-sonnet-20241022',
+          max_tokens: 4000,
+          system: systemPrompt,
+          messages: messages
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Claude API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (!data.content || !data.content[0] || !data.content[0].text) {
+        throw new Error('Invalid response format from Claude API');
+      }
+
+      const responseText = data.content[0].text;
+      
+      // JSON 응답 파싱 시도
+      try {
+        const jsonResponse = JSON.parse(responseText);
+        return {
+          content: jsonResponse.content || responseText,
+          metadata: { 
+            timestamp: new Date().toISOString(),
+            model: 'claude-3-5-sonnet-20241022'
+          },
+          projectOverview: jsonResponse.projectOverview || null
+        };
+      } catch (parseError) {
+        // JSON 파싱 실패 시 기본 응답
+        return {
+          content: responseText,
+          metadata: { 
+            timestamp: new Date().toISOString(),
+            model: 'claude-3-5-sonnet-20241022'
+          },
+          projectOverview: null
+        };
+      }
+    } catch (error) {
+      console.error('Claude API 호출 오류:', error);
+      throw new Error(`Claude API 호출 실패: ${error.message}`);
+    }
+  }
+
+  private async extractRequirementsFromHistory(history: any[]) {
+    const apiKey = this.configService.get<string>('ANTHROPIC_API_KEY');
+    
+    if (!apiKey) {
+      throw new Error('ANTHROPIC_API_KEY is not configured');
+    }
+
+    // 대화 히스토리를 텍스트로 변환
+    const conversationText = history.map(msg => 
+      `${msg.role || (msg.type === 'user' ? '사용자' : 'AI')}: ${msg.content || msg.message}`
+    ).join('\n');
+
+    const systemPrompt = `당신은 SI 프로젝트 요구사항 분석 전문가입니다.
+대화 내용을 분석하여 요구사항을 추출하고 계층적으로 분류해주세요.
+
+응답 형식:
+{
+  "categories": [
+    {
+      "category": "대분류 (예: 인증, 결제, 관리자)",
+      "subCategories": [
+        {
+          "subcategory": "중분류 (예: 로그인, 회원가입)",
+          "requirements": [
+            {
+              "title": "소분류 (예: 이메일/비밀번호 로그인)",
+              "description": "상세 설명",
+              "priority": "high|medium|low",
+              "needsClarification": true|false,
+              "clarificationQuestions": ["구체적인 질문1", "구체적인 질문2"]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}`;
+
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+          model: 'claude-3-5-sonnet-20241022',
+          max_tokens: 4000,
+          system: systemPrompt,
+          messages: [
+            {
+              role: 'user',
+              content: `다음 대화 내용을 분석하여 요구사항을 추출해주세요:\n\n${conversationText}`
+            }
+          ]
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Claude API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (!data.content || !data.content[0] || !data.content[0].text) {
+        throw new Error('Invalid response format from Claude API');
+      }
+
+      const responseText = data.content[0].text;
+      
+      // JSON 응답 파싱
+      try {
+        return JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('JSON 파싱 오류:', parseError);
+        throw new Error('요구사항 추출 응답 파싱 실패');
+      }
+    } catch (error) {
+      console.error('요구사항 추출 오류:', error);
+      throw new Error(`요구사항 추출 실패: ${error.message}`);
+    }
+  }
+
+  private async updateRequirementsFromChat(existingRequirements: any, history: any[]) {
+    const apiKey = this.configService.get<string>('ANTHROPIC_API_KEY');
+    
+    if (!apiKey) {
+      throw new Error('ANTHROPIC_API_KEY is not configured');
+    }
+
+    // 대화 히스토리를 텍스트로 변환
+    const conversationText = history.map(msg => 
+      `${msg.role || (msg.type === 'user' ? '사용자' : 'AI')}: ${msg.content || msg.message}`
+    ).join('\n');
+
+    const systemPrompt = `당신은 SI 프로젝트 요구사항 분석 전문가입니다.
+기존 요구사항과 새로운 대화 내용을 분석하여 요구사항을 업데이트해주세요.
+
+기존 요구사항:
+${JSON.stringify(existingRequirements, null, 2)}
+
+새로운 대화 내용:
+${conversationText}
+
+응답 형식:
+{
+  "categories": [
+    {
+      "category": "대분류",
+      "subCategories": [
+        {
+          "subcategory": "중분류",
+          "requirements": [
+            {
+              "title": "소분류",
+              "description": "상세 설명",
+              "priority": "high|medium|low",
+              "needsClarification": true|false,
+              "clarificationQuestions": ["질문1", "질문2"]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "updatedAt": "2025-09-24T12:00:00.000Z",
+  "message": "업데이트 완료 메시지"
+}`;
+
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+          model: 'claude-3-5-sonnet-20241022',
+          max_tokens: 4000,
+          system: systemPrompt,
+          messages: [
+            {
+              role: 'user',
+              content: '기존 요구사항을 새로운 대화 내용을 바탕으로 업데이트해주세요.'
+            }
+          ]
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Claude API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (!data.content || !data.content[0] || !data.content[0].text) {
+        throw new Error('Invalid response format from Claude API');
+      }
+
+      const responseText = data.content[0].text;
+      
+      // JSON 응답 파싱
+      try {
+        return JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('JSON 파싱 오류:', parseError);
+        throw new Error('요구사항 업데이트 응답 파싱 실패');
+      }
+    } catch (error) {
+      console.error('요구사항 업데이트 오류:', error);
+      throw new Error(`요구사항 업데이트 실패: ${error.message}`);
+    }
+  }
+}
