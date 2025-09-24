@@ -37,6 +37,15 @@ async function apiCall<T = any>(
     };
   } catch (error) {
     console.error('API 호출 오류:', error);
+    
+    // 네트워크 에러인지 확인
+    if (error instanceof TypeError && error.message === 'Failed to fetch') {
+      return {
+        status: 503,
+        error: '백엔드 서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.',
+      };
+    }
+    
     return {
       status: 500,
       error: '네트워크 오류가 발생했습니다.',
