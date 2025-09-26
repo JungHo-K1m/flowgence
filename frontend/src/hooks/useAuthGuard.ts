@@ -5,10 +5,11 @@ import { useAuthContext } from "@/components/providers/AuthProvider";
 import { useStatePersistence } from "./useStatePersistence";
 import { useProjectStorage } from "./useProjectStorage";
 import { useRequirementsExtraction } from "./useRequirementsExtraction";
+import { ChatMessageData } from "@/types/chat";
 
 export function useAuthGuard() {
   const { user, loading } = useAuthContext();
-  const { saveState, tempState, restoreState, clearState } = useStatePersistence();
+  const { saveState, tempState, clearState } = useStatePersistence();
   const { saveProjectWithMessages, saveRequirements } = useProjectStorage();
   const { extractRequirements } = useRequirementsExtraction();
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -68,7 +69,7 @@ export function useAuthGuard() {
         uploadedFiles: projectData.uploadedFiles || [],
       };
 
-      const messages = (projectData.chatMessages || []).map((msg: any) => ({
+      const messages: ChatMessageData[] = (projectData.chatMessages || []).map((msg: { type: string; content: string }) => ({
         role: msg.type === 'user' ? 'user' : 'assistant' as const,
         content: msg.content,
         metadata: {
@@ -95,8 +96,8 @@ export function useAuthGuard() {
                 uploadedFiles: projectData.uploadedFiles || [],
                 projectOverview: projectData.projectOverview, // 프로젝트 개요 추가
               },
-              projectData.chatMessages.map((msg: any) => ({
-                type: msg.type === 'ai' ? 'ai' : msg.type,
+              projectData.chatMessages.map((msg: { type: string; content: string }) => ({
+                type: (msg.type === 'ai' ? 'ai' : msg.type === 'user' ? 'user' : 'system') as 'user' | 'ai' | 'system',
                 content: msg.content
               }))
             );
@@ -146,7 +147,7 @@ export function useAuthGuard() {
     }
   }, [user, tempState, isProcessingLogin, saveProjectWithMessages, saveRequirements, extractRequirements, clearState]);
 
-  const requireAuth = (action: () => void, projectData?: any) => {
+  const requireAuth = (action: () => void, projectData?: { description: string; serviceType: string; chatMessages?: Array<{ type: string; content: string }>; uploadedFiles?: File[]; projectOverview?: string; requirements?: unknown[] }) => {
     console.log("requireAuth 호출됨:", { loading, user: !!user, projectData: !!projectData });
     
     if (loading) {
@@ -159,7 +160,13 @@ export function useAuthGuard() {
       // 프로젝트 데이터가 있으면 저장
       if (projectData) {
         console.log("프로젝트 데이터 저장:", projectData);
-        saveState(projectData);
+        const projectDataWithRequirements = {
+          ...projectData,
+          uploadedFiles: projectData.uploadedFiles || [],
+          chatMessages: projectData.chatMessages || [],
+          requirements: projectData.requirements || []
+        };
+        saveState(projectDataWithRequirements);
       }
       console.log("setShowLoginModal(true) 호출 전");
       setShowLoginModal(true);

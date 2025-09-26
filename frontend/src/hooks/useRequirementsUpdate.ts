@@ -1,8 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { 
   ExtractedRequirements, 
-  RequirementsExtractionState,
-  RequirementsExtractionRequest 
+  RequirementsUpdateRequest 
 } from '@/types/requirements';
 
 interface ProjectInput {
@@ -67,7 +66,7 @@ export const useRequirementsUpdate = () => {
           input,
           messages,
           existingRequirements
-        } as RequirementsExtractionRequest)
+        } as RequirementsUpdateRequest)
       });
       
       console.log('요구사항 업데이트 API 응답 상태:', response.status);

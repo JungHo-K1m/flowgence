@@ -1,7 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { ShareOption, ShareData } from "@/lib/shareAlternatives";
+import {
+  ShareOption,
+  ShareData,
+  showNotionGuide,
+} from "@/lib/shareAlternatives";
 
 interface ShareOptionsModalProps {
   isOpen: boolean;
@@ -16,12 +19,11 @@ export function ShareOptionsModal({
   shareData,
   shareOptions,
 }: ShareOptionsModalProps) {
-  const [selectedOption, setSelectedOption] = useState<string | null>(null);
-
   if (!isOpen) return null;
 
   const handleOptionClick = (option: ShareOption) => {
-    setSelectedOption(option.id);
+    // 옵션 클릭 처리 로직
+    console.log("Selected option:", option.id);
     option.action();
     onClose();
   };
@@ -38,8 +40,18 @@ export function ShareOptionsModal({
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
@@ -79,8 +91,18 @@ export function ShareOptionsModal({
                     </div>
                   </div>
                   {option.available && (
-                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    <svg
+                      className="w-5 h-5 text-gray-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5l7 7-7 7"
+                      />
                     </svg>
                   )}
                 </div>
@@ -97,12 +119,12 @@ export function ShareOptionsModal({
                   Notion을 처음 사용하시나요?
                 </h4>
                 <p className="text-sm text-blue-700 mb-2">
-                  Notion은 웹 브라우저에서 무료로 사용할 수 있는 강력한 문서 도구입니다.
+                  Notion은 웹 브라우저에서 무료로 사용할 수 있는 강력한 문서
+                  도구입니다.
                 </p>
                 <button
                   onClick={() => {
                     // Notion 가이드 표시
-                    const { showNotionGuide } = require("@/lib/shareAlternatives");
                     showNotionGuide();
                   }}
                   className="text-sm text-blue-600 hover:text-blue-800 underline"

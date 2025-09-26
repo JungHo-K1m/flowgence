@@ -21,7 +21,7 @@ interface CustomRequirementModalProps {
   requirements: Requirement[];
   onRequirementsChange: (requirements: Requirement[]) => void;
   categoryTitle: string;
-  onCategoryTitleChange: (title: string) => void;
+  onCategoryTitleChange: (title: string) => Promise<void>;
 }
 
 export function CustomRequirementModal({
@@ -65,7 +65,7 @@ export function CustomRequirementModal({
     setShowAddModal(false);
   };
 
-  const handleDeleteRequirement = (requirement: Requirement) => {
+  const handleDeleteRequirement = async (requirement: Requirement) => {
     setRequirementToDelete(requirement);
     setShowDeleteModal(true);
   };
@@ -80,7 +80,7 @@ export function CustomRequirementModal({
     setShowDeleteModal(false);
   };
 
-  const handleUpdateRequirement = (updatedRequirement: Requirement) => {
+  const handleUpdateRequirement = async (updatedRequirement: Requirement) => {
     onRequirementsChange(
       requirements.map((req) =>
         req.id === updatedRequirement.id ? updatedRequirement : req

@@ -1,6 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+  Suspense,
+} from "react";
 import { useSearchParams } from "next/navigation";
 import { ServiceTypeButtons } from "@/components/project/ServiceTypeButtons";
 import { FileUpload } from "@/components/project/FileUpload";
@@ -36,7 +43,7 @@ interface Message {
   options?: Array<{ id: string; label: string }>;
 }
 
-export default function HomePage() {
+function HomePageContent() {
   const [projectDescription, setProjectDescription] = useState("");
   const [selectedServiceType, setSelectedServiceType] = useState<string>("");
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
@@ -1010,13 +1017,14 @@ export default function HomePage() {
           setCurrentStep(3);
         },
         {
-          title: projectDescription.substring(0, 100),
           description: projectDescription,
           serviceType: selectedServiceType,
           uploadedFiles,
           chatMessages,
-          requirements: editableRequirements || [],
-          projectOverview: overview,
+          requirements: Array.isArray(editableRequirements)
+            ? editableRequirements
+            : [],
+          projectOverview: typeof overview === "string" ? overview : undefined,
         }
       );
     } else if (currentStep === 3) {
@@ -1313,5 +1321,13 @@ export default function HomePage() {
         requirementCount={categoryToDelete?.requirementCount || 0}
       />
     </div>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <HomePageContent />
+    </Suspense>
   );
 }

@@ -40,7 +40,7 @@ function markdownToHtml(markdown: string): string {
   let html = markdown;
   
   // 테이블 영역을 찾아서 처리
-  html = html.replace(/(\|.*\|(?:\s*\|.*\|)*)/gims, (tableMatch) => {
+  html = html.replace(/(\|.*\|(?:\s*\|.*\|)*)/gim, (tableMatch) => {
     const lines = tableMatch.trim().split('\n');
     let tableHtml = '<table class="table">';
     
@@ -92,7 +92,7 @@ function markdownToHtml(markdown: string): string {
     .replace(/\n/gim, '<br>');
 
   // 리스트 래핑
-  html = html.replace(/(<li>.*<\/li>)/gims, '<ul>$1</ul>');
+  html = html.replace(/(<li>.*<\/li>)/gim, '<ul>$1</ul>');
   
   return html;
 }

@@ -212,7 +212,7 @@ ${estimateData.payments.map((payment, index) => {
 | 카테고리 | 기술 | 용도 | 중요도 |
 |----------|------|------|--------|
 ${projectOverview?.serviceCoreElements?.techStack ? `
-${projectOverview.serviceCoreElements.techStack.frontend?.map((tech, index) => {
+${projectOverview.serviceCoreElements.techStack.frontend?.map((tech: string, index: number) => {
   const category = index === 0 ? '프론트엔드' : '';
   const categoryIcon = index === 0 ? '🎨' : '';
   const categoryName = index === 0 ? `<span class="requirement-name">${categoryIcon} ${category}</span>` : '';
@@ -226,7 +226,7 @@ ${projectOverview.serviceCoreElements.techStack.frontend?.map((tech, index) => {
   return `| ${categoryName} | ${techName} | ${purposeText} | ${importance} |`;
 }).join('\n') || ''}
 
-${projectOverview.serviceCoreElements.techStack.backend?.map((tech, index) => {
+${projectOverview.serviceCoreElements.techStack.backend?.map((tech: string, index: number) => {
   const category = index === 0 ? '백엔드' : '';
   const categoryIcon = index === 0 ? '⚙️' : '';
   const categoryName = index === 0 ? `<span class="requirement-name">${categoryIcon} ${category}</span>` : '';
@@ -240,7 +240,7 @@ ${projectOverview.serviceCoreElements.techStack.backend?.map((tech, index) => {
   return `| ${categoryName} | ${techName} | ${purposeText} | ${importance} |`;
 }).join('\n') || ''}
 
-${projectOverview.serviceCoreElements.techStack.database?.map((tech, index) => {
+${projectOverview.serviceCoreElements.techStack.database?.map((tech: string, index: number) => {
   const category = index === 0 ? '데이터베이스' : '';
   const categoryIcon = index === 0 ? '🗄️' : '';
   const categoryName = index === 0 ? `<span class="requirement-name">${categoryIcon} ${category}</span>` : '';
@@ -253,7 +253,7 @@ ${projectOverview.serviceCoreElements.techStack.database?.map((tech, index) => {
   return `| ${categoryName} | ${techName} | ${purposeText} | ${importance} |`;
 }).join('\n') || ''}
 
-${projectOverview.serviceCoreElements.techStack.infrastructure?.map((tech, index) => {
+${projectOverview.serviceCoreElements.techStack.infrastructure?.map((tech: string, index: number) => {
   const category = index === 0 ? '인프라' : '';
   const categoryIcon = index === 0 ? '☁️' : '';
   const categoryName = index === 0 ? `<span class="requirement-name">${categoryIcon} ${category}</span>` : '';
@@ -296,7 +296,7 @@ ${projectOverview.serviceCoreElements.techStack.infrastructure?.map((tech, index
 | 순번 | 기능명 | 설명 | 중요도 |
 |------|--------|------|--------|
 ${projectOverview?.serviceCoreElements?.keyFeatures ? 
-  projectOverview.serviceCoreElements.keyFeatures.map((feature, index) => {
+  projectOverview.serviceCoreElements.keyFeatures.map((feature: string, index: number) => {
     const featureIcon = index === 0 ? '🎯' : 
                        index === 1 ? '⚡' : 
                        index === 2 ? '🔧' : '📱';

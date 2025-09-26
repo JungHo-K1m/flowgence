@@ -380,7 +380,7 @@ export function ConfirmationPanel({
         .replace(/^\| (.+) \|$/gim, (match, content) => {
           const cells = content
             .split(" | ")
-            .map((cell) => `<td>${cell.trim()}</td>`)
+            .map((cell: string) => `<td>${cell.trim()}</td>`)
             .join("");
           return `<tr>${cells}</tr>`;
         })
@@ -409,22 +409,28 @@ export function ConfirmationPanel({
         // Notion 설정이 안 되어 있는 경우 대안 제공
         const choice = prompt(
           `Notion 공유를 위해서는 설정이 필요합니다.\n\n` +
-          `다음 중 선택하세요:\n\n` +
-          `1. Notion 사용 가이드 보기\n` +
-          `2. 수동으로 Notion에 공유 (클립보드 복사)\n` +
-          `3. 다른 방법으로 공유\n\n` +
-          `번호를 입력하세요 (1-3):`
+            `다음 중 선택하세요:\n\n` +
+            `1. Notion 사용 가이드 보기\n` +
+            `2. 수동으로 Notion에 공유 (클립보드 복사)\n` +
+            `3. 다른 방법으로 공유\n\n` +
+            `번호를 입력하세요 (1-3):`
         );
 
-        if (choice === '1') {
+        if (choice === "1") {
           showNotionGuide();
           return;
-        } else if (choice === '2') {
+        } else if (choice === "2") {
           // 수동 Notion 공유
-          const { shareToNotionManually } = await import("@/lib/shareAlternatives");
+          const { shareToNotionManually } = await import(
+            "@/lib/shareAlternatives"
+          );
           const data = {
             title: `${projectData.serviceType} - 프로젝트 견적서`,
-            content: `프로젝트: ${projectData.serviceType}\n총 견적: ${estimateData.finalEstimate.toLocaleString("ko-KR")}원\n\n${projectData.description}`,
+            content: `프로젝트: ${
+              projectData.serviceType
+            }\n총 견적: ${estimateData.finalEstimate.toLocaleString(
+              "ko-KR"
+            )}원\n\n${projectData.description}`,
             markdown: generateEstimateMarkdown(
               estimateData,
               requirementsData,
@@ -440,7 +446,7 @@ export function ConfirmationPanel({
           };
           shareToNotionManually(data);
           return;
-        } else if (choice === '3') {
+        } else if (choice === "3") {
           // 대안 공유 방법 제공
           handleAlternativeShare();
           return;

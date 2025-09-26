@@ -86,7 +86,7 @@ export function SimpleRequirementModal({
     setShowAddModal(false);
   };
 
-  const handleDeleteRequirement = (requirement: Requirement) => {
+  const handleDeleteRequirement = async (requirement: Requirement) => {
     setRequirementToDeleteConfirm(requirement);
     setShowRequirementDeleteModal(true);
   };

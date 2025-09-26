@@ -101,7 +101,7 @@ export function shareViaSlack(data: ShareData): void {
 // 구글 드라이브 공유 (HTML 파일 생성)
 export function shareViaGoogleDrive(data: ShareData): void {
   // HTML 파일 생성
-  const htmlContent = `
+  const htmlContent: string = `
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -150,7 +150,7 @@ export function shareViaGoogleDrive(data: ShareData): void {
 <body>
     <h1>${data.title}</h1>
     <div>${data.html}</div>
-    <a href="data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}" 
+    <a href="#" 
        download="${data.title.replace(/[^a-zA-Z0-9가-힣]/g, '_')}.html" 
        class="download-link">
         📥 HTML 파일로 다운로드

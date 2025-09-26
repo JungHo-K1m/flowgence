@@ -78,6 +78,21 @@ export interface RequirementsExtractionRequest {
   }>;
 }
 
+export interface RequirementsUpdateRequest {
+  type: 'requirements_update';
+  input: {
+    description: string;
+    serviceType: string;
+    uploadedFiles: File[];
+    projectOverview?: any;
+  };
+  messages: Array<{
+    type: 'user' | 'ai' | 'system';
+    content: string;
+  }>;
+  existingRequirements: ExtractedRequirements;
+}
+
 export interface RequirementsExtractionResponse {
   requirements: ExtractedRequirements;
 }
