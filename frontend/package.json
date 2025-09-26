@@ -16,7 +16,6 @@
     "@supabase/auth-ui-react": "^0.4.7",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.57.4",
-    "@tailwindcss/postcss": "^4.1.13",
     "@tanstack/react-query": "^5.89.0",
     "ai": "^5.0.47",
     "class-variance-authority": "^0.7.1",
