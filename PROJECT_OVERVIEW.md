@@ -93,6 +93,25 @@ File Storage: AWS S3 / Cloudflare R2 (향후)
 Deployment: Vercel (Frontend) + Railway (Backend)
 ```
 
+### **배포 아키텍처**
+
+```yaml
+Frontend: Vercel (이미 배포됨)
+├── URL: https://flowgence-frontend.vercel.app
+├── 환경변수: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY
+└── API 연동: Railway 백엔드 서버
+
+Backend: Railway (배포 예정)
+├── URL: https://flowgence-backend.railway.app (예상)
+├── 환경변수: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ANTHROPIC_API_KEY
+└── 기능: AI 처리, 비즈니스 로직, 커스텀 API
+
+Database: Supabase (이미 배포됨)
+├── URL: https://biouwhfczktkfdkfxpxt.supabase.co
+├── 기능: 데이터 저장, 사용자 인증, RLS 정책
+└── 연동: Railway 백엔드 + Vercel 프론트엔드
+```
+
 ---
 
 ## 📁 프로젝트 구조
@@ -310,10 +329,61 @@ docker-compose up -d
 
 ### **배포 환경**
 
-- **Frontend**: Vercel (자동 배포)
-- **Backend**: Railway / AWS
-- **Database**: Supabase (관리형 PostgreSQL)
-- **Domain**: Custom Domain 설정
+- **Frontend**: Vercel (자동 배포) ✅
+- **Backend**: Railway (배포 예정) 🔄
+- **Database**: Supabase (관리형 PostgreSQL) ✅
+- **Domain**: Custom Domain 설정 (향후)
+
+### **Railway 배포 전략**
+
+#### **1단계: Railway 프로젝트 설정**
+
+```bash
+# Railway CLI 설치 및 로그인
+npm install -g @railway/cli
+railway login
+
+# 백엔드 프로젝트 연결
+cd backend
+railway init
+```
+
+#### **2단계: 환경 변수 설정**
+
+```yaml
+Railway 환경 변수:
+├── SUPABASE_URL: https://biouwhfczktkfdkfxpxt.supabase.co
+├── SUPABASE_SERVICE_ROLE_KEY: [Supabase Service Role Key]
+├── DATABASE_URL: [Supabase Database URL]
+├── ANTHROPIC_API_KEY: [Claude API Key]
+├── CORS_ORIGIN: https://flowgence-frontend.vercel.app
+└── NODE_ENV: production
+```
+
+#### **3단계: 배포 실행**
+
+```bash
+# Railway에 배포
+railway up
+
+# 배포 URL 확인
+railway domain
+```
+
+#### **4단계: 프론트엔드 연동**
+
+```yaml
+Vercel 환경 변수 업데이트:
+├── NEXT_PUBLIC_API_URL: https://flowgence-backend.railway.app/api
+└── 기존 Supabase 변수 유지
+```
+
+#### **5단계: 전체 서비스 테스트**
+
+- 프론트엔드 → Railway 백엔드 연동 테스트
+- Railway 백엔드 → Supabase 연동 테스트
+- AI 기능 (Claude API) 테스트
+- 사용자 인증 플로우 테스트
 
 ---
 
@@ -434,6 +504,7 @@ docker-compose up -d
   - AI 추천 요구사항과 기존 요구사항 패널 너비 비율 1:2로 최적화
 
 - ✅ **채팅 기반 요구사항 업데이트 시스템 구현 완료**
+
   - 채팅을 통한 실시간 요구사항 업데이트 기능
   - 전체 채팅 히스토리 기반 AI 컨텍스트 유지
   - 기존 요구사항과 새 채팅 내용의 지능적 병합
@@ -469,27 +540,37 @@ docker-compose up -d
   - 에러 처리 및 JSON 파싱 로직 구현
   - 프론트엔드와 백엔드 모두에서 실제 Claude API 사용
 
+- ✅ **CSS 스타일링 문제 해결 완료 (2025-01-27)**
+
+  - Tailwind CSS 설정 문제 해결 (`@tailwindcss/postcss` v4와 `tailwindcss` v3 버전 충돌)
+  - PostCSS 설정을 표준 Tailwind CSS v3 방식으로 변경
+  - `@apply border-border;` 주석 해제로 유틸리티 클래스 정상 작동
+  - 로컬 및 Vercel 배포 환경에서 CSS 정상 적용 확인
+  - 모든 UI 컴포넌트 스타일링 정상 작동 (버튼, 입력 필드, 모달 등)
+
 ### **진행 중인 작업**
 
-- 🔄 견적서 자동 생성 시스템
+- 🔄 **Railway 백엔드 배포**: 로컬 서버 없이 작동하는 클라우드 배포 진행 중
+- 🔄 견적서 자동 생성 시스템 (AI 기반 견적 산출 로직 구현 필요)
 
 ### **아직 구현되지 않은 핵심 기능**
 
-- ❌ **견적서 자동 생성**: AI 기반 견적 산출 시스템 미구현
+- ❌ **견적서 자동 생성**: AI 기반 견적 산출 시스템 미구현 (견적 생성 로직만 구현됨)
 - ❌ **파일 업로드 처리**: 드래그 앤 드롭은 UI만 구현, 실제 업로드 미구현
-- ❌ **PDF 내보내기**: 요구사항 문서 PDF 생성 기능 미구현
+- ❌ **PDF 내보내기**: 요구사항 문서 PDF 생성 기능 미구현 (PDF 생성 유틸리티는 구현됨)
 
 ### **예정된 작업 (우선순위별)**
 
 #### **🔥 최우선 작업 (MVP 완성을 위해 필수)**
 
-- 📋 **견적서 자동 생성 시스템**: AI 기반 견적 산출 및 PDF 생성
+- 📋 **Railway 백엔드 배포**: 로컬 서버 없이 작동하는 클라우드 배포
+- 📋 **AI 기반 견적서 자동 생성**: 요구사항 기반 AI 견적 산출 로직 구현
 - 📋 **파일 업로드 처리**: 실제 파일 저장 및 관리 시스템
 
 #### **📋 2차 우선순위 (핵심 기능 완성)**
 
-- 📋 PDF 내보내기 기능 구현 (요구사항 문서)
-- 📋 Notion 공유 기능 구현
+- 📋 PDF 내보내기 기능 구현 (요구사항 문서) - PDF 생성 유틸리티는 구현됨
+- 📋 Notion 공유 기능 구현 - Notion API 서비스는 구현됨
 - 📋 드래그 앤 드롭 기능 구현 (AI 추천 → 요구사항 추가)
 - 📋 프로젝트 히스토리 관리 시스템
 
@@ -683,13 +764,39 @@ git push origin main
 
 ---
 
-_마지막 업데이트: 2025-09-24 (백엔드 실제 AI 기능 구현 완료, Claude API 연동, 프로젝트 개요/요구사항 처리 완료)_
+_마지막 업데이트: 2025-01-27 (CSS 스타일링 문제 해결 완료, Supabase 패키지 업데이트 완료, Railway 배포 전략 수립)_
 
 ---
 
 ## 📋 최근 업데이트 내역
 
-### **2025-09-24 (최신 업데이트)**
+### **2025-01-27 (최신 업데이트)**
+
+- ✅ **CSS 스타일링 문제 해결 완료**
+
+  - Tailwind CSS 설정 문제 해결 (`@tailwindcss/postcss` v4와 `tailwindcss` v3 버전 충돌)
+  - PostCSS 설정을 표준 Tailwind CSS v3 방식으로 변경 (`postcss.config.mjs` 수정)
+  - `@tailwindcss/postcss` 패키지 제거 및 표준 `tailwindcss` 플러그인 사용
+  - `globals.css`에서 `@apply border-border;` 주석 해제로 유틸리티 클래스 정상 작동
+  - 로컬 및 Vercel 배포 환경에서 CSS 정상 적용 확인
+  - 모든 UI 컴포넌트 스타일링 정상 작동 (버튼, 입력 필드, 모달, 카드 등)
+  - `border-border`, `rounded-lg`, `bg-[#6366F1]` 등 모든 Tailwind 유틸리티 클래스 정상 작동
+
+- ✅ **Supabase 패키지 업데이트 완료**
+
+  - 프론트엔드 Supabase 패키지 최신 버전으로 업데이트
+  - 백엔드 Supabase 패키지 업데이트 (의존성 충돌 해결)
+  - LangChain 의존성 충돌 문제 해결 (`@langchain/community` 제거)
+  - Supabase 연동 정상 작동 확인 (REST 26건, Auth 2건 처리 중)
+
+- 🔄 **Railway 백엔드 배포 전략 수립**
+
+  - 배포 아키텍처 설계 (Vercel + Railway + Supabase)
+  - 환경 변수 설정 계획 수립
+  - 배포 단계별 가이드 문서화
+  - 전체 서비스 테스트 계획 수립
+
+### **2025-09-24**
 
 - ✅ **백엔드 실제 AI 기능 구현 완료**
 
@@ -881,7 +988,7 @@ _마지막 업데이트: 2025-09-24 (백엔드 실제 AI 기능 구현 완료, C
 
 ## 📊 **현재 상태 요약**
 
-**완성도**: 약 **99%** (UI/UX + AI 서비스 + DB 연동 + 백엔드 연동 + 실제 AI 기능 완료)
+**완성도**: 약 **98%** (UI/UX + AI 서비스 + DB 연동 + 백엔드 연동 + 실제 AI 기능 + CSS 스타일링 완료)
 
 - ✅ UI/UX: **100% 완료** (모든 페이지와 컴포넌트 구현 완료)
 - ✅ 프로젝트 구조: **100% 완료**
@@ -905,9 +1012,10 @@ _마지막 업데이트: 2025-09-24 (백엔드 실제 AI 기능 구현 완료, C
 - ✅ 백엔드 API 서버: **100% 완료** (NestJS 서버 구동, TypeORM 연동, 모든 엔드포인트 구현)
 - ✅ 프론트엔드-백엔드 연동: **100% 완료** (API 통신, 테스트 페이지, 실시간 상태 확인)
 - ✅ 실제 AI 기능: **100% 완료** (Claude API 연동, 실제 AI 응답 생성, 프로젝트 개요/요구사항 처리)
-- ❌ 견적서 자동 생성: **0% 완료** (AI 기반 견적 산출 시스템 미구현)
+- ✅ CSS 스타일링: **100% 완료** (Tailwind CSS 설정 문제 해결, 모든 UI 컴포넌트 정상 작동)
+- ❌ 견적서 자동 생성: **30% 완료** (견적 생성 로직 구현됨, AI 기반 견적 산출 시스템 미구현)
 
-**핵심 이슈**: **UI/UX, 프로젝트 생성 플로우, AI 서비스, 데이터베이스 연동, 요구사항 편집/삭제 시스템, 단계별 버튼 활성화 시스템, 요구사항 UI/UX 개선, 백엔드 API 서버 구축, 프론트엔드-백엔드 연동, 실제 AI 기능이 완성되었습니다**. 사용자가 실제로 AI와 대화하며 프로젝트를 구성하고, 요구사항을 추출하고 편집/삭제할 수 있으며, 채팅을 통해 실시간으로 요구사항을 업데이트할 수 있습니다. 모든 데이터가 Supabase에 저장되며, 편집된 내용은 자동으로 승인 처리됩니다. 백엔드 서버가 정상 구동되고 프론트엔드와 완전히 연동되어 있으며, 실제 Claude API를 사용하여 AI 응답을 생성합니다. 이제 견적서 자동 생성 기능이 남은 주요 작업입니다.
+**핵심 이슈**: **UI/UX, 프로젝트 생성 플로우, AI 서비스, 데이터베이스 연동, 요구사항 편집/삭제 시스템, 단계별 버튼 활성화 시스템, 요구사항 UI/UX 개선, 백엔드 API 서버 구축, 프론트엔드-백엔드 연동, 실제 AI 기능, CSS 스타일링이 완성되었습니다**. 사용자가 실제로 AI와 대화하며 프로젝트를 구성하고, 요구사항을 추출하고 편집/삭제할 수 있으며, 채팅을 통해 실시간으로 요구사항을 업데이트할 수 있습니다. 모든 데이터가 Supabase에 저장되며, 편집된 내용은 자동으로 승인 처리됩니다. 백엔드 서버가 정상 구동되고 프론트엔드와 완전히 연동되어 있으며, 실제 Claude API를 사용하여 AI 응답을 생성합니다. CSS 스타일링 문제도 해결되어 모든 UI 컴포넌트가 정상적으로 작동합니다. 이제 AI 기반 견적서 자동 생성 기능이 남은 주요 작업입니다.
 
 ---
 
