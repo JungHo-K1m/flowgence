@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useAuthContext } from "@/components/providers/AuthProvider";
 import { useStatePersistence } from "./useStatePersistence";
 import { useProjectStorage } from "./useProjectStorage";
@@ -14,10 +14,34 @@ export function useAuthGuard() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [isProcessingLogin, setIsProcessingLogin] = useState(false);
 
+  // showLoginModal 상태 변경 감지
+  useEffect(() => {
+    console.log("useAuthGuard - showLoginModal 상태 변경:", showLoginModal);
+  }, [showLoginModal]);
+
   // 로그인 후 임시 상태를 실제 DB로 이전하는 함수
   const processLoginState = useCallback(async () => {
-    if (!user || !tempState || isProcessingLogin) {
-      return;
+    console.log('processLoginState 호출됨:', { user: !!user, tempState: !!tempState, isProcessingLogin });
+    
+    if (!user || !tempState) {
+      console.log('processLoginState 조건 불만족:', { user: !!user, tempState: !!tempState, isProcessingLogin });
+      return {
+        success: false,
+        error: '사용자 정보 또는 임시 상태가 없습니다'
+      };
+    }
+
+    // 이미 처리 중이면 기다림
+    if (isProcessingLogin) {
+      console.log('이미 처리 중 - 대기');
+      // 짧은 시간 대기 후 다시 시도
+      await new Promise(resolve => setTimeout(resolve, 100));
+      if (isProcessingLogin) {
+        return {
+          success: false,
+          error: '이미 처리 중입니다'
+        };
+      }
     }
 
     try {
@@ -29,7 +53,10 @@ export function useAuthGuard() {
       if (!projectData) {
         console.log('저장된 프로젝트 데이터가 없습니다');
         clearState();
-        return;
+        return {
+          success: false,
+          error: '저장된 프로젝트 데이터가 없습니다'
+        };
       }
 
       // 1. 프로젝트 데이터 저장
@@ -57,10 +84,11 @@ export function useAuthGuard() {
         console.log('프로젝트 저장 성공:', projectResult.project_id);
         
         // 2. 요구사항 추출 및 저장 (채팅 메시지가 있는 경우)
+        let extractedRequirements = null;
         if (projectData.chatMessages && projectData.chatMessages.length > 0) {
           try {
             console.log('요구사항 추출 시작');
-            const requirements = await extractRequirements(
+            extractedRequirements = await extractRequirements(
               {
                 description: projectData.description,
                 serviceType: projectData.serviceType,
@@ -73,9 +101,9 @@ export function useAuthGuard() {
               }))
             );
 
-            if (requirements) {
+            if (extractedRequirements) {
               console.log('요구사항 저장 시작');
-              const requirementsResult = await saveRequirements(projectResult.project_id, requirements);
+              const requirementsResult = await saveRequirements(projectResult.project_id, extractedRequirements);
               
               if (requirementsResult.status === 'success') {
                 console.log('요구사항 저장 성공');
@@ -97,7 +125,8 @@ export function useAuthGuard() {
           success: true,
           projectId: projectResult.project_id,
           targetStep: targetStep || 2,
-          projectData: projectData
+          projectData: projectData,
+          extractedRequirements: extractedRequirements
         };
       } else {
         console.error('프로젝트 저장 실패:', projectResult.message);
@@ -118,20 +147,28 @@ export function useAuthGuard() {
   }, [user, tempState, isProcessingLogin, saveProjectWithMessages, saveRequirements, extractRequirements, clearState]);
 
   const requireAuth = (action: () => void, projectData?: any) => {
+    console.log("requireAuth 호출됨:", { loading, user: !!user, projectData: !!projectData });
+    
     if (loading) {
+      console.log("로딩 중이므로 대기");
       return; // 로딩 중이면 대기
     }
 
     if (!user) {
+      console.log("사용자 없음 - 로그인 모달 표시");
       // 프로젝트 데이터가 있으면 저장
       if (projectData) {
+        console.log("프로젝트 데이터 저장:", projectData);
         saveState(projectData);
       }
+      console.log("setShowLoginModal(true) 호출 전");
       setShowLoginModal(true);
+      console.log("setShowLoginModal(true) 호출 후");
       return;
     }
 
     // 로그인된 사용자는 바로 액션 실행
+    console.log("로그인된 사용자 - 액션 실행");
     action();
   };
 

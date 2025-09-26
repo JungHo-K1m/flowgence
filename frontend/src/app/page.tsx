@@ -111,13 +111,14 @@ export default function HomePage() {
 
     // 결정이 필요한 요구사항이 있는지 확인
     const needsClarificationRequirements =
-      currentRequirements.categories?.flatMap((category: RequirementCategory) =>
-        category.subCategories.flatMap((subCategory) =>
-          (subCategory.requirements || []).filter(
-            (req: Requirement) =>
-              req.needsClarification && req.status !== "approved"
-          )
-        )
+      currentRequirements.categories?.flatMap(
+        (category: RequirementCategory) =>
+          category.subCategories?.flatMap((subCategory) =>
+            (subCategory.requirements || []).filter(
+              (req: Requirement) =>
+                req.needsClarification && req.status !== "approved"
+            )
+          ) || []
       ) || [];
 
     // 결정이 필요한 요구사항이 모두 편집 완료되었는지 확인
@@ -243,10 +244,10 @@ export default function HomePage() {
   );
 
   // 카테고리 id 정규화 유틸리티
-  const normalizeId = useCallback(
-    (name: string) => name.toLowerCase().replace(/\s+/g, "_"),
-    []
-  );
+  const normalizeId = useCallback((name: string | undefined | null) => {
+    if (!name) return "";
+    return name.toLowerCase().replace(/\s+/g, "_");
+  }, []);
 
   // 특정 대분류의 소분류 요구사항을 평탄화하여 모달에 제공
   const getModalRequirementsForCategory = useCallback(
@@ -265,10 +266,10 @@ export default function HomePage() {
         }>;
       const target = base.categories.find(
         (cat: RequirementCategory) =>
-          normalizeId(cat.majorCategory) === categoryId
+          cat.majorCategory && normalizeId(cat.majorCategory) === categoryId
       );
       if (!target) return [];
-      const flat = target.subCategories.flatMap((sub) =>
+      const flat = target.subCategories?.flatMap((sub) =>
         (sub.requirements || []).map((req: Requirement, index: number) => ({
           id: req.id || `${target.majorCategory}-${sub.subCategory}-${index}`,
           title: req.title,
@@ -298,7 +299,7 @@ export default function HomePage() {
       const base = editableRequirements || extractedRequirements;
       const target = base?.categories?.find(
         (cat: RequirementCategory) =>
-          normalizeId(cat.majorCategory) === categoryId
+          cat.majorCategory && normalizeId(cat.majorCategory) === categoryId
       );
       return target?.majorCategory || "기타";
     },
@@ -317,6 +318,7 @@ export default function HomePage() {
         ...requirements,
         categories: requirements.categories.map(
           (category: RequirementCategory) =>
+            category.majorCategory &&
             normalizeId(category.majorCategory) === categoryId
               ? { ...category, majorCategory: newTitle }
               : category
@@ -407,6 +409,7 @@ export default function HomePage() {
           ...editableRequirements,
           categories: editableRequirements.categories.filter(
             (category: RequirementCategory) =>
+              category.majorCategory &&
               normalizeId(category.majorCategory) !== categoryId
           ),
           totalCount:
@@ -414,6 +417,7 @@ export default function HomePage() {
             (editableRequirements.categories
               .find(
                 (cat: RequirementCategory) =>
+                  cat.majorCategory &&
                   normalizeId(cat.majorCategory) === categoryId
               )
               ?.subCategories.reduce(
@@ -444,7 +448,7 @@ export default function HomePage() {
 
       const targetCategory = base.categories.find(
         (cat: RequirementCategory) =>
-          normalizeId(cat.majorCategory) === categoryId
+          cat.majorCategory && normalizeId(cat.majorCategory) === categoryId
       );
 
       if (targetCategory) {
@@ -482,7 +486,11 @@ export default function HomePage() {
       const next = {
         ...base,
         categories: base.categories.map((cat: RequirementCategory) => {
-          if (normalizeId(cat.majorCategory) !== categoryId) return cat;
+          if (
+            !cat.majorCategory ||
+            normalizeId(cat.majorCategory) !== categoryId
+          )
+            return cat;
 
           // 기존 요구사항을 id -> 위치 매핑으로 빠르게 찾도록 준비
           const requirementIndexMap = new Map<
@@ -582,6 +590,8 @@ export default function HomePage() {
 
   // 인증 가드 및 상태 유지
   const {
+    user,
+    loading,
     showLoginModal,
     requireAuth,
     closeLoginModal,
@@ -590,95 +600,235 @@ export default function HomePage() {
     tempState,
     hasTempState,
   } = useAuthGuard();
+
+  // showLoginModal 상태 디버깅
+  useEffect(() => {
+    console.log("showLoginModal 상태 변경:", showLoginModal);
+  }, [showLoginModal]);
   const {} = useStatePersistence();
   const searchParams = useSearchParams();
   const targetStep = searchParams.get("step");
 
   // 로그인 후 상태 복원 및 자동 단계 이동
+  const hasRestoredState = useRef(false);
+
   useEffect(() => {
     const handleLoginStateRestore = async () => {
-      if (hasTempState && tempState?.projectData) {
-        console.log("로그인 후 상태 복원 시작:", tempState);
+      // 이미 복원했으면 중복 실행 방지 (단, tempState가 새로 나타난 경우는 예외)
+      if (hasRestoredState.current && !hasTempState) {
+        console.log("이미 상태 복원 완료 - 중복 실행 방지");
+        return;
+      }
+      console.log("로그인 상태 복원 체크:", {
+        user: !!user,
+        hasTempState,
+        tempState: !!tempState?.projectData,
+        loading,
+      });
 
-        try {
-          // 1. 임시 상태를 실제 DB로 이전
-          const result = await processLoginState();
+      if (user && !loading) {
+        if (hasTempState && tempState?.projectData) {
+          console.log("로그인 후 상태 복원 시작:", tempState);
 
-          if (result?.success) {
-            console.log("로그인 후 상태 이전 성공:", result);
+          try {
+            // 1. 임시 상태를 실제 DB로 이전
+            const result = await processLoginState();
 
-            // 2. UI 상태 복원
-            const { projectData, targetStep: savedTargetStep } = tempState;
+            if (result && result.success) {
+              console.log("로그인 후 상태 이전 성공:", result);
 
-            setProjectDescription(projectData.description || "");
-            setSelectedServiceType(projectData.serviceType || "");
-            setUploadedFiles(projectData.uploadedFiles || []);
-            setChatMessages(projectData.chatMessages || []);
+              // 2. UI 상태 복원
+              const { projectData, targetStep: savedTargetStep } = tempState;
 
-            // 채팅 인터페이스가 활성화되어 있었다면 복원
-            if (projectData.chatMessages?.length > 0) {
-              setShowChatInterface(true);
+              setProjectDescription(projectData.description || "");
+              setSelectedServiceType(projectData.serviceType || "");
+              setUploadedFiles(projectData.uploadedFiles || []);
+              setChatMessages(projectData.chatMessages || []);
+
+              // 요구사항 데이터 복원
+              if (result.extractedRequirements) {
+                setEditableRequirements(result.extractedRequirements);
+              }
+
+              // 채팅 인터페이스가 활성화되어 있었다면 복원
+              if (projectData.chatMessages?.length > 0) {
+                setShowChatInterface(true);
+              }
+
+              // 3. 단계 이동 (URL 파라미터 또는 저장된 targetStep 사용)
+              const stepToMove =
+                targetStep || savedTargetStep || result.targetStep;
+              if (stepToMove === "2" || stepToMove === 2) {
+                setShowRequirements(true);
+                setCurrentStep(2);
+              } else if (stepToMove === "3" || stepToMove === 3) {
+                setShowConfirmation(true);
+                setCurrentStep(3);
+              } else if (stepToMove === "4" || stepToMove === 4) {
+                setShowFinalResult(true);
+                setCurrentStep(4);
+              }
+
+              // 복원 완료 플래그 설정
+              hasRestoredState.current = true;
+            } else {
+              const errorMessage =
+                result?.error || "알 수 없는 오류가 발생했습니다";
+              console.error("로그인 후 상태 이전 실패:", errorMessage);
+              // 실패해도 기본 상태 복원은 진행 (로그인은 성공했으므로)
+              console.log("기본 상태 복원 시도");
+              const { projectData, targetStep: savedTargetStep } = tempState;
+
+              setProjectDescription(projectData.description || "");
+              setSelectedServiceType(projectData.serviceType || "");
+              setUploadedFiles(projectData.uploadedFiles || []);
+              setChatMessages(projectData.chatMessages || []);
+
+              if (projectData.chatMessages?.length > 0) {
+                setShowChatInterface(true);
+              }
+
+              const stepToMove = targetStep || savedTargetStep || 2;
+              if (stepToMove === "2" || stepToMove === 2) {
+                setShowRequirements(true);
+                setCurrentStep(2);
+              } else if (stepToMove === "3" || stepToMove === 3) {
+                setShowConfirmation(true);
+                setCurrentStep(3);
+              }
+
+              // 기본 복원 완료 플래그 설정
+              hasRestoredState.current = true;
             }
+          } catch (error) {
+            console.error("로그인 후 상태 복원 중 오류:", error);
+            // 오류 발생 시 기본 상태 복원
+            const { projectData } = tempState;
+            if (projectData) {
+              setProjectDescription(projectData.description || "");
+              setSelectedServiceType(projectData.serviceType || "");
+              setUploadedFiles(projectData.uploadedFiles || []);
+              setChatMessages(projectData.chatMessages || []);
 
-            // 3. 단계 이동 (URL 파라미터 또는 저장된 targetStep 사용)
-            const stepToMove =
-              targetStep || savedTargetStep || result.targetStep;
-            if (stepToMove === "2" || stepToMove === 2) {
+              if (projectData.chatMessages?.length > 0) {
+                setShowChatInterface(true);
+              }
+
               setShowRequirements(true);
               setCurrentStep(2);
-            } else if (stepToMove === "3" || stepToMove === 3) {
-              setShowConfirmation(true);
-              setCurrentStep(3);
-            } else if (stepToMove === "4" || stepToMove === 4) {
-              setShowFinalResult(true);
-              setCurrentStep(4);
-            }
-          } else {
-            console.error("로그인 후 상태 이전 실패:", result?.error);
-            // 실패해도 기본 상태 복원은 진행
-            const { projectData, targetStep: savedTargetStep } = tempState;
-
-            setProjectDescription(projectData.description || "");
-            setSelectedServiceType(projectData.serviceType || "");
-            setUploadedFiles(projectData.uploadedFiles || []);
-            setChatMessages(projectData.chatMessages || []);
-
-            if (projectData.chatMessages?.length > 0) {
-              setShowChatInterface(true);
             }
 
-            const stepToMove = targetStep || savedTargetStep || 2;
-            if (stepToMove === "2" || stepToMove === 2) {
-              setShowRequirements(true);
-              setCurrentStep(2);
-            } else if (stepToMove === "3" || stepToMove === 3) {
-              setShowConfirmation(true);
-              setCurrentStep(3);
-            }
+            // 오류 복원 완료 플래그 설정
+            hasRestoredState.current = true;
           }
-        } catch (error) {
-          console.error("로그인 후 상태 복원 중 오류:", error);
-          // 오류 발생 시 기본 상태 복원
-          const { projectData } = tempState;
-          if (projectData) {
-            setProjectDescription(projectData.description || "");
-            setSelectedServiceType(projectData.serviceType || "");
-            setUploadedFiles(projectData.uploadedFiles || []);
-            setChatMessages(projectData.chatMessages || []);
-
-            if (projectData.chatMessages?.length > 0) {
-              setShowChatInterface(true);
-            }
-
+        } else {
+          // tempState가 없는 경우 - URL 파라미터로 단계 이동
+          console.log("tempState 없음 - URL 파라미터로 단계 이동");
+          if (targetStep === "2" || targetStep === "2") {
             setShowRequirements(true);
             setCurrentStep(2);
+
+            // 요구사항이 없으면 추출 실행 (별도 useEffect에서 처리)
+            if (!extractedRequirements && !editableRequirements) {
+              console.log("요구사항 없음 - 추출 필요");
+            }
+          } else if (targetStep === "3" || targetStep === "3") {
+            setShowConfirmation(true);
+            setCurrentStep(3);
+          } else if (targetStep === "4" || targetStep === "4") {
+            setShowFinalResult(true);
+            setCurrentStep(4);
           }
+
+          // URL 파라미터 복원 완료 플래그 설정
+          hasRestoredState.current = true;
         }
       }
     };
 
     handleLoginStateRestore();
-  }, [hasTempState, tempState, processLoginState, targetStep]);
+  }, [
+    user,
+    loading,
+    hasTempState,
+    tempState,
+    processLoginState,
+    targetStep,
+    extractedRequirements,
+    editableRequirements,
+  ]);
+
+  // 요구사항 추출을 위한 별도 useEffect
+  const hasExtractedRequirements = useRef(false);
+
+  useEffect(() => {
+    const handleRequirementsExtraction = async () => {
+      // 2단계이고 요구사항이 없고 아직 추출하지 않았으면 추출 실행
+      if (
+        currentStep === 2 &&
+        showRequirements &&
+        !extractedRequirements &&
+        !editableRequirements &&
+        !hasExtractedRequirements.current &&
+        !isRequirementsLoading
+      ) {
+        console.log("요구사항 추출 시작");
+        hasExtractedRequirements.current = true;
+        setIsRequirementsLoading(true);
+
+        try {
+          const requirements = await extractRequirements(
+            {
+              description: projectDescription,
+              serviceType: selectedServiceType,
+              uploadedFiles,
+              projectOverview: overview,
+            },
+            chatMessages.map((msg) => ({
+              type: msg.type === "ai" ? "ai" : msg.type,
+              content: msg.content,
+            }))
+          );
+
+          if (requirements) {
+            setEditableRequirements(requirements);
+
+            // 로그인된 사용자면 DB에 저장
+            if (user && savedProjectId) {
+              try {
+                await saveRequirements(savedProjectId, requirements);
+                console.log("요구사항 저장 완료");
+              } catch (error) {
+                console.error("요구사항 저장 실패:", error);
+              }
+            }
+          }
+        } catch (error) {
+          console.error("요구사항 추출 실패:", error);
+          hasExtractedRequirements.current = false; // 실패 시 플래그 리셋
+        } finally {
+          setIsRequirementsLoading(false);
+        }
+      }
+    };
+
+    handleRequirementsExtraction();
+  }, [
+    currentStep,
+    showRequirements,
+    extractedRequirements,
+    editableRequirements,
+    isRequirementsLoading,
+    extractRequirements,
+    saveRequirements,
+    savedProjectId,
+    projectDescription,
+    selectedServiceType,
+    uploadedFiles,
+    overview,
+    chatMessages,
+    user,
+  ]);
 
   const steps = [
     {
@@ -763,40 +913,34 @@ export default function HomePage() {
   const handleNextStep = async () => {
     if (currentStep === 1) {
       // 프로젝트 개요에서 요구사항 관리로 전환 (즉시 페이지 전환)
-      const currentProjectData = {
-        description: projectDescription,
-        serviceType: selectedServiceType,
-        uploadedFiles,
-        chatMessages,
-        requirements: [], // 요구사항은 아직 없음
-        projectOverview: overview, // 프로젝트 개요 추가
-      };
 
-      requireAuth(async () => {
-        // 1. 즉시 페이지 전환
-        setShowRequirements(true);
-        setCurrentStep(2);
-        setIsRequirementsLoading(true);
+      // 1단계에서 2단계로 넘어갈 때는 로그인 없이 진행 가능
+      // 1. 즉시 페이지 전환
+      setShowRequirements(true);
+      setCurrentStep(2);
+      setIsRequirementsLoading(true);
 
-        try {
-          console.log("1단계 → 2단계 전환: 요구사항 추출 시작");
+      try {
+        console.log("1단계 → 2단계 전환: 요구사항 추출 시작");
 
-          // 2. 요구사항 추출
-          const requirements = await extractRequirements(
-            {
-              description: projectDescription,
-              serviceType: selectedServiceType,
-              uploadedFiles,
-              projectOverview: overview, // 프로젝트 개요 정보 추가
-            },
-            chatMessages.map((msg) => ({
-              type: msg.type === "ai" ? "ai" : msg.type,
-              content: msg.content,
-            }))
-          );
+        // 2. 요구사항 추출 (로그인 없이도 가능)
+        const requirements = await extractRequirements(
+          {
+            description: projectDescription,
+            serviceType: selectedServiceType,
+            uploadedFiles,
+            projectOverview: overview, // 프로젝트 개요 정보 추가
+          },
+          chatMessages.map((msg) => ({
+            type: msg.type === "ai" ? "ai" : msg.type,
+            content: msg.content,
+          }))
+        );
 
-          console.log("요구사항 추출 완료:", requirements);
+        console.log("요구사항 추출 완료:", requirements);
 
+        // 로그인된 사용자만 프로젝트 데이터 저장
+        if (user) {
           // 3. 프로젝트 데이터 저장
           const projectData = {
             title: projectDescription.substring(0, 100),
@@ -836,6 +980,7 @@ export default function HomePage() {
 
               if (requirementsResult.status === "success") {
                 console.log("요구사항 저장 성공");
+                setEditableRequirements(requirements);
               } else {
                 console.error(
                   "요구사항 저장 실패:",
@@ -846,17 +991,34 @@ export default function HomePage() {
           } else {
             console.error("프로젝트 저장 실패:", projectResult.message);
           }
-        } catch (error) {
-          console.error("요구사항 추출 또는 저장 중 오류:", error);
-        } finally {
-          setIsRequirementsLoading(false);
+        } else {
+          // 로그인하지 않은 사용자는 로컬 상태로만 저장
+          console.log("로그인하지 않은 사용자: 로컬 상태로만 저장");
+          setEditableRequirements(requirements);
         }
-      }, currentProjectData);
+      } catch (error) {
+        console.error("요구사항 추출 또는 저장 중 오류:", error);
+      } finally {
+        setIsRequirementsLoading(false);
+      }
     } else if (currentStep === 2) {
-      // 요구사항 관리에서 기능 구성으로 전환 (단순 전환만)
-      setShowRequirements(false);
-      setShowConfirmation(true);
-      setCurrentStep(3);
+      // 2단계에서 3단계로 넘어갈 때는 로그인 필요
+      requireAuth(
+        () => {
+          setShowRequirements(false);
+          setShowConfirmation(true);
+          setCurrentStep(3);
+        },
+        {
+          title: projectDescription.substring(0, 100),
+          description: projectDescription,
+          serviceType: selectedServiceType,
+          uploadedFiles,
+          chatMessages,
+          requirements: editableRequirements || [],
+          projectOverview: overview,
+        }
+      );
     } else if (currentStep === 3) {
       // 3단계에서 최종 확인 모달 표시
       setShowFinalModal(true);
@@ -1068,6 +1230,8 @@ export default function HomePage() {
               uploadedFiles,
               chatMessages,
             }}
+            extractedRequirements={extractedRequirements}
+            projectOverview={overview}
           />
         </div>
       )}
@@ -1082,6 +1246,8 @@ export default function HomePage() {
               uploadedFiles,
               chatMessages,
             }}
+            extractedRequirements={extractedRequirements}
+            projectOverview={overview}
           />
         </div>
       )}

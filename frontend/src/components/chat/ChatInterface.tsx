@@ -84,6 +84,11 @@ export function ChatInterface({
   const [isTyping, setIsTyping] = useState(false);
   const [previousStep, setPreviousStep] = useState(currentStep);
 
+  // currentStep 변경 로그
+  useEffect(() => {
+    console.log("ChatInterface - currentStep 변경:", currentStep);
+  }, [currentStep]);
+
   // initialMessage가 변경될 때 메시지 업데이트 (중복 호출 방지)
   useEffect(() => {
     if (initialMessage && initialMessage.trim()) {
@@ -294,6 +299,7 @@ export function ChatInterface({
       <div className="bg-white border-t border-gray-200 p-4 pl-[90px]">
         <ChatInput
           onSendMessage={handleSendMessage}
+          currentStep={currentStep}
           placeholder={
             currentStep === 1
               ? "자연어로 입력하여 프로젝트를 설명해보세요"

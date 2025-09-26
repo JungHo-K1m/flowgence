@@ -12,7 +12,7 @@ const callClaudeAPI = async (systemPrompt: string, userPrompt: string) => {
     },
     body: JSON.stringify({
       model: 'claude-sonnet-4-20250514',
-      max_tokens: 4000,
+      max_tokens: 8000,
       system: systemPrompt,
       messages: [
         {
@@ -697,7 +697,65 @@ ${conversationHistory}
     }
     
     // JSON 파싱 시도
-    const parsedData = JSON.parse(jsonContent);
+    let parsedData;
+    try {
+      parsedData = JSON.parse(jsonContent);
+    } catch (parseError) {
+      console.error('JSON 파싱 실패, 수정 시도:', parseError);
+      
+      // JSON 수정 시도
+      let fixedJson = jsonContent;
+      
+      // 1. 마지막 불완전한 객체나 배열 제거
+      const lastBrace = fixedJson.lastIndexOf('}');
+      const lastBracket = fixedJson.lastIndexOf(']');
+      const lastComma = fixedJson.lastIndexOf(',');
+      
+      if (lastBrace > lastBracket && lastComma > lastBrace) {
+        // 마지막 쉼표가 중괄호 뒤에 있으면 제거
+        fixedJson = fixedJson.substring(0, lastComma) + fixedJson.substring(lastComma + 1);
+      }
+      
+      // 2. 불완전한 문자열 제거
+      const lastQuote = fixedJson.lastIndexOf('"');
+      const lastBraceBeforeQuote = fixedJson.lastIndexOf('}', lastQuote);
+      if (lastQuote > lastBraceBeforeQuote) {
+        // 마지막 따옴표 뒤의 불완전한 내용 제거
+        const beforeQuote = fixedJson.substring(0, lastQuote + 1);
+        fixedJson = beforeQuote + '"}';
+      }
+      
+      // 3. 불완전한 배열 제거
+      const openBrackets = (fixedJson.match(/\[/g) || []).length;
+      const closeBrackets = (fixedJson.match(/\]/g) || []).length;
+      if (openBrackets > closeBrackets) {
+        // 열린 대괄호가 더 많으면 닫기
+        for (let i = 0; i < openBrackets - closeBrackets; i++) {
+          fixedJson += ']';
+        }
+      }
+      
+      // 4. 불완전한 객체 제거
+      const openBraces = (fixedJson.match(/\{/g) || []).length;
+      const closeBraces = (fixedJson.match(/\}/g) || []).length;
+      if (openBraces > closeBraces) {
+        // 열린 중괄호가 더 많으면 닫기
+        for (let i = 0; i < openBraces - closeBraces; i++) {
+          fixedJson += '}';
+        }
+      }
+      
+      console.log('수정된 JSON:', fixedJson);
+      
+      try {
+        parsedData = JSON.parse(fixedJson);
+        console.log('JSON 수정 후 파싱 성공');
+      } catch (secondError) {
+        console.error('JSON 수정 후에도 파싱 실패:', secondError);
+        throw secondError;
+      }
+    }
+    
     console.log('=== 요구사항 JSON 파싱 성공 ===');
     console.log('파싱된 데이터:', parsedData);
     console.log('카테고리 개수:', parsedData.categories?.length || 0);

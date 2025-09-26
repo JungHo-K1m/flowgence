@@ -42,8 +42,8 @@ export function RequirementsPanel({
       extractedRequirements?.categories
         ? [
             extractedRequirements.categories[0]?.majorCategory
-              .toLowerCase()
-              .replace(/\s+/g, "_") || "product",
+              ?.toLowerCase()
+              ?.replace(/\s+/g, "_") || "product",
           ]
         : ["product"]
     )
@@ -60,28 +60,50 @@ export function RequirementsPanel({
 
   // 추출된 요구사항이 있으면 사용, 없으면 샘플 데이터 사용
   const allRequirements: Requirement[] = extractedRequirements?.categories
-    ? extractedRequirements.categories.flatMap((majorCategory: any) =>
-        majorCategory.subCategories.flatMap((subCategory: any) =>
-          subCategory.requirements.map((req: any, index: number) => ({
-            id:
-              req.id ||
-              `${majorCategory.majorCategory}-${subCategory.subCategory}-${index}`,
-            title: req.title,
-            description: req.description,
-            category: majorCategory.majorCategory
-              .toLowerCase()
-              .replace(/\s+/g, "_"),
-            priority:
-              req.priority === "high"
-                ? ("high" as const)
-                : req.priority === "medium"
-                ? ("medium" as const)
-                : ("low" as const),
-            needsClarification: req.needsClarification || false,
-            clarificationQuestions: req.clarificationQuestions || [],
-          }))
-        )
-      )
+    ? extractedRequirements.categories.flatMap((majorCategory: any) => {
+        // majorCategory가 undefined인 경우 빈 배열 반환
+        if (!majorCategory || !majorCategory.subCategories) return [];
+
+        return majorCategory.subCategories.flatMap((subCategory: any) => {
+          // subCategory가 undefined인 경우 빈 배열 반환
+          if (!subCategory || !subCategory.requirements) return [];
+
+          return subCategory.requirements.map((req: any, index: number) => {
+            // req가 undefined인 경우 안전하게 처리
+            if (!req) {
+              return {
+                id: `empty-${index}`,
+                title: "빈 요구사항",
+                description: "요구사항 데이터가 없습니다",
+                category: "unknown",
+                priority: "low" as const,
+                needsClarification: false,
+                clarificationQuestions: [],
+              };
+            }
+
+            return {
+              id:
+                req.id ||
+                `${majorCategory.majorCategory}-${subCategory.subCategory}-${index}`,
+              title: req.title || "제목 없음",
+              description: req.description || "설명 없음",
+              category:
+                majorCategory.majorCategory
+                  ?.toLowerCase()
+                  ?.replace(/\s+/g, "_") || "unknown",
+              priority:
+                req.priority === "high"
+                  ? ("high" as const)
+                  : req.priority === "medium"
+                  ? ("medium" as const)
+                  : ("low" as const),
+              needsClarification: req.needsClarification || false,
+              clarificationQuestions: req.clarificationQuestions || [],
+            };
+          });
+        });
+      })
     : [
         {
           id: "1",
@@ -126,10 +148,10 @@ export function RequirementsPanel({
 
   // needsClarification이 true인 요구사항들을 별도로 분리
   const needsClarificationRequirements = allRequirements.filter(
-    (req) => req.needsClarification
+    (req) => req && req.needsClarification === true
   );
   const regularRequirements = allRequirements.filter(
-    (req) => !req.needsClarification
+    (req) => req && req.needsClarification !== true
   );
 
   // 카테고리 동적 생성 (결정이 필요한 요구사항을 최상위에 추가)
@@ -145,15 +167,21 @@ export function RequirementsPanel({
               },
             ]
           : []),
-        ...extractedRequirements.categories.map((majorCategory: any) => ({
-          id: majorCategory.majorCategory.toLowerCase().replace(/\s+/g, "_"),
-          name: majorCategory.majorCategory,
-          count: majorCategory.subCategories.reduce(
-            (total: number, subCategory: any) =>
-              total + subCategory.requirements.length,
-            0
-          ),
-        })),
+        ...(extractedRequirements.categories || []).map(
+          (majorCategory: any) => ({
+            id:
+              majorCategory.majorCategory
+                ?.toLowerCase()
+                ?.replace(/\s+/g, "_") || "unknown",
+            name: majorCategory.majorCategory,
+            count:
+              majorCategory.subCategories?.reduce(
+                (total: number, subCategory: any) =>
+                  total + (subCategory.requirements?.length || 0),
+                0
+              ) || 0,
+          })
+        ),
       ]
     : [
         { id: "all", name: "전체", count: allRequirements.length },
@@ -182,13 +210,15 @@ export function RequirementsPanel({
   };
 
   const filteredRequirements = allRequirements.filter((req) => {
-    const matchesSearch = req.title
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase());
+    // req가 undefined인 경우 제외
+    if (!req) return false;
+
+    const matchesSearch =
+      req.title?.toLowerCase()?.includes(searchTerm.toLowerCase()) || false;
 
     let matchesCategory = true;
     if (selectedCategory === "needs_clarification") {
-      matchesCategory = req.needsClarification;
+      matchesCategory = req.needsClarification === true;
     } else if (selectedCategory !== "all") {
       matchesCategory = req.category === selectedCategory;
     }
@@ -247,11 +277,12 @@ export function RequirementsPanel({
         {categories
           .filter((cat) => cat.id !== "all")
           .map((category) => {
-            const categoryRequirements = filteredRequirements.filter((req) =>
-              category.id === "needs_clarification"
-                ? req.needsClarification
-                : req.category === category.id
-            );
+            const categoryRequirements = filteredRequirements.filter((req) => {
+              if (!req) return false; // req가 undefined인 경우 제외
+              return category.id === "needs_clarification"
+                ? req.needsClarification === true
+                : req.category === category.id;
+            });
 
             if (categoryRequirements.length === 0) return null;
 
@@ -418,7 +449,7 @@ export function RequirementsPanel({
           </button>
 
           <button
-            onClick={() => requireAuth(() => onNextStep?.())}
+            onClick={() => onNextStep?.()}
             disabled={currentStep >= 4 || !isNextButtonEnabled}
             className={`px-6 py-3 rounded-lg transition-colors ${
               currentStep >= 4 || !isNextButtonEnabled

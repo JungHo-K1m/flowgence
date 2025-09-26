@@ -32,6 +32,9 @@ export function LoginRequiredModal({
 }: LoginRequiredModalProps) {
   const router = useRouter();
 
+  // 디버깅 로그
+  console.log("LoginRequiredModal 렌더링:", { isOpen, title, description });
+
   const handleLogin = () => {
     // 현재 상태를 localStorage에 저장 (targetStep과 projectData 포함)
     const currentState = {
