@@ -32,6 +32,8 @@ export default function MyPage() {
 
     try {
       const supabase = createClient();
+      console.log("Loading projects for user:", user.id);
+
       const { data, error } = await supabase
         .from("projects")
         .select("*")
@@ -39,8 +41,11 @@ export default function MyPage() {
         .order("updated_at", { ascending: false });
 
       if (error) {
+        console.error("Supabase error:", error);
         throw error;
       }
+
+      console.log("Loaded projects:", data);
 
       // 데이터 형식 변환
       const formattedProjects: Project[] = (data || []).map((project: any) => ({
@@ -53,6 +58,7 @@ export default function MyPage() {
         updatedAt: project.updated_at,
       }));
 
+      console.log("Formatted projects:", formattedProjects);
       setProjects(formattedProjects);
     } catch (err) {
       console.error("프로젝트 로드 실패:", err);
@@ -123,6 +129,8 @@ export default function MyPage() {
   };
 
   const getProjectStats = () => {
+    console.log("Calculating stats for projects:", projects);
+
     const inProgress = projects.filter(
       (p) => p.status === "in_progress"
     ).length;
@@ -132,7 +140,9 @@ export default function MyPage() {
       .reduce((sum, p) => sum + 8000000, 0); // 임시로 8백만원씩 계산
     const pendingApproval = projects.filter((p) => p.status === "draft").length;
 
-    return { inProgress, completed, totalEstimated, pendingApproval };
+    const stats = { inProgress, completed, totalEstimated, pendingApproval };
+    console.log("Calculated stats:", stats);
+    return stats;
   };
 
   const stats = getProjectStats();
@@ -269,12 +279,14 @@ export default function MyPage() {
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
                       <div className="flex items-center space-x-3 mb-2">
-                        <h3 className="text-lg font-semibold text-gray-900 truncate">
+                        <h3 className="text-lg font-semibold text-gray-900 truncate flex-1 min-w-0">
                           {project.title}
                         </h3>
-                        {getStatusBadge(project.status)}
+                        <div className="flex-shrink-0">
+                          {getStatusBadge(project.status)}
+                        </div>
                       </div>
-                      <p className="text-sm text-gray-600 line-clamp-2">
+                      <p className="text-sm text-gray-600 line-clamp-2 break-words">
                         {project.description}
                       </p>
                     </div>
@@ -284,7 +296,10 @@ export default function MyPage() {
                   <div className="space-y-3 mb-6">
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-500">프로젝트 ID</span>
-                      <span className="font-medium text-gray-900">
+                      <span
+                        className="font-medium text-gray-900 truncate max-w-[120px]"
+                        title={`#${project.id}`}
+                      >
                         #{project.id}
                       </span>
                     </div>
@@ -311,12 +326,12 @@ export default function MyPage() {
                   {/* Action Buttons */}
                   <div className="flex space-x-3">
                     {project.status === "completed" && (
-                      <button className="flex-1 px-4 py-2 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors duration-200 flex items-center justify-center">
-                        <span className="mr-2">📥</span>
-                        견적서 다운로드
+                      <button className="flex-1 px-4 py-2 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors duration-200 flex items-center justify-center truncate">
+                        <span className="mr-2 flex-shrink-0">📥</span>
+                        <span className="truncate">견적서 다운로드</span>
                       </button>
                     )}
-                    <button className="flex-1 px-4 py-2 text-sm text-white bg-purple-600 hover:bg-purple-700 rounded-md transition-colors duration-200">
+                    <button className="flex-1 px-4 py-2 text-sm text-white bg-purple-600 hover:bg-purple-700 rounded-md transition-colors duration-200 truncate">
                       {project.status === "completed"
                         ? "상세보기"
                         : "작성 이어하기"}
