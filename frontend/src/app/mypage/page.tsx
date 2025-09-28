@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuthContext } from "@/components/providers/AuthProvider";
 import { createClient } from "@/lib/supabase";
 
@@ -23,17 +23,7 @@ export default function MyPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (user) {
-      loadProjects();
-    }
-  }, [user]);
-
-  useEffect(() => {
-    filterAndSortProjects();
-  }, [projects, statusFilter, sortOrder]);
-
-  const loadProjects = async () => {
+  const loadProjects = useCallback(async () => {
     if (!user) return;
 
     setLoading(true);
@@ -73,7 +63,17 @@ export default function MyPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      loadProjects();
+    }
+  }, [user, loadProjects]);
+
+  useEffect(() => {
+    filterAndSortProjects();
+  }, [projects, statusFilter, sortOrder]);
 
   const filterAndSortProjects = () => {
     let filtered = [...projects];
