@@ -69,15 +69,11 @@ export const useProjectOverview = () => {
     console.log('요청 해시 비교:', { 
       requestHash: requestHash.substring(0, 100) + '...', 
       lastRequestHash: lastRequestHashRef.current.substring(0, 100) + '...', 
-      isSame: requestHash === lastRequestHashRef.current 
+      isSame: requestHash === lastRequestHashRef.current,
+      isRequestInProgress
     });
     
-    // 이미 같은 요청이 진행 중이거나 완료된 경우 방지
-    if (isRequestInProgress) {
-      console.log('요청이 이미 진행 중이므로 건너뜀');
-      return;
-    }
-    
+    // 이미 같은 요청이 완료된 경우 방지
     if (requestHash === lastRequestHashRef.current && overview) {
       console.log('중복 요청 방지:', requestHash.substring(0, 100) + '...');
       return;
@@ -133,7 +129,7 @@ export const useProjectOverview = () => {
       setIsLoading(false);
       setIsRequestInProgress(false);
     }
-  }, [overview, isRequestInProgress]);
+  }, [overview]);
 
   const updateOverview = useCallback(async (input: ProjectInput, messages: ChatMessage[]) => {
     // 채팅 메시지가 추가될 때마다 프로젝트 개요 업데이트
