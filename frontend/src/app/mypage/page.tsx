@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuthContext } from "@/components/providers/AuthProvider";
 import { createClient } from "@/lib/supabase";
 
@@ -22,6 +22,7 @@ export default function MyPage() {
   const [sortOrder, setSortOrder] = useState("latest");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const hasLoaded = useRef(false);
 
   const loadProjects = async () => {
     if (!user) return;
@@ -66,10 +67,11 @@ export default function MyPage() {
   };
 
   useEffect(() => {
-    if (user) {
+    if (user && !hasLoaded.current) {
+      hasLoaded.current = true;
       loadProjects();
     }
-  }, [user]); // loadProjects 의존성 제거
+  }, [user]);
 
   useEffect(() => {
     filterAndSortProjects();
