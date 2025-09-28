@@ -88,13 +88,23 @@ export const useProjectOverview = () => {
     lastRequestHashRef.current = requestHash; // ref로 즉시 업데이트
     
     try {
-      const response = await fetch('/api/chat', {
+      // Railway 백엔드로 직접 요청
+      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+      const response = await fetch(`${backendUrl}/chat/message`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          type: 'project_overview',
-          input,
-          messages
+          projectId: 'temp-project-overview',
+          message: `프로젝트 개요 생성: ${input.description}`,
+          metadata: {
+            type: 'project_overview',
+            serviceType: input.serviceType,
+            uploadedFiles: input.uploadedFiles?.length || 0
+          },
+          history: messages.map(msg => ({
+            role: msg.type === 'user' ? 'user' : 'assistant',
+            content: msg.content
+          }))
         })
       });
       
@@ -109,8 +119,8 @@ export const useProjectOverview = () => {
       const data = await response.json();
       console.log('API 응답 데이터:', data);
       console.log('=== useProjectOverview 훅에서 overview 설정 ===');
-      console.log('설정할 overview 데이터:', data.overview);
-      setOverview(data.overview);
+      console.log('설정할 overview 데이터:', data.projectOverview);
+      setOverview(data.projectOverview);
       console.log('overview 상태 설정 완료');
       console.log('===============================================');
     } catch (err) {
