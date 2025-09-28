@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useProjectAPI } from "@/hooks/useProjectAPI";
+import { useAuthContext } from "@/components/providers/AuthProvider";
+import { createClient } from "@/lib/supabase";
 
 interface Project {
   id: string;
@@ -14,26 +15,63 @@ interface Project {
 }
 
 export default function MyPage() {
-  const { getProjects, loading, error } = useProjectAPI();
+  const { user } = useAuthContext();
   const [projects, setProjects] = useState<Project[]>([]);
   const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortOrder, setSortOrder] = useState("latest");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    loadProjects();
-  }, []);
+    if (user) {
+      loadProjects();
+    }
+  }, [user]);
 
   useEffect(() => {
     filterAndSortProjects();
   }, [projects, statusFilter, sortOrder]);
 
   const loadProjects = async () => {
+    if (!user) return;
+
+    setLoading(true);
+    setError(null);
+
     try {
-      const data = await getProjects();
-      setProjects(data || []);
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from("projects")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("updated_at", { ascending: false });
+
+      if (error) {
+        throw error;
+      }
+
+      // 데이터 형식 변환
+      const formattedProjects: Project[] = (data || []).map((project: any) => ({
+        id: project.id,
+        title: project.title || "제목 없음",
+        description: project.description || "설명 없음",
+        serviceType: project.service_type || "웹사이트",
+        status: project.status || "draft",
+        createdAt: project.created_at,
+        updatedAt: project.updated_at,
+      }));
+
+      setProjects(formattedProjects);
     } catch (err) {
       console.error("프로젝트 로드 실패:", err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "프로젝트를 불러오는데 실패했습니다"
+      );
+    } finally {
+      setLoading(false);
     }
   };
 

@@ -44,7 +44,7 @@ export default function MyPageLayout({ children }: MyPageLayoutProps) {
         <div className="w-64 bg-white shadow-sm border-r border-gray-200 min-h-screen">
           <div className="p-6">
             {/* Logo */}
-            <Link href="/" className="flex items-center mb-8">
+            {/* <Link href="/" className="flex items-center mb-8">
               <div className="relative w-[124px] h-[37px]">
                 <Image
                   src="/images/flowgence-logo.png"
@@ -53,7 +53,7 @@ export default function MyPageLayout({ children }: MyPageLayoutProps) {
                   className="object-contain"
                 />
               </div>
-            </Link>
+            </Link> */}
 
             {/* User Profile */}
             <div className="flex items-center mb-8">
