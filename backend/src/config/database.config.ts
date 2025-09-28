@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 
 export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOptions => {
   const databaseUrl = configService.get('DATABASE_URL');
-  const supabaseUrl = configService.get('SUPABASE_URL');
+  const supabaseUrl = configService.get('SUPABASE_URL') || configService.get('SUPABASE_URI');
   const supabaseServiceKey = configService.get('SUPABASE_SERVICE_ROLE_KEY');
   
   // DATABASE_URL이 제공된 경우 우선 사용

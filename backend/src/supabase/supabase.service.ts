@@ -7,7 +7,7 @@ export class SupabaseService {
   private supabase;
 
   constructor(private configService: ConfigService) {
-    const supabaseUrl = this.configService.get('SUPABASE_URL');
+    const supabaseUrl = this.configService.get('SUPABASE_URL') || this.configService.get('SUPABASE_URI');
     const supabaseKey = this.configService.get('SUPABASE_SERVICE_ROLE_KEY');
     
     if (supabaseUrl && supabaseKey) {
