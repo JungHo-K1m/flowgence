@@ -45,9 +45,23 @@ const callBackendAPI = async (endpoint: string, requestBody: any) => {
     console.log('백엔드 응답 헤더:', Object.fromEntries(response.headers.entries()));
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('백엔드 에러 응답:', errorText);
-      throw new Error(`Backend API error: ${response.status} - ${errorText}`);
+      let errorText;
+      try {
+        errorText = await response.text();
+        console.error('백엔드 에러 응답 (텍스트):', errorText);
+        
+        // JSON 파싱 시도
+        try {
+          const errorJson = JSON.parse(errorText);
+          console.error('백엔드 에러 응답 (JSON):', errorJson);
+          throw new Error(`Backend API error: ${response.status} - ${JSON.stringify(errorJson)}`);
+        } catch (parseError) {
+          throw new Error(`Backend API error: ${response.status} - ${errorText}`);
+        }
+      } catch (textError) {
+        console.error('에러 응답 읽기 실패:', textError);
+        throw new Error(`Backend API error: ${response.status} - Failed to read error response`);
+      }
     }
 
     const data = await response.json();
