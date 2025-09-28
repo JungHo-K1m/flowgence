@@ -312,14 +312,14 @@ export default function MyPage() {
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
                       <div className="flex items-center space-x-3 mb-2 min-w-0">
-                        <h3 className="text-lg font-semibold text-gray-900 truncate flex-1 min-w-0 max-w-full overflow-hidden">
+                        <h3 className="text-lg font-semibold text-gray-900 truncate flex-1 min-w-0 max-w-[12ch] overflow-hidden">
                           {project.title}
                         </h3>
                         <div className="flex-shrink-0">
                           {getStatusBadge(project.status)}
                         </div>
                       </div>
-                      <p className="text-sm text-gray-600 line-clamp-2 break-words">
+                      <p className="text-sm text-gray-600 line-clamp-2 break-words break-all hyphens-auto leading-relaxed">
                         {project.description}
                       </p>
                     </div>

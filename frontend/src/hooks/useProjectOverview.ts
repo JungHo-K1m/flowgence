@@ -119,7 +119,16 @@ export const useProjectOverview = () => {
       console.log('===============================================');
     } catch (err) {
       console.error('프로젝트 개요 생성 오류:', err);
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      
+      // 백엔드 연결 실패인 경우 특별한 메시지 표시
+      if (errorMessage.includes('Backend service unavailable') || errorMessage.includes('503')) {
+        setError('백엔드 서비스가 일시적으로 사용할 수 없습니다. 잠시 후 다시 시도해주세요.');
+      } else if (errorMessage.includes('Backend API error')) {
+        setError('백엔드 API 호출에 실패했습니다. 서버 상태를 확인해주세요.');
+      } else {
+        setError(errorMessage);
+      }
     } finally {
       setIsLoading(false);
       setIsRequestInProgress(false);

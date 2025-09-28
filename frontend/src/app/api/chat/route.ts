@@ -1,25 +1,63 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// 백엔드 연결 상태 확인 함수
+const checkBackendHealth = async () => {
+  const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+  
+  try {
+    const response = await fetch(`${backendUrl}/health`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    if (response.ok) {
+      console.log('백엔드 연결 상태: 정상');
+      return true;
+    } else {
+      console.error('백엔드 헬스체크 실패:', response.status);
+      return false;
+    }
+  } catch (error) {
+    console.error('백엔드 연결 실패:', error);
+    return false;
+  }
+};
+
 // Railway 백엔드로 요청 전달하는 함수
 const callBackendAPI = async (endpoint: string, requestBody: any) => {
   const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
   
-  const response = await fetch(`${backendUrl}${endpoint}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(requestBody)
-  });
-
-  if (!response.ok) {
-    throw new Error(`Backend API error: ${response.status}`);
-  }
-
-  const data = await response.json();
-  console.log('Backend API 응답:', data);
+  console.log('백엔드 API 호출:', `${backendUrl}${endpoint}`);
+  console.log('요청 본문:', JSON.stringify(requestBody, null, 2));
   
-  return data;
+  try {
+    const response = await fetch(`${backendUrl}${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody)
+    });
+
+    console.log('백엔드 응답 상태:', response.status);
+    console.log('백엔드 응답 헤더:', Object.fromEntries(response.headers.entries()));
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('백엔드 에러 응답:', errorText);
+      throw new Error(`Backend API error: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log('Backend API 응답:', data);
+    
+    return data;
+  } catch (error) {
+    console.error('백엔드 API 호출 실패:', error);
+    throw error;
+  }
 };
 
 // 프로젝트 개요 생성 함수 - Railway 백엔드로 요청 전달
@@ -108,6 +146,18 @@ interface ChatMessage {
 export async function POST(request: NextRequest) {
   try {
     console.log('API 호출 시작');
+    
+    // 백엔드 연결 상태 확인
+    const isBackendHealthy = await checkBackendHealth();
+    if (!isBackendHealthy) {
+      console.error('백엔드 연결 실패 - 요청 거부');
+      return NextResponse.json({ 
+        error: 'Backend service unavailable', 
+        details: 'Railway backend is not responding',
+        type: 'backend_unavailable'
+      }, { status: 503 });
+    }
+    
     const requestBody = await request.json();
     const { type, input, messages, existingRequirements } = requestBody;
     console.log('요청 데이터:', { type, input: input?.description, messagesCount: messages?.length });
