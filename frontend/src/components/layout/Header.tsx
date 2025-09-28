@@ -41,9 +41,12 @@ export function Header() {
               <div className="text-gray-500">로딩 중...</div>
             ) : user ? (
               <div className="flex items-center space-x-4">
-                <span className="text-gray-700">
+                <Link
+                  href="/mypage"
+                  className="text-gray-700 hover:text-blue-600 transition-colors duration-200"
+                >
                   안녕하세요, {user.user_metadata?.full_name || user.email}님!
-                </span>
+                </Link>
                 {isAdmin && (
                   <Link
                     href="/admin"

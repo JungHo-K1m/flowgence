@@ -98,12 +98,12 @@ Deployment: Vercel (Frontend) + Railway (Backend)
 ```yaml
 Frontend: Vercel (이미 배포됨)
 ├── URL: https://flowgence-frontend.vercel.app
-├── 환경변수: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY
+├── 환경변수: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, NEXT_PUBLIC_API_URL
 └── API 연동: Railway 백엔드 서버
 
-Backend: Railway (배포 예정)
-├── URL: https://flowgence-backend.railway.app (예상)
-├── 환경변수: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ANTHROPIC_API_KEY
+Backend: Railway (배포 완료)
+├── URL: https://scintillating-empathy-production.up.railway.app
+├── 환경변수: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ANTHROPIC_API_KEY, CORS_ORIGIN, NODE_ENV
 └── 기능: AI 처리, 비즈니스 로직, 커스텀 API
 
 Database: Supabase (이미 배포됨)
@@ -330,7 +330,7 @@ docker-compose up -d
 ### **배포 환경**
 
 - **Frontend**: Vercel (자동 배포) ✅
-- **Backend**: Railway (배포 예정) 🔄
+- **Backend**: Railway (배포 완료) ✅
 - **Database**: Supabase (관리형 PostgreSQL) ✅
 - **Domain**: Custom Domain 설정 (향후)
 
@@ -374,16 +374,16 @@ railway domain
 
 ```yaml
 Vercel 환경 변수 업데이트:
-├── NEXT_PUBLIC_API_URL: https://flowgence-backend.railway.app/api
+├── NEXT_PUBLIC_API_URL: https://scintillating-empathy-production.up.railway.app/api
 └── 기존 Supabase 변수 유지
 ```
 
 #### **5단계: 전체 서비스 테스트**
 
-- 프론트엔드 → Railway 백엔드 연동 테스트
-- Railway 백엔드 → Supabase 연동 테스트
-- AI 기능 (Claude API) 테스트
-- 사용자 인증 플로우 테스트
+- ✅ 프론트엔드 → Railway 백엔드 연동 테스트 완료
+- ✅ Railway 백엔드 → Supabase 연동 테스트 완료
+- ✅ AI 기능 (Claude API) 테스트 완료
+- ✅ 사용자 인증 플로우 테스트 완료
 
 ---
 
@@ -550,7 +550,6 @@ Vercel 환경 변수 업데이트:
 
 ### **진행 중인 작업**
 
-- 🔄 **Railway 백엔드 배포**: 로컬 서버 없이 작동하는 클라우드 배포 진행 중
 - 🔄 견적서 자동 생성 시스템 (AI 기반 견적 산출 로직 구현 필요)
 
 ### **아직 구현되지 않은 핵심 기능**
@@ -563,7 +562,6 @@ Vercel 환경 변수 업데이트:
 
 #### **🔥 최우선 작업 (MVP 완성을 위해 필수)**
 
-- 📋 **Railway 백엔드 배포**: 로컬 서버 없이 작동하는 클라우드 배포
 - 📋 **AI 기반 견적서 자동 생성**: 요구사항 기반 AI 견적 산출 로직 구현
 - 📋 **파일 업로드 처리**: 실제 파일 저장 및 관리 시스템
 
@@ -764,13 +762,31 @@ git push origin main
 
 ---
 
-_마지막 업데이트: 2025-01-27 (CSS 스타일링 문제 해결 완료, Supabase 패키지 업데이트 완료, Railway 배포 전략 수립)_
+_마지막 업데이트: 2025-01-27 (Railway 백엔드 배포 완료, 전체 서비스 클라우드 배포 완성, 프로덕션 배포 문제 해결 완료)_
 
 ---
 
 ## 📋 최근 업데이트 내역
 
 ### **2025-01-27 (최신 업데이트)**
+
+- ✅ **Railway 백엔드 배포 완료**
+
+  - Railway 클라우드 플랫폼에 NestJS 백엔드 성공적으로 배포
+  - 배포 URL: `https://scintillating-empathy-production.up.railway.app`
+  - 환경 변수 설정 완료 (Supabase, Claude API, CORS 등)
+  - Dockerfile 최적화 (Node.js 20, npm install 방식)
+  - 헬스체크 API 정상 작동 확인 (`/api/health`)
+  - Supabase PostgreSQL 연결 성공
+  - 모든 API 엔드포인트 정상 작동
+
+- ✅ **전체 서비스 클라우드 배포 완성**
+
+  - Frontend: Vercel (https://flowgence-frontend.vercel.app)
+  - Backend: Railway (https://scintillating-empathy-production.up.railway.app)
+  - Database: Supabase (https://biouwhfczktkfdkfxpxt.supabase.co)
+  - 프론트엔드-백엔드 연동 완료 (환경 변수 설정 완료)
+  - 로컬 서버 없이 완전한 클라우드 서비스 구축
 
 - ✅ **CSS 스타일링 문제 해결 완료**
 
@@ -789,12 +805,13 @@ _마지막 업데이트: 2025-01-27 (CSS 스타일링 문제 해결 완료, Supa
   - LangChain 의존성 충돌 문제 해결 (`@langchain/community` 제거)
   - Supabase 연동 정상 작동 확인 (REST 26건, Auth 2건 처리 중)
 
-- 🔄 **Railway 백엔드 배포 전략 수립**
+- ✅ **프로덕션 배포 문제 해결 완료**
 
-  - 배포 아키텍처 설계 (Vercel + Railway + Supabase)
-  - 환경 변수 설정 계획 수립
-  - 배포 단계별 가이드 문서화
-  - 전체 서비스 테스트 계획 수립
+  - CORS 오류 해결: Railway 백엔드에 `CORS_ORIGIN=https://flowgence-frontend.vercel.app` 환경변수 설정
+  - Vercel 프론트엔드에 `NEXT_PUBLIC_API_URL=https://scintillating-empathy-production.up.railway.app/api` 환경변수 설정
+  - 백엔드 연결 상태 정상화 ("백엔드 연결 끊김" 오류 해결)
+  - Contact 페이지 404 오류 해결 (`/contact` 페이지 생성)
+  - 전체 서비스 정상 작동 확인 (프론트엔드 ↔ 백엔드 ↔ 데이터베이스)
 
 ### **2025-09-24**
 
@@ -988,7 +1005,7 @@ _마지막 업데이트: 2025-01-27 (CSS 스타일링 문제 해결 완료, Supa
 
 ## 📊 **현재 상태 요약**
 
-**완성도**: 약 **98%** (UI/UX + AI 서비스 + DB 연동 + 백엔드 연동 + 실제 AI 기능 + CSS 스타일링 완료)
+**완성도**: 약 **99%** (UI/UX + AI 서비스 + DB 연동 + 백엔드 연동 + 실제 AI 기능 + CSS 스타일링 + Railway 배포 + 프로덕션 배포 문제 해결 완료)
 
 - ✅ UI/UX: **100% 완료** (모든 페이지와 컴포넌트 구현 완료)
 - ✅ 프로젝트 구조: **100% 완료**
@@ -1013,9 +1030,11 @@ _마지막 업데이트: 2025-01-27 (CSS 스타일링 문제 해결 완료, Supa
 - ✅ 프론트엔드-백엔드 연동: **100% 완료** (API 통신, 테스트 페이지, 실시간 상태 확인)
 - ✅ 실제 AI 기능: **100% 완료** (Claude API 연동, 실제 AI 응답 생성, 프로젝트 개요/요구사항 처리)
 - ✅ CSS 스타일링: **100% 완료** (Tailwind CSS 설정 문제 해결, 모든 UI 컴포넌트 정상 작동)
+- ✅ Railway 백엔드 배포: **100% 완료** (클라우드 배포 완료, 환경 변수 설정 완료, 헬스체크 정상)
+- ✅ 프로덕션 배포 문제 해결: **100% 완료** (CORS 오류 해결, 백엔드 연결 정상화, Contact 페이지 생성)
 - ❌ 견적서 자동 생성: **30% 완료** (견적 생성 로직 구현됨, AI 기반 견적 산출 시스템 미구현)
 
-**핵심 이슈**: **UI/UX, 프로젝트 생성 플로우, AI 서비스, 데이터베이스 연동, 요구사항 편집/삭제 시스템, 단계별 버튼 활성화 시스템, 요구사항 UI/UX 개선, 백엔드 API 서버 구축, 프론트엔드-백엔드 연동, 실제 AI 기능, CSS 스타일링이 완성되었습니다**. 사용자가 실제로 AI와 대화하며 프로젝트를 구성하고, 요구사항을 추출하고 편집/삭제할 수 있으며, 채팅을 통해 실시간으로 요구사항을 업데이트할 수 있습니다. 모든 데이터가 Supabase에 저장되며, 편집된 내용은 자동으로 승인 처리됩니다. 백엔드 서버가 정상 구동되고 프론트엔드와 완전히 연동되어 있으며, 실제 Claude API를 사용하여 AI 응답을 생성합니다. CSS 스타일링 문제도 해결되어 모든 UI 컴포넌트가 정상적으로 작동합니다. 이제 AI 기반 견적서 자동 생성 기능이 남은 주요 작업입니다.
+**핵심 이슈**: **UI/UX, 프로젝트 생성 플로우, AI 서비스, 데이터베이스 연동, 요구사항 편집/삭제 시스템, 단계별 버튼 활성화 시스템, 요구사항 UI/UX 개선, 백엔드 API 서버 구축, 프론트엔드-백엔드 연동, 실제 AI 기능, CSS 스타일링, Railway 백엔드 배포, 프로덕션 배포 문제 해결이 완성되었습니다**. 사용자가 실제로 AI와 대화하며 프로젝트를 구성하고, 요구사항을 추출하고 편집/삭제할 수 있으며, 채팅을 통해 실시간으로 요구사항을 업데이트할 수 있습니다. 모든 데이터가 Supabase에 저장되며, 편집된 내용은 자동으로 승인 처리됩니다. 백엔드 서버가 Railway에 성공적으로 배포되어 클라우드에서 정상 구동되고 있으며, 프론트엔드와 완전히 연동되어 있습니다. 실제 Claude API를 사용하여 AI 응답을 생성하며, CSS 스타일링 문제도 해결되어 모든 UI 컴포넌트가 정상적으로 작동합니다. CORS 오류와 Contact 페이지 404 오류도 해결되어 전체 서비스가 정상 작동합니다. 이제 AI 기반 견적서 자동 생성 기능이 남은 주요 작업입니다.
 
 ---
 
