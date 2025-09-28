@@ -112,6 +112,22 @@ export default function MyPage() {
       completed: { label: "완료", className: "bg-green-100 text-green-800" },
       in_progress: { label: "진행중", className: "bg-blue-100 text-blue-800" },
       draft: { label: "임시저장", className: "bg-gray-100 text-gray-800" },
+      requirements_review: {
+        label: "요구사항 검토",
+        className: "bg-yellow-100 text-yellow-800",
+      },
+      requirements_extraction: {
+        label: "요구사항 추출",
+        className: "bg-orange-100 text-orange-800",
+      },
+      estimation: {
+        label: "견적 산출",
+        className: "bg-purple-100 text-purple-800",
+      },
+      contract: {
+        label: "계약 진행",
+        className: "bg-indigo-100 text-indigo-800",
+      },
     };
 
     const config = statusConfig[status as keyof typeof statusConfig] || {
@@ -131,13 +147,26 @@ export default function MyPage() {
   const getProjectStats = () => {
     console.log("Calculating stats for projects:", projects);
 
-    const inProgress = projects.filter(
-      (p) => p.status === "in_progress"
+    // 진행중인 프로젝트: requirements_review, requirements_extraction, estimation, contract, in_progress
+    const inProgress = projects.filter((p) =>
+      [
+        "requirements_review",
+        "requirements_extraction",
+        "estimation",
+        "contract",
+        "in_progress",
+      ].includes(p.status)
     ).length;
+
+    // 완료된 프로젝트
     const completed = projects.filter((p) => p.status === "completed").length;
+
+    // 총 견적금액 (완료된 프로젝트만)
     const totalEstimated = projects
       .filter((p) => p.status === "completed")
       .reduce((sum, p) => sum + 8000000, 0); // 임시로 8백만원씩 계산
+
+    // 승인 대기: draft 상태
     const pendingApproval = projects.filter((p) => p.status === "draft").length;
 
     const stats = { inProgress, completed, totalEstimated, pendingApproval };
@@ -246,6 +275,10 @@ export default function MyPage() {
                 className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="all">모든 상태</option>
+                <option value="requirements_review">요구사항 검토</option>
+                <option value="requirements_extraction">요구사항 추출</option>
+                <option value="estimation">견적 산출</option>
+                <option value="contract">계약 진행</option>
                 <option value="in_progress">진행중</option>
                 <option value="completed">완료</option>
                 <option value="draft">임시저장</option>
@@ -273,13 +306,13 @@ export default function MyPage() {
               {filteredProjects.map((project) => (
                 <div
                   key={project.id}
-                  className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-lg transition-all duration-200 hover:border-gray-300"
+                  className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-lg transition-all duration-200 hover:border-gray-300 overflow-hidden"
                 >
                   {/* Project Header */}
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <h3 className="text-lg font-semibold text-gray-900 truncate flex-1 min-w-0">
+                      <div className="flex items-center space-x-3 mb-2 min-w-0">
+                        <h3 className="text-lg font-semibold text-gray-900 truncate flex-1 min-w-0 max-w-full overflow-hidden">
                           {project.title}
                         </h3>
                         <div className="flex-shrink-0">
