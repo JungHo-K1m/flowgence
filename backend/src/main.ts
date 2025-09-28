@@ -8,11 +8,36 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
   
   // Enable CORS for frontend communication
+  const corsOrigin = configService.get('CORS_ORIGIN');
+  const allowedOrigins = corsOrigin ? corsOrigin.split(',') : ['http://localhost:3000'];
+  
   app.enableCors({
-    origin: configService.get('CORS_ORIGIN', 'http://localhost:3000'),
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+      
+      // Check if origin is in allowed list
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      
+      // For development, allow localhost with any port
+      if (process.env.NODE_ENV === 'development' && origin.includes('localhost')) {
+        return callback(null, true);
+      }
+      
+      // Allow Vercel preview deployments
+      if (origin.includes('vercel.app')) {
+        return callback(null, true);
+      }
+      
+      callback(new Error('Not allowed by CORS'));
+    },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
   });
 
   // Global validation pipe
