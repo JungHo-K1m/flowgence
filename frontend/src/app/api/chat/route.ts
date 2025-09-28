@@ -70,14 +70,26 @@ const generateProjectOverview = async (input: ProjectInput, messages: ChatMessag
   });
 
   try {
+    // 백엔드가 기대하는 형식으로 요청 변환
+    const lastMessage = messages[messages.length - 1];
+    const projectDescription = input.description || lastMessage?.content || '';
+    
     const response = await callBackendAPI('/chat/message', {
-      type: 'project_overview',
-      input,
-      messages
+      projectId: 'temp-project-overview', // 임시 프로젝트 ID
+      message: `프로젝트 개요 생성: ${projectDescription}`,
+      metadata: {
+        type: 'project_overview',
+        serviceType: input.serviceType,
+        uploadedFiles: input.uploadedFiles?.length || 0
+      },
+      history: messages.map(msg => ({
+        role: msg.type === 'user' ? 'user' : 'assistant',
+        content: msg.content
+      }))
     });
     
     console.log('백엔드 응답 (프로젝트 개요):', response);
-    return response.overview;
+    return response.projectOverview || response.overview;
   } catch (error) {
     console.error('프로젝트 개요 생성 오류:', error);
     throw error;
@@ -96,9 +108,11 @@ const extractRequirements = async (input: ProjectInput, messages: ChatMessage[])
 
   try {
     const response = await callBackendAPI('/chat/requirements/extract', {
-      type: 'requirements_extraction',
-      input,
-      messages
+      projectId: 'temp-project-requirements', // 임시 프로젝트 ID
+      history: messages.map(msg => ({
+        role: msg.type === 'user' ? 'user' : 'assistant',
+        content: msg.content
+      }))
     });
     
     console.log('백엔드 응답 (요구사항 추출):', response);
@@ -117,10 +131,12 @@ const updateRequirements = async (input: ProjectInput, messages: ChatMessage[], 
 
   try {
     const response = await callBackendAPI('/chat/requirements/update', {
-      type: 'requirements_update',
-      input,
-      messages,
-      existingRequirements
+      projectId: 'temp-project-update', // 임시 프로젝트 ID
+      existingRequirements,
+      history: messages.map(msg => ({
+        role: msg.type === 'user' ? 'user' : 'assistant',
+        content: msg.content
+      }))
     });
     
     console.log('백엔드 응답 (요구사항 업데이트):', response);
