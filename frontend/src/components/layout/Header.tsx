@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useAuthContext } from "@/components/providers/AuthProvider";
 import { useRole } from "@/hooks/useRole";
 import { Button } from "@/components/ui/button";
-import BackendStatus from "@/components/BackendStatus";
 
 export function Header() {
   const { user, loading, signOut } = useAuthContext();
@@ -35,8 +34,6 @@ export function Header() {
 
           {/* Navigation Links */}
           <nav className="flex items-center space-x-6">
-            {/* Backend Status */}
-            <BackendStatus />
             {loading ? (
               <div className="text-gray-500">로딩 중...</div>
             ) : user ? (
