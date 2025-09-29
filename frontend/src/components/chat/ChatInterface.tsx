@@ -157,6 +157,20 @@ export function ChatInterface({
   // aiResponse가 변경될 때 AI 메시지 추가
   useEffect(() => {
     if (aiResponse && aiResponse.trim()) {
+      // 이미 같은 내용의 AI 메시지가 있는지 확인
+      const currentMessages = onMessagesChange ? messages : internalMessages;
+      const lastMessage = currentMessages[currentMessages.length - 1];
+
+      // 마지막 메시지가 AI 메시지이고 내용이 같으면 추가하지 않음
+      if (
+        lastMessage &&
+        lastMessage.type === "ai" &&
+        lastMessage.content === aiResponse
+      ) {
+        setIsTyping(false);
+        return;
+      }
+
       const aiMessage = {
         id: `ai-${Date.now()}`,
         type: "ai" as const,
@@ -164,7 +178,7 @@ export function ChatInterface({
         icon: "🤖",
       };
 
-      const updatedMessages = [...messages, aiMessage];
+      const updatedMessages = [...currentMessages, aiMessage];
 
       if (onMessagesChange) {
         onMessagesChange(updatedMessages);
@@ -175,7 +189,8 @@ export function ChatInterface({
       // 타이핑 인디케이터 숨기기
       setIsTyping(false);
     }
-  }, [aiResponse, messages, onMessagesChange]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aiResponse, onMessagesChange]);
 
   const handleSendMessage = async (message: string) => {
     // 사용자 메시지를 메시지 배열에 추가

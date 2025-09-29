@@ -63,6 +63,7 @@ export const useProjectOverview = () => {
   const lastRequestHashRef = useRef<string>("");
   const [isRequestInProgress, setIsRequestInProgress] = useState(false);
   const [aiMessage, setAiMessage] = useState<string | null>(null);
+  const lastAiMessageRef = useRef<string | null>(null);
 
   const generateOverview = useCallback(async (input: ProjectInput, messages: ChatMessage[] = []) => {
     // 중복 호출 방지: 요청 해시 생성
@@ -164,9 +165,10 @@ export const useProjectOverview = () => {
       
       setOverview(processedOverview);
       
-      // AI 메시지 설정
-      if (data.aiMessage?.content) {
+      // AI 메시지 설정 (중복 방지)
+      if (data.aiMessage?.content && data.aiMessage.content !== lastAiMessageRef.current) {
         setAiMessage(data.aiMessage.content);
+        lastAiMessageRef.current = data.aiMessage.content;
       }
       
       console.log('overview 상태 설정 완료');
@@ -190,6 +192,10 @@ export const useProjectOverview = () => {
   }, [overview]);
 
   const updateOverview = useCallback(async (input: ProjectInput, messages: ChatMessage[]) => {
+    // AI 메시지 초기화 (새로운 요청 시작 시)
+    setAiMessage(null);
+    lastAiMessageRef.current = null;
+    
     // 채팅 메시지가 추가될 때마다 프로젝트 개요 업데이트
     await generateOverview(input, messages);
   }, [generateOverview]);
