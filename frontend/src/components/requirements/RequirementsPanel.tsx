@@ -19,7 +19,7 @@ interface RequirementsPanelProps {
   onPrevStep?: () => void;
   currentStep?: number;
   projectData?: any; // 프로젝트 데이터 전달
-  extractedRequirements?: any; // 추출된 요구사항 데이터
+  requirementsData?: any; // 요구사항 데이터 (editableRequirements || extractedRequirements)
   onOpenEditModal?: (category: string) => void; // 편집 모달 열기
   onDeleteCategory?: (categoryId: string) => void; // 중분류 삭제
   isNextButtonEnabled?: boolean; // 다음 단계 버튼 활성화 여부
@@ -30,7 +30,7 @@ export function RequirementsPanel({
   onPrevStep,
   currentStep = 2,
   projectData,
-  extractedRequirements,
+  requirementsData,
   onOpenEditModal,
   onDeleteCategory,
   isNextButtonEnabled = false,
@@ -39,9 +39,9 @@ export function RequirementsPanel({
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
     new Set(
-      extractedRequirements?.categories
+      requirementsData?.categories
         ? [
-            extractedRequirements.categories[0]?.majorCategory
+            requirementsData.categories[0]?.majorCategory
               ?.toLowerCase()
               ?.replace(/\s+/g, "_") || "product",
           ]
@@ -52,101 +52,114 @@ export function RequirementsPanel({
   // 인증 가드
   const { showLoginModal, requireAuth, closeLoginModal } = useAuthGuard();
 
-  // 디버깅: 추출된 요구사항 로그
+  // 디버깅: 요구사항 데이터 로그
+  console.log("RequirementsPanel - requirementsData:", requirementsData);
   console.log(
-    "RequirementsPanel - extractedRequirements:",
-    extractedRequirements
+    "RequirementsPanel - requirementsData?.categories:",
+    requirementsData?.categories
+  );
+  console.log(
+    "RequirementsPanel - requirementsData?.categories?.length:",
+    requirementsData?.categories?.length
   );
 
-  // 추출된 요구사항이 있으면 사용, 없으면 샘플 데이터 사용
-  const allRequirements: Requirement[] = extractedRequirements?.categories
-    ? extractedRequirements.categories.flatMap((majorCategory: any) => {
-        // majorCategory가 undefined인 경우 빈 배열 반환
-        if (!majorCategory || !majorCategory.subCategories) return [];
+  // 요구사항 데이터가 있으면 사용, 없으면 샘플 데이터 사용
+  const allRequirements: Requirement[] =
+    requirementsData?.categories && requirementsData.categories.length > 0
+      ? requirementsData.categories.flatMap((majorCategory: any) => {
+          // majorCategory가 undefined인 경우 빈 배열 반환
+          if (!majorCategory || !majorCategory.subCategories) return [];
 
-        return majorCategory.subCategories.flatMap((subCategory: any) => {
-          // subCategory가 undefined인 경우 빈 배열 반환
-          if (!subCategory || !subCategory.requirements) return [];
+          return majorCategory.subCategories.flatMap((subCategory: any) => {
+            // subCategory가 undefined인 경우 빈 배열 반환
+            if (!subCategory || !subCategory.requirements) return [];
 
-          return subCategory.requirements.map((req: any, index: number) => {
-            // req가 undefined인 경우 안전하게 처리
-            if (!req) {
+            return subCategory.requirements.map((req: any, index: number) => {
+              // req가 undefined인 경우 안전하게 처리
+              if (!req) {
+                return {
+                  id: `empty-${index}`,
+                  title: "빈 요구사항",
+                  description: "요구사항 데이터가 없습니다",
+                  category: "unknown",
+                  priority: "low" as const,
+                  needsClarification: false,
+                  clarificationQuestions: [],
+                };
+              }
+
               return {
-                id: `empty-${index}`,
-                title: "빈 요구사항",
-                description: "요구사항 데이터가 없습니다",
-                category: "unknown",
-                priority: "low" as const,
-                needsClarification: false,
-                clarificationQuestions: [],
+                id:
+                  req.id ||
+                  `${majorCategory.majorCategory || majorCategory.category}-${
+                    subCategory.subCategory || subCategory.subcategory
+                  }-${index}`,
+                title: req.title || "제목 없음",
+                description: req.description || "설명 없음",
+                category:
+                  (majorCategory.majorCategory || majorCategory.category)
+                    ?.toLowerCase()
+                    ?.replace(/\s+/g, "_") || "unknown",
+                priority:
+                  req.priority === "high"
+                    ? ("high" as const)
+                    : req.priority === "medium"
+                    ? ("medium" as const)
+                    : ("low" as const),
+                needsClarification: req.needsClarification || false,
+                clarificationQuestions: req.clarificationQuestions || [],
               };
-            }
-
-            return {
-              id:
-                req.id ||
-                `${majorCategory.majorCategory || majorCategory.category}-${
-                  subCategory.subCategory || subCategory.subcategory
-                }-${index}`,
-              title: req.title || "제목 없음",
-              description: req.description || "설명 없음",
-              category:
-                (majorCategory.majorCategory || majorCategory.category)
-                  ?.toLowerCase()
-                  ?.replace(/\s+/g, "_") || "unknown",
-              priority:
-                req.priority === "high"
-                  ? ("high" as const)
-                  : req.priority === "medium"
-                  ? ("medium" as const)
-                  : ("low" as const),
-              needsClarification: req.needsClarification || false,
-              clarificationQuestions: req.clarificationQuestions || [],
-            };
+            });
           });
-        });
-      })
-    : [
-        {
-          id: "1",
-          title: "상품 등록/수정",
-          description: "상품 기본 정보 등록 및 옵션 관리",
-          category: "product",
-          priority: "high",
-          needsClarification: false,
-          clarificationQuestions: [],
-        },
-        {
-          id: "2",
-          title: "성분/영양 관리",
-          description: "성분 비교 필터, 알러지 태그 등록",
-          category: "product",
-          priority: "medium",
-          needsClarification: true,
-          clarificationQuestions: [
-            "어떤 성분 정보를 제공하나요?",
-            "알러지 정보는 어떻게 관리하나요?",
-          ],
-        },
-        {
-          id: "3",
-          title: "재고 부족 알림",
-          description: "재고 임계치 도달 시 자동 알림",
-          category: "product",
-          priority: "high",
-          needsClarification: false,
-          clarificationQuestions: [],
-        },
-        {
-          id: "4",
-          title: "상품 카테고리 관리",
-          description: "상품 분류 체계 및 카테고리 트리 관리",
-          category: "product",
-          priority: "medium",
-          needsClarification: true,
-          clarificationQuestions: ["카테고리 구조는 어떻게 구성하나요?"],
-        },
-      ];
+        })
+      : [
+          {
+            id: "1",
+            title: "상품 등록/수정",
+            description: "상품 기본 정보 등록 및 옵션 관리",
+            category: "product",
+            priority: "high",
+            needsClarification: false,
+            clarificationQuestions: [],
+          },
+          {
+            id: "2",
+            title: "성분/영양 관리",
+            description: "성분 비교 필터, 알러지 태그 등록",
+            category: "product",
+            priority: "medium",
+            needsClarification: true,
+            clarificationQuestions: [
+              "어떤 성분 정보를 제공하나요?",
+              "알러지 정보는 어떻게 관리하나요?",
+            ],
+          },
+          {
+            id: "3",
+            title: "재고 부족 알림",
+            description: "재고 임계치 도달 시 자동 알림",
+            category: "product",
+            priority: "high",
+            needsClarification: false,
+            clarificationQuestions: [],
+          },
+          {
+            id: "4",
+            title: "상품 카테고리 관리",
+            description: "상품 분류 체계 및 카테고리 트리 관리",
+            category: "product",
+            priority: "medium",
+            needsClarification: true,
+            clarificationQuestions: ["카테고리 구조는 어떻게 구성하나요?"],
+          },
+        ];
+
+  // 디버깅: allRequirements 로그
+  console.log("RequirementsPanel - allRequirements:", allRequirements);
+  console.log(
+    "RequirementsPanel - allRequirements with needsClarification true:",
+    allRequirements.filter((req) => req.needsClarification === true)
+  );
 
   // needsClarification이 true인 요구사항들을 별도로 분리
   const needsClarificationRequirements = allRequirements.filter(
@@ -157,7 +170,7 @@ export function RequirementsPanel({
   );
 
   // 카테고리 동적 생성 (결정이 필요한 요구사항을 최상위에 추가)
-  const categories = extractedRequirements?.categories
+  const categories = requirementsData?.categories
     ? [
         { id: "all", name: "전체", count: allRequirements.length },
         ...(needsClarificationRequirements.length > 0
@@ -169,21 +182,19 @@ export function RequirementsPanel({
               },
             ]
           : []),
-        ...(extractedRequirements.categories || []).map(
-          (majorCategory: any) => ({
-            id:
-              (majorCategory.majorCategory || majorCategory.category)
-                ?.toLowerCase()
-                ?.replace(/\s+/g, "_") || "unknown",
-            name: majorCategory.majorCategory || majorCategory.category,
-            count:
-              majorCategory.subCategories?.reduce(
-                (total: number, subCategory: any) =>
-                  total + (subCategory.requirements?.length || 0),
-                0
-              ) || 0,
-          })
-        ),
+        ...(requirementsData.categories || []).map((majorCategory: any) => ({
+          id:
+            (majorCategory.majorCategory || majorCategory.category)
+              ?.toLowerCase()
+              ?.replace(/\s+/g, "_") || "unknown",
+          name: majorCategory.majorCategory || majorCategory.category,
+          count:
+            majorCategory.subCategories?.reduce(
+              (total: number, subCategory: any) =>
+                total + (subCategory.requirements?.length || 0),
+              0
+            ) || 0,
+        })),
       ]
     : [
         { id: "all", name: "전체", count: allRequirements.length },

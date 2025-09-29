@@ -1238,7 +1238,7 @@ function HomePageContent() {
                       uploadedFiles,
                       chatMessages,
                     }}
-                    extractedRequirements={
+                    requirementsData={
                       editableRequirements || extractedRequirements
                     }
                     onOpenEditModal={(category) => {
