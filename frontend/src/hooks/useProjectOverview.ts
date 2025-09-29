@@ -120,7 +120,46 @@ export const useProjectOverview = () => {
       console.log('API 응답 데이터:', data);
       console.log('=== useProjectOverview 훅에서 overview 설정 ===');
       console.log('설정할 overview 데이터:', data.projectOverview);
-      setOverview(data.projectOverview);
+      
+      // 백엔드 응답 구조를 프론트엔드 구조로 변환
+      let processedOverview = data.projectOverview;
+      
+      // 백엔드에서 직접 serviceCoreElements를 보내지 않는 경우 변환
+      if (processedOverview && !processedOverview.serviceCoreElements) {
+        processedOverview = {
+          serviceCoreElements: {
+            title: processedOverview.title || '프로젝트 제목',
+            description: processedOverview.description || '프로젝트 설명',
+            keyFeatures: processedOverview.keyFeatures || ['AI 기반 자동화'],
+            targetUsers: processedOverview.targetUsers || ['일반 사용자'],
+            projectScale: processedOverview.projectScale || '중규모',
+            techComplexity: processedOverview.techComplexity || '보통',
+            estimatedDuration: processedOverview.estimatedDuration || '2-3개월',
+            requiredTeam: processedOverview.requiredTeam || ['프론트엔드 개발자', '백엔드 개발자'],
+            techStack: processedOverview.techStack || {
+              frontend: ['React', 'Next.js'],
+              backend: ['Node.js', 'NestJS'],
+              database: ['PostgreSQL'],
+              infrastructure: ['AWS', 'Vercel']
+            }
+          },
+          userJourney: processedOverview.userJourney || {
+            steps: [
+              {
+                step: 1,
+                title: '프로젝트 개요 수집',
+                description: '사용자 요구사항 수집',
+                userAction: '프로젝트 설명 입력',
+                systemResponse: 'AI 분석 및 개요 생성',
+                estimatedHours: '2-4시간',
+                requiredSkills: ['프론트엔드 개발']
+              }
+            ]
+          }
+        };
+      }
+      
+      setOverview(processedOverview);
       console.log('overview 상태 설정 완료');
       console.log('===============================================');
     } catch (err) {

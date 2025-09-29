@@ -106,10 +106,22 @@ export class ChatService {
 {
   "content": "사용자에게 보여줄 자연어 응답",
   "projectOverview": {
-    "title": "프로젝트 제목",
-    "description": "프로젝트 설명",
-    "keyFeatures": ["핵심 기능1", "핵심 기능2"],
-    "targetUsers": ["타겟 사용자1", "타겟 사용자2"],
+    "serviceCoreElements": {
+      "title": "프로젝트 제목",
+      "description": "프로젝트 설명",
+      "keyFeatures": ["핵심 기능1", "핵심 기능2"],
+      "targetUsers": ["타겟 사용자1", "타겟 사용자2"],
+      "projectScale": "소규모/중규모/대규모",
+      "techComplexity": "단순/보통/복잡",
+      "estimatedDuration": "예상 개발 기간 (예: 2-3개월)",
+      "requiredTeam": ["프론트엔드 개발자", "백엔드 개발자", "UI/UX 디자이너"],
+      "techStack": {
+        "frontend": ["React", "Next.js", "TypeScript"],
+        "backend": ["Node.js", "NestJS", "PostgreSQL"],
+        "database": ["PostgreSQL", "Redis"],
+        "infrastructure": ["AWS", "Vercel", "Railway"]
+      }
+    },
     "userJourney": {
       "steps": [
         {
@@ -117,7 +129,9 @@ export class ChatService {
           "title": "단계 제목",
           "description": "단계 설명",
           "userAction": "사용자 행동",
-          "systemResponse": "시스템 응답"
+          "systemResponse": "시스템 응답",
+          "estimatedHours": "예상 소요 시간",
+          "requiredSkills": ["필요한 기술 스택"]
         }
       ]
     }
