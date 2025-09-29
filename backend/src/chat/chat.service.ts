@@ -100,7 +100,9 @@ export class ChatService {
 
     const systemPrompt = `당신은 SI 프로젝트 요구사항 분석 전문가입니다. 
 사용자와의 대화를 통해 프로젝트 개요를 실시간으로 업데이트하고, 
-구조화된 JSON 형식으로 응답해주세요.
+반드시 아래 JSON 형식으로만 응답해주세요.
+
+중요: 응답은 반드시 유효한 JSON 형식이어야 하며, 다른 텍스트나 설명은 포함하지 마세요.
 
 응답 형식:
 {
@@ -112,7 +114,7 @@ export class ChatService {
       "keyFeatures": ["핵심 기능1", "핵심 기능2"],
       "targetUsers": ["타겟 사용자1", "타겟 사용자2"],
       "projectScale": "소규모/중규모/대규모",
-      "techComplexity": "단순/보통/복잡",
+      "techComplexity": "단순/보통/복잡", 
       "estimatedDuration": "예상 개발 기간 (예: 2-3개월)",
       "requiredTeam": ["프론트엔드 개발자", "백엔드 개발자", "UI/UX 디자이너"],
       "techStack": {
@@ -127,7 +129,7 @@ export class ChatService {
         {
           "step": 1,
           "title": "단계 제목",
-          "description": "단계 설명",
+          "description": "단계 설명", 
           "userAction": "사용자 행동",
           "systemResponse": "시스템 응답",
           "estimatedHours": "예상 소요 시간",
@@ -172,9 +174,16 @@ export class ChatService {
 
       const responseText = data.content[0].text;
       
+      console.log('=== Claude API 응답 디버깅 ===');
+      console.log('응답 텍스트:', responseText);
+      console.log('응답 길이:', responseText.length);
+      
       // JSON 응답 파싱 시도
       try {
         const jsonResponse = JSON.parse(responseText);
+        console.log('JSON 파싱 성공:', jsonResponse);
+        console.log('projectOverview 존재:', !!jsonResponse.projectOverview);
+        
         return {
           content: jsonResponse.content || responseText,
           metadata: { 
@@ -184,6 +193,9 @@ export class ChatService {
           projectOverview: jsonResponse.projectOverview || null
         };
       } catch (parseError) {
+        console.log('JSON 파싱 실패:', parseError.message);
+        console.log('원본 응답 텍스트:', responseText);
+        
         // JSON 파싱 실패 시 기본 응답
         return {
           content: responseText,

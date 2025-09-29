@@ -120,6 +120,8 @@ export const useProjectOverview = () => {
       console.log('API 응답 데이터:', data);
       console.log('=== useProjectOverview 훅에서 overview 설정 ===');
       console.log('설정할 overview 데이터:', data.projectOverview);
+      console.log('projectOverview 타입:', typeof data.projectOverview);
+      console.log('projectOverview가 null인가?', data.projectOverview === null);
       
       // 백엔드 응답 구조를 프론트엔드 구조로 변환
       let processedOverview = data.projectOverview;
