@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { LoginRequiredModal } from "@/components/auth/LoginRequiredModal";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 
@@ -15,12 +15,43 @@ interface Requirement {
   status?: "draft" | "review" | "approved" | "rejected" | "implemented";
 }
 
+interface MajorCategory {
+  majorCategory?: string;
+  category?: string;
+  subCategories?: SubCategory[];
+}
+
+interface SubCategory {
+  subCategory?: string;
+  subcategory?: string;
+  requirements?: Requirement[];
+}
+
+interface RequirementsData {
+  categories?: MajorCategory[];
+  totalCount?: number;
+}
+
+interface ChatMessage {
+  id?: string;
+  type?: string;
+  content?: string;
+  timestamp?: string;
+}
+
+interface ProjectData {
+  description?: string;
+  serviceType?: string;
+  uploadedFiles?: File[];
+  chatMessages?: ChatMessage[];
+}
+
 interface RequirementsPanelProps {
   onNextStep?: () => void;
   onPrevStep?: () => void;
   currentStep?: number;
-  projectData?: any; // 프로젝트 데이터 전달
-  requirementsData?: any; // 요구사항 데이터 (editableRequirements || extractedRequirements)
+  projectData?: ProjectData; // 프로젝트 데이터 전달
+  requirementsData?: RequirementsData; // 요구사항 데이터 (editableRequirements || extractedRequirements)
   onOpenEditModal?: (category: string) => void; // 편집 모달 열기
   onDeleteCategory?: (categoryId: string) => void; // 중분류 삭제
   isNextButtonEnabled?: boolean; // 다음 단계 버튼 활성화 여부
@@ -67,122 +98,133 @@ export function RequirementsPanel({
   );
 
   // 요구사항 데이터가 있으면 사용, 없으면 샘플 데이터 사용
-  const allRequirements: Requirement[] =
-    requirementsData?.categories && requirementsData.categories.length > 0
-      ? requirementsData.categories.flatMap((majorCategory: any) => {
-          // majorCategory가 undefined인 경우 빈 배열 반환
-          if (!majorCategory || !majorCategory.subCategories) return [];
+  const allRequirements: Requirement[] = useMemo(() => {
+    if (
+      !requirementsData?.categories ||
+      requirementsData.categories.length === 0
+    ) {
+      return [
+        {
+          id: "1",
+          title: "상품 등록/수정",
+          description: "상품 기본 정보 등록 및 옵션 관리",
+          category: "product",
+          priority: "high",
+          needsClarification: false,
+          clarificationQuestions: [],
+        },
+        {
+          id: "2",
+          title: "성분/영양 관리",
+          description: "성분 비교 필터, 알러지 태그 등록",
+          category: "product",
+          priority: "medium",
+          needsClarification: true,
+          clarificationQuestions: [
+            "어떤 성분 정보를 제공하나요?",
+            "알러지 정보는 어떻게 관리하나요?",
+          ],
+        },
+        {
+          id: "3",
+          title: "재고 부족 알림",
+          description: "재고 임계치 도달 시 자동 알림",
+          category: "product",
+          priority: "high",
+          needsClarification: false,
+          clarificationQuestions: [],
+        },
+        {
+          id: "4",
+          title: "상품 카테고리 관리",
+          description: "상품 분류 체계 및 카테고리 트리 관리",
+          category: "product",
+          priority: "medium",
+          needsClarification: true,
+          clarificationQuestions: ["카테고리 구조는 어떻게 구성하나요?"],
+        },
+      ];
+    }
 
-          return majorCategory.subCategories.flatMap((subCategory: any) => {
+    return requirementsData.categories.flatMap(
+      (majorCategory: MajorCategory) => {
+        // majorCategory가 undefined인 경우 빈 배열 반환
+        if (!majorCategory || !majorCategory.subCategories) return [];
+
+        return majorCategory.subCategories.flatMap(
+          (subCategory: SubCategory) => {
             // subCategory가 undefined인 경우 빈 배열 반환
             if (!subCategory || !subCategory.requirements) return [];
 
-            return subCategory.requirements.map((req: any, index: number) => {
-              // req가 undefined인 경우 안전하게 처리
-              if (!req) {
+            return subCategory.requirements.map(
+              (req: Requirement, index: number) => {
+                // req가 undefined인 경우 안전하게 처리
+                if (!req) {
+                  return {
+                    id: `empty-${index}`,
+                    title: "빈 요구사항",
+                    description: "요구사항 데이터가 없습니다",
+                    category: "unknown",
+                    priority: "low" as const,
+                    needsClarification: false,
+                    clarificationQuestions: [],
+                  };
+                }
+
+                // 편집된 요구사항의 경우 needsClarification을 false로 강제 설정
+                const isEdited =
+                  req.status === "approved" || req.needsClarification === false;
+
                 return {
-                  id: `empty-${index}`,
-                  title: "빈 요구사항",
-                  description: "요구사항 데이터가 없습니다",
-                  category: "unknown",
-                  priority: "low" as const,
-                  needsClarification: false,
-                  clarificationQuestions: [],
+                  id:
+                    req.id ||
+                    `${majorCategory.majorCategory || majorCategory.category}-${
+                      subCategory.subCategory || subCategory.subcategory
+                    }-${index}`,
+                  title: req.title || "제목 없음",
+                  description: req.description || "설명 없음",
+                  category:
+                    (majorCategory.majorCategory || majorCategory.category)
+                      ?.toLowerCase()
+                      ?.replace(/\s+/g, "_") || "unknown",
+                  priority:
+                    req.priority === "high"
+                      ? ("high" as const)
+                      : req.priority === "medium"
+                      ? ("medium" as const)
+                      : ("low" as const),
+                  needsClarification: isEdited
+                    ? false
+                    : req.needsClarification || false,
+                  clarificationQuestions: isEdited
+                    ? []
+                    : req.clarificationQuestions || [],
+                  status: req.status || "draft",
                 };
               }
-
-              // 편집된 요구사항의 경우 needsClarification을 false로 강제 설정
-              const isEdited =
-                req.status === "approved" || req.needsClarification === false;
-
-              return {
-                id:
-                  req.id ||
-                  `${majorCategory.majorCategory || majorCategory.category}-${
-                    subCategory.subCategory || subCategory.subcategory
-                  }-${index}-${Date.now()}`,
-                title: req.title || "제목 없음",
-                description: req.description || "설명 없음",
-                category:
-                  (majorCategory.majorCategory || majorCategory.category)
-                    ?.toLowerCase()
-                    ?.replace(/\s+/g, "_") || "unknown",
-                priority:
-                  req.priority === "high"
-                    ? ("high" as const)
-                    : req.priority === "medium"
-                    ? ("medium" as const)
-                    : ("low" as const),
-                needsClarification: isEdited
-                  ? false
-                  : req.needsClarification || false,
-                clarificationQuestions: isEdited
-                  ? []
-                  : req.clarificationQuestions || [],
-                status: req.status || "draft",
-              };
-            });
-          });
-        })
-      : [
-          {
-            id: "1",
-            title: "상품 등록/수정",
-            description: "상품 기본 정보 등록 및 옵션 관리",
-            category: "product",
-            priority: "high",
-            needsClarification: false,
-            clarificationQuestions: [],
-          },
-          {
-            id: "2",
-            title: "성분/영양 관리",
-            description: "성분 비교 필터, 알러지 태그 등록",
-            category: "product",
-            priority: "medium",
-            needsClarification: true,
-            clarificationQuestions: [
-              "어떤 성분 정보를 제공하나요?",
-              "알러지 정보는 어떻게 관리하나요?",
-            ],
-          },
-          {
-            id: "3",
-            title: "재고 부족 알림",
-            description: "재고 임계치 도달 시 자동 알림",
-            category: "product",
-            priority: "high",
-            needsClarification: false,
-            clarificationQuestions: [],
-          },
-          {
-            id: "4",
-            title: "상품 카테고리 관리",
-            description: "상품 분류 체계 및 카테고리 트리 관리",
-            category: "product",
-            priority: "medium",
-            needsClarification: true,
-            clarificationQuestions: ["카테고리 구조는 어떻게 구성하나요?"],
-          },
-        ];
+            );
+          }
+        );
+      }
+    );
+  }, [requirementsData]);
 
   // 디버깅: allRequirements 로그
-  console.log("RequirementsPanel - allRequirements:", allRequirements);
-  console.log(
-    "RequirementsPanel - allRequirements with needsClarification true:",
-    allRequirements.filter((req) => req.needsClarification === true)
-  );
-  console.log(
-    "RequirementsPanel - allRequirements with status approved:",
-    allRequirements.filter((req) => req.status === "approved")
-  );
+  useEffect(() => {
+    console.log("RequirementsPanel - allRequirements:", allRequirements);
+    console.log(
+      "RequirementsPanel - allRequirements with needsClarification true:",
+      allRequirements.filter((req) => req.needsClarification === true)
+    );
+    console.log(
+      "RequirementsPanel - allRequirements with status approved:",
+      allRequirements.filter((req) => req.status === "approved")
+    );
+  }, [allRequirements]);
 
   // needsClarification이 true인 요구사항들을 별도로 분리
   const needsClarificationRequirements = allRequirements.filter(
     (req) => req && req.needsClarification === true
-  );
-  const regularRequirements = allRequirements.filter(
-    (req) => req && req.needsClarification !== true
   );
 
   // 카테고리 동적 생성 (결정이 필요한 요구사항을 최상위에 추가)
@@ -198,19 +240,21 @@ export function RequirementsPanel({
               },
             ]
           : []),
-        ...(requirementsData.categories || []).map((majorCategory: any) => ({
-          id:
-            (majorCategory.majorCategory || majorCategory.category)
-              ?.toLowerCase()
-              ?.replace(/\s+/g, "_") || "unknown",
-          name: majorCategory.majorCategory || majorCategory.category,
-          count:
-            majorCategory.subCategories?.reduce(
-              (total: number, subCategory: any) =>
-                total + (subCategory.requirements?.length || 0),
-              0
-            ) || 0,
-        })),
+        ...(requirementsData.categories || []).map(
+          (majorCategory: MajorCategory) => ({
+            id:
+              (majorCategory.majorCategory || majorCategory.category)
+                ?.toLowerCase()
+                ?.replace(/\s+/g, "_") || "unknown",
+            name: majorCategory.majorCategory || majorCategory.category,
+            count:
+              majorCategory.subCategories?.reduce(
+                (total: number, subCategory: SubCategory) =>
+                  total + (subCategory.requirements?.length || 0),
+                0
+              ) || 0,
+          })
+        ),
       ]
     : [
         { id: "all", name: "전체", count: allRequirements.length },

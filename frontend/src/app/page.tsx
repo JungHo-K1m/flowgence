@@ -621,6 +621,19 @@ function HomePageContent() {
             }
           });
 
+          // 3) 중복 제거 - 같은 title과 description을 가진 요구사항 제거
+          newSubCategories.forEach((sub) => {
+            const seen = new Set();
+            sub.requirements = sub.requirements.filter((req) => {
+              const key = `${req.title}-${req.description}`;
+              if (seen.has(key)) {
+                return false;
+              }
+              seen.add(key);
+              return true;
+            });
+          });
+
           return {
             ...cat,
             subCategories: newSubCategories,
@@ -636,6 +649,8 @@ function HomePageContent() {
 
       // 변경사항을 즉시 DB에 저장 (낙관적 업데이트)
       await saveEditedRequirements(next);
+
+      console.log("편집 완료 - 업데이트된 요구사항:", next);
     },
     [
       editableRequirements,
