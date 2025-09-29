@@ -58,15 +58,19 @@ export const useRequirementsUpdate = () => {
     lastRequestHashRef.current = requestHash;
     
     try {
-      const response = await fetch('/api/chat', {
+      // Railway 백엔드로 직접 요청
+      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+      const response = await fetch(`${backendUrl}/chat/requirements/update`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          type: 'requirements_update',
-          input,
-          messages,
+          projectId: 'temp-project-requirements',
+          history: messages.map(msg => ({
+            role: msg.type === 'user' ? 'user' : 'assistant',
+            content: msg.content
+          })),
           existingRequirements
-        } as RequirementsUpdateRequest)
+        })
       });
       
       console.log('요구사항 업데이트 API 응답 상태:', response.status);
@@ -87,7 +91,7 @@ export const useRequirementsUpdate = () => {
         error: null,
       }));
 
-      return data.requirements;
+      return data;
     } catch (err) {
       console.error('요구사항 업데이트 오류:', err);
       setState(prev => ({

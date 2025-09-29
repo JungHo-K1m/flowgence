@@ -200,18 +200,19 @@ export async function POST(request: NextRequest) {
     }
     
     if (type === 'requirements_extraction') {
-      console.log('요구사항 추출 시작');
-      const requirements = await extractRequirements(input, messages);
-      console.log('요구사항 추출 완료:', requirements);
-      return NextResponse.json({ requirements });
+      console.log('요구사항 추출은 더 이상 이 API를 사용하지 않습니다. Railway 백엔드를 직접 호출하세요.');
+      return NextResponse.json({ 
+        error: 'Deprecated: Use Railway backend directly',
+        message: 'Requirements extraction should call Railway backend directly'
+      }, { status: 410 });
     }
     
     if (type === 'requirements_update') {
-      console.log('요구사항 업데이트 시작');
-      console.log('기존 요구사항 개수:', existingRequirements?.totalCount || 0);
-      const updatedRequirements = await updateRequirements(input, messages, existingRequirements);
-      console.log('요구사항 업데이트 완료:', updatedRequirements);
-      return NextResponse.json({ requirements: updatedRequirements });
+      console.log('요구사항 업데이트는 더 이상 이 API를 사용하지 않습니다. Railway 백엔드를 직접 호출하세요.');
+      return NextResponse.json({ 
+        error: 'Deprecated: Use Railway backend directly',
+        message: 'Requirements update should call Railway backend directly'
+      }, { status: 410 });
     }
     
     return NextResponse.json({ error: 'Invalid request type' }, { status: 400 });

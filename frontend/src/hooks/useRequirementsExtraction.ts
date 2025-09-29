@@ -59,14 +59,18 @@ export const useRequirementsExtraction = () => {
     lastRequestHashRef.current = requestHash;
     
     try {
-      const response = await fetch('/api/chat', {
+      // Railway 백엔드로 직접 요청
+      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+      const response = await fetch(`${backendUrl}/chat/requirements/extract`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          type: 'requirements_extraction',
-          input,
-          messages
-        } as RequirementsExtractionRequest)
+          projectId: 'temp-project-requirements',
+          history: messages.map(msg => ({
+            role: msg.type === 'user' ? 'user' : 'assistant',
+            content: msg.content
+          }))
+        })
       });
       
       console.log('요구사항 추출 API 응답 상태:', response.status);
@@ -82,13 +86,13 @@ export const useRequirementsExtraction = () => {
       
       setState(prev => ({
         ...prev,
-        extractedRequirements: data.requirements,
+        extractedRequirements: data,
         lastExtractionTime: new Date().toISOString(),
         isLoading: false,
         error: null,
       }));
 
-      return data.requirements;
+      return data;
     } catch (err) {
       console.error('요구사항 추출 오류:', err);
       setState(prev => ({
