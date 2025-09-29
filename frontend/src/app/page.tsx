@@ -68,6 +68,7 @@ function HomePageContent() {
     extractRequirements,
     isLoading: isExtractingRequirements,
     extractedRequirements,
+    updateExtractedRequirements,
   } = useRequirementsExtraction();
 
   // 요구사항 업데이트 훅 사용
@@ -607,7 +608,11 @@ function HomePageContent() {
         }),
       };
 
+      // 즉시 UI 상태 업데이트
       setEditableRequirements(next);
+
+      // extractedRequirements도 동기화 (메인 목록 즉시 업데이트를 위해)
+      updateExtractedRequirements(next);
 
       // 변경사항을 즉시 DB에 저장 (낙관적 업데이트)
       await saveEditedRequirements(next);
@@ -617,6 +622,7 @@ function HomePageContent() {
       extractedRequirements,
       normalizeId,
       saveEditedRequirements,
+      updateExtractedRequirements,
     ]
   );
 

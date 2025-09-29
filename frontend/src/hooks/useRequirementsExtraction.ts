@@ -122,10 +122,19 @@ export const useRequirementsExtraction = () => {
     return await extractRequirements(input, messages);
   }, [extractRequirements]);
 
+  // extractedRequirements 상태를 직접 업데이트하는 함수
+  const updateExtractedRequirements = useCallback((newRequirements: ExtractedRequirements) => {
+    setState(prev => ({
+      ...prev,
+      extractedRequirements: newRequirements,
+    }));
+  }, []);
+
   return {
     ...state,
     extractRequirements,
     clearRequirements,
     retryExtraction,
+    updateExtractedRequirements,
   };
 };
