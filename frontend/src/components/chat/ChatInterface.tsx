@@ -258,8 +258,6 @@ export function ChatInterface({
       } else {
         setInternalMessages(finalMessages);
       }
-    } finally {
-      setIsTyping(false);
     }
   };
 
@@ -325,9 +323,9 @@ export function ChatInterface({
         <ChatInput
           onSendMessage={handleSendMessage}
           currentStep={currentStep}
-          disabled={isLoading}
+          disabled={isLoading || isTyping}
           placeholder={
-            isLoading
+            isTyping
               ? "AI가 응답을 생성하고 있습니다..."
               : currentStep === 1
               ? "자연어로 입력하여 프로젝트를 설명해보세요"
