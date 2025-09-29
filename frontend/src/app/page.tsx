@@ -93,6 +93,9 @@ function HomePageContent() {
   const [editableRequirements, setEditableRequirements] =
     useState<ExtractedRequirements | null>(null);
 
+  // 편집 모드 상태 (UI 편집 중인지 채팅 편집 중인지 구분)
+  const [isEditingMode, setIsEditingMode] = useState(false);
+
   // 통합 로딩 상태 (요구사항 추출 + 업데이트 + 저장)
   const isProcessing =
     isExtractingRequirements ||
@@ -189,8 +192,17 @@ function HomePageContent() {
       uploadedFiles: File[];
       messages: Message[];
     }) => {
+      // UI 편집 모드가 아닐 때만 채팅 업데이트 진행
+      if (isEditingMode) {
+        console.log("UI 편집 모드 중 - 채팅 업데이트 건너뜀");
+        return;
+      }
+
       console.log("프로젝트 개요 업데이트 트리거:", data);
       console.log("updateOverview 함수 호출 시작");
+
+      // 채팅 편집 모드 시작
+      setIsEditingMode(true);
 
       // 1. 프로젝트 개요 업데이트
       await updateOverview(
@@ -238,7 +250,13 @@ function HomePageContent() {
         } catch (error) {
           console.error("요구사항 업데이트 실패:", error);
           // 업데이트 실패해도 프로젝트 개요는 업데이트되었으므로 계속 진행
+        } finally {
+          // 채팅 편집 모드 종료
+          setIsEditingMode(false);
         }
+      } else {
+        // 채팅 편집 모드 종료
+        setIsEditingMode(false);
       }
     },
     [
@@ -249,6 +267,7 @@ function HomePageContent() {
       updateRequirementsFromChat,
       overview,
       saveEditedRequirements,
+      isEditingMode,
     ]
   );
 
@@ -1207,7 +1226,7 @@ function HomePageContent() {
                 onMessagesChange={handleMessagesChange}
                 onProjectUpdate={handleProjectUpdate}
                 aiResponse={aiMessage || undefined}
-                isLoading={isOverviewLoading}
+                isLoading={isOverviewLoading || isEditingMode}
               />
             </div>
 
@@ -1247,6 +1266,7 @@ function HomePageContent() {
                     onOpenEditModal={(category) => {
                       setEditingCategory(category);
                       setShowEditModal(true);
+                      setIsEditingMode(true); // UI 편집 모드 시작
                     }}
                     onDeleteCategory={handleCategoryDeleteRequest}
                     isNextButtonEnabled={isStep2ButtonEnabled}
@@ -1318,7 +1338,10 @@ function HomePageContent() {
       {/* 요구사항 편집 모달 (선택된 대분류의 소분류 리스트 표시/편집) */}
       <SimpleRequirementModal
         isOpen={showEditModal}
-        onClose={() => setShowEditModal(false)}
+        onClose={() => {
+          setShowEditModal(false);
+          setIsEditingMode(false); // UI 편집 모드 종료
+        }}
         requirements={getModalRequirementsForCategory(editingCategory)}
         onRequirementsChange={async (newRequirements) => {
           try {

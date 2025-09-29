@@ -365,6 +365,12 @@ ${JSON.stringify(existingRequirements, null, 2)}
 새로운 대화 내용:
 ${conversationText}
 
+업데이트 규칙:
+1. 사용자가 기존 요구사항에 대한 구체적인 설명이나 추가 정보를 제공한 경우, 해당 요구사항의 needsClarification을 false로 설정하고 clarificationQuestions를 빈 배열로 설정하세요.
+2. 사용자가 요구사항의 내용을 수정하거나 보완한 경우, 해당 요구사항은 자동으로 승인된 것으로 간주하여 needsClarification을 false로 설정하세요.
+3. 새로운 요구사항이 추가된 경우에만 needsClarification을 true로 설정하고 적절한 명확화 질문을 제공하세요.
+4. 기존 요구사항의 description이 더 구체적이고 상세해진 경우, 이는 사용자가 명확화를 완료한 것으로 간주하세요.
+
 응답 형식:
 {
   "categories": [
