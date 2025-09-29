@@ -16,9 +16,9 @@ export function useAuthGuard() {
   const [isProcessingLogin, setIsProcessingLogin] = useState(false);
 
   // showLoginModal 상태 변경 감지
-  useEffect(() => {
-    console.log("useAuthGuard - showLoginModal 상태 변경:", showLoginModal);
-  }, [showLoginModal]);
+  // useEffect(() => {
+  //   console.log("useAuthGuard - showLoginModal 상태 변경:", showLoginModal);
+  // }, [showLoginModal]);
 
   // 로그인 후 임시 상태를 실제 DB로 이전하는 함수
   const processLoginState = useCallback(async () => {

@@ -85,9 +85,9 @@ export function ChatInterface({
   const [previousStep, setPreviousStep] = useState(currentStep);
 
   // currentStep 변경 로그
-  useEffect(() => {
-    console.log("ChatInterface - currentStep 변경:", currentStep);
-  }, [currentStep]);
+  // useEffect(() => {
+  //   console.log("ChatInterface - currentStep 변경:", currentStep);
+  // }, [currentStep]);
 
   // initialMessage가 변경될 때 메시지 업데이트 (중복 호출 방지)
   useEffect(() => {

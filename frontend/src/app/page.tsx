@@ -650,9 +650,9 @@ function HomePageContent() {
   } = useAuthGuard();
 
   // showLoginModal 상태 디버깅
-  useEffect(() => {
-    console.log("showLoginModal 상태 변경:", showLoginModal);
-  }, [showLoginModal]);
+  // useEffect(() => {
+  //   console.log("showLoginModal 상태 변경:", showLoginModal);
+  // }, [showLoginModal]);
   const {} = useStatePersistence();
   const searchParams = useSearchParams();
   const targetStep = searchParams.get("step");
@@ -663,27 +663,27 @@ function HomePageContent() {
   useEffect(() => {
     const handleLoginStateRestore = async () => {
       // 이미 복원했으면 중복 실행 방지 (단, tempState가 새로 나타난 경우는 예외)
-      if (hasRestoredState.current && !hasTempState) {
-        console.log("이미 상태 복원 완료 - 중복 실행 방지");
-        return;
-      }
-      console.log("로그인 상태 복원 체크:", {
-        user: !!user,
-        hasTempState,
-        tempState: !!tempState?.projectData,
-        loading,
-      });
+      // if (hasRestoredState.current && !hasTempState) {
+      //   console.log("이미 상태 복원 완료 - 중복 실행 방지");
+      //   return;
+      // }
+      // console.log("로그인 상태 복원 체크:", {
+      //   user: !!user,
+      //   hasTempState,
+      //   tempState: !!tempState?.projectData,
+      //   loading,
+      // });
 
       if (user && !loading) {
         if (hasTempState && tempState?.projectData) {
-          console.log("로그인 후 상태 복원 시작:", tempState);
+          // console.log("로그인 후 상태 복원 시작:", tempState);
 
           try {
             // 1. 임시 상태를 실제 DB로 이전
             const result = await processLoginState();
 
             if (result && result.success) {
-              console.log("로그인 후 상태 이전 성공:", result);
+              // console.log("로그인 후 상태 이전 성공:", result);
 
               // 2. UI 상태 복원
               const { projectData, targetStep: savedTargetStep } = tempState;
@@ -771,7 +771,7 @@ function HomePageContent() {
           }
         } else {
           // tempState가 없는 경우 - URL 파라미터로 단계 이동
-          console.log("tempState 없음 - URL 파라미터로 단계 이동");
+          // console.log("tempState 없음 - URL 파라미터로 단계 이동");
           if (targetStep === "2" || targetStep === "2") {
             setShowRequirements(true);
             setCurrentStep(2);
