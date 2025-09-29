@@ -23,6 +23,7 @@ interface RequirementsPanelProps {
   onOpenEditModal?: (category: string) => void; // 편집 모달 열기
   onDeleteCategory?: (categoryId: string) => void; // 중분류 삭제
   isNextButtonEnabled?: boolean; // 다음 단계 버튼 활성화 여부
+  isLoading?: boolean; // API 응답 대기 중 여부
 }
 
 export function RequirementsPanel({
@@ -34,6 +35,7 @@ export function RequirementsPanel({
   onOpenEditModal,
   onDeleteCategory,
   isNextButtonEnabled = false,
+  isLoading = false,
 }: RequirementsPanelProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -463,20 +465,20 @@ export function RequirementsPanel({
 
           <button
             onClick={() => onNextStep?.()}
-            disabled={currentStep >= 4 || !isNextButtonEnabled}
+            disabled={currentStep >= 4 || !isNextButtonEnabled || isLoading}
             className={`px-6 py-3 rounded-lg transition-colors ${
-              currentStep >= 4 || !isNextButtonEnabled
+              currentStep >= 4 || !isNextButtonEnabled || isLoading
                 ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                 : "text-white"
             }`}
             style={{
               backgroundColor:
-                currentStep >= 4 || !isNextButtonEnabled
+                currentStep >= 4 || !isNextButtonEnabled || isLoading
                   ? undefined
                   : "#6366F1",
             }}
           >
-            {currentStep >= 4 ? "완료" : "다음 단계"}
+            {isLoading ? "처리 중..." : currentStep >= 4 ? "완료" : "다음 단계"}
           </button>
         </div>
       </div>

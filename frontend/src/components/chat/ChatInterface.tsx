@@ -26,6 +26,8 @@ interface ChatInterfaceProps {
     uploadedFiles: File[];
     messages: Message[];
   }) => void;
+  aiResponse?: string; // AI 응답 메시지
+  isLoading?: boolean; // API 응답 대기 중 여부
 }
 
 export function ChatInterface({
@@ -35,6 +37,8 @@ export function ChatInterface({
   messages: externalMessages,
   onMessagesChange,
   onProjectUpdate,
+  aiResponse,
+  isLoading = false,
 }: ChatInterfaceProps) {
   // 초기 메시지가 있으면 사용자 메시지로 추가
   const getInitialMessages = useCallback((): Message[] => {
@@ -149,6 +153,29 @@ export function ChatInterface({
       setPreviousStep(currentStep);
     }
   }, [currentStep, previousStep, onMessagesChange, messages]);
+
+  // aiResponse가 변경될 때 AI 메시지 추가
+  useEffect(() => {
+    if (aiResponse && aiResponse.trim()) {
+      const aiMessage = {
+        id: `ai-${Date.now()}`,
+        type: "ai" as const,
+        content: aiResponse,
+        icon: "🤖",
+      };
+
+      const updatedMessages = [...messages, aiMessage];
+
+      if (onMessagesChange) {
+        onMessagesChange(updatedMessages);
+      } else {
+        setInternalMessages(updatedMessages);
+      }
+
+      // 타이핑 인디케이터 숨기기
+      setIsTyping(false);
+    }
+  }, [aiResponse, messages, onMessagesChange]);
 
   const handleSendMessage = async (message: string) => {
     // 사용자 메시지를 메시지 배열에 추가
@@ -300,8 +327,11 @@ export function ChatInterface({
         <ChatInput
           onSendMessage={handleSendMessage}
           currentStep={currentStep}
+          disabled={isLoading}
           placeholder={
-            currentStep === 1
+            isLoading
+              ? "AI가 응답을 생성하고 있습니다..."
+              : currentStep === 1
               ? "자연어로 입력하여 프로젝트를 설명해보세요"
               : currentStep === 2
               ? "요구사항에 대해 자세히 설명해주세요"

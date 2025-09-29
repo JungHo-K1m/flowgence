@@ -63,6 +63,7 @@ interface ProjectOverviewPanelProps {
   messages?: ChatMessage[];
   onGenerateOverview?: React.MutableRefObject<(() => void) | null>;
   realtimeOverview?: ProjectOverview;
+  isLoading?: boolean;
 }
 
 export function ProjectOverviewPanel({
@@ -74,12 +75,21 @@ export function ProjectOverviewPanel({
   messages = [],
   onGenerateOverview,
   realtimeOverview,
+  isLoading: externalIsLoading,
 }: ProjectOverviewPanelProps) {
   const [activeTab, setActiveTab] = useState<"elements" | "journey">(
     "elements"
   );
 
-  const { overview, isLoading, error, updateOverview } = useProjectOverview();
+  const {
+    overview,
+    isLoading: internalIsLoading,
+    error,
+    updateOverview,
+  } = useProjectOverview();
+
+  // 내부와 외부 로딩 상태를 병합
+  const isLoading = internalIsLoading || externalIsLoading;
 
   // 실시간 업데이트된 개요가 있으면 우선 사용
   const displayOverview = realtimeOverview || overview;
@@ -539,18 +549,20 @@ export function ProjectOverviewPanel({
       <div className="absolute bottom-4 right-4">
         <button
           onClick={onNextStep}
-          disabled={currentStep >= 4 || !isButtonEnabled}
+          disabled={currentStep >= 4 || !isButtonEnabled || isLoading}
           className={`px-6 py-3 rounded-lg transition-colors duration-200 ${
-            currentStep >= 4 || !isButtonEnabled
+            currentStep >= 4 || !isButtonEnabled || isLoading
               ? "bg-gray-300 text-gray-500 cursor-not-allowed"
               : "text-white"
           }`}
           style={{
             backgroundColor:
-              currentStep >= 4 || !isButtonEnabled ? undefined : "#6366F1",
+              currentStep >= 4 || !isButtonEnabled || isLoading
+                ? undefined
+                : "#6366F1",
           }}
         >
-          {currentStep >= 4 ? "완료" : "다음 단계"}
+          {isLoading ? "처리 중..." : currentStep >= 4 ? "완료" : "다음 단계"}
         </button>
       </div>
     </div>

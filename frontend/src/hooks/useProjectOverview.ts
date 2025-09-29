@@ -62,6 +62,7 @@ export const useProjectOverview = () => {
   const [error, setError] = useState<string | null>(null);
   const lastRequestHashRef = useRef<string>("");
   const [isRequestInProgress, setIsRequestInProgress] = useState(false);
+  const [aiMessage, setAiMessage] = useState<string | null>(null);
 
   const generateOverview = useCallback(async (input: ProjectInput, messages: ChatMessage[] = []) => {
     // 중복 호출 방지: 요청 해시 생성
@@ -162,6 +163,12 @@ export const useProjectOverview = () => {
       }
       
       setOverview(processedOverview);
+      
+      // AI 메시지 설정
+      if (data.aiMessage?.content) {
+        setAiMessage(data.aiMessage.content);
+      }
+      
       console.log('overview 상태 설정 완료');
       console.log('===============================================');
     } catch (err) {
@@ -192,6 +199,7 @@ export const useProjectOverview = () => {
     isLoading,
     error,
     generateOverview,
-    updateOverview
+    updateOverview,
+    aiMessage
   };
 };

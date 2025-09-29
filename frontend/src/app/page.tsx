@@ -61,6 +61,7 @@ function HomePageContent() {
     overview,
     updateOverview,
     isLoading: isOverviewLoading,
+    aiMessage,
   } = useProjectOverview();
 
   // 요구사항 추출 및 저장 훅 사용
@@ -1205,6 +1206,8 @@ function HomePageContent() {
                 messages={chatMessages}
                 onMessagesChange={handleMessagesChange}
                 onProjectUpdate={handleProjectUpdate}
+                aiResponse={aiMessage || undefined}
+                isLoading={isOverviewLoading}
               />
             </div>
 
@@ -1247,6 +1250,7 @@ function HomePageContent() {
                     }}
                     onDeleteCategory={handleCategoryDeleteRequest}
                     isNextButtonEnabled={isStep2ButtonEnabled}
+                    isLoading={isOverviewLoading}
                   />
                 )
               ) : (
@@ -1259,6 +1263,7 @@ function HomePageContent() {
                   messages={chatMessages}
                   onGenerateOverview={generateOverviewRef}
                   realtimeOverview={overview || undefined}
+                  isLoading={isOverviewLoading}
                 />
               )}
             </div>
