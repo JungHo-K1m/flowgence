@@ -85,11 +85,13 @@ export function RequirementsPanel({
             return {
               id:
                 req.id ||
-                `${majorCategory.majorCategory}-${subCategory.subCategory}-${index}`,
+                `${majorCategory.majorCategory || majorCategory.category}-${
+                  subCategory.subCategory || subCategory.subcategory
+                }-${index}`,
               title: req.title || "제목 없음",
               description: req.description || "설명 없음",
               category:
-                majorCategory.majorCategory
+                (majorCategory.majorCategory || majorCategory.category)
                   ?.toLowerCase()
                   ?.replace(/\s+/g, "_") || "unknown",
               priority:
@@ -170,10 +172,10 @@ export function RequirementsPanel({
         ...(extractedRequirements.categories || []).map(
           (majorCategory: any) => ({
             id:
-              majorCategory.majorCategory
+              (majorCategory.majorCategory || majorCategory.category)
                 ?.toLowerCase()
                 ?.replace(/\s+/g, "_") || "unknown",
-            name: majorCategory.majorCategory,
+            name: majorCategory.majorCategory || majorCategory.category,
             count:
               majorCategory.subCategories?.reduce(
                 (total: number, subCategory: any) =>

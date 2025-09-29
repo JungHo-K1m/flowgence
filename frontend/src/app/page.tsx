@@ -259,18 +259,8 @@ function HomePageContent() {
   // 특정 대분류의 소분류 요구사항을 평탄화하여 모달에 제공
   const getModalRequirementsForCategory = useCallback(
     (categoryId: string) => {
-      console.log("=== getModalRequirementsForCategory 디버깅 ===");
-      console.log("categoryId:", categoryId);
-
       const base = editableRequirements || extractedRequirements;
-      console.log(
-        "base (editableRequirements || extractedRequirements):",
-        base
-      );
-      console.log("base?.categories:", base?.categories);
-
       if (!base?.categories) {
-        console.log("base.categories가 없음, 빈 배열 반환");
         return [] as Array<{
           id: string;
           title: string;
@@ -283,32 +273,24 @@ function HomePageContent() {
         }>;
       }
 
-      // 모든 카테고리의 majorCategory와 normalizeId 결과 출력
-      base.categories.forEach((cat: RequirementCategory, index: number) => {
-        console.log(`Category ${index}:`, {
-          majorCategory: cat.majorCategory,
-          normalizedId: cat.majorCategory
-            ? normalizeId(cat.majorCategory)
-            : "undefined",
-          subCategories: cat.subCategories?.length || 0,
-        });
-      });
-
       const target = base.categories.find(
         (cat: RequirementCategory) =>
-          cat.majorCategory && normalizeId(cat.majorCategory) === categoryId
+          (cat.majorCategory &&
+            normalizeId(cat.majorCategory) === categoryId) ||
+          (cat.category && normalizeId(cat.category) === categoryId)
       );
 
-      console.log("target category found:", target);
-
       if (!target) {
-        console.log("target category를 찾을 수 없음, 빈 배열 반환");
         return [];
       }
 
       const flat = target.subCategories?.flatMap((sub) =>
         (sub.requirements || []).map((req: Requirement, index: number) => ({
-          id: req.id || `${target.majorCategory}-${sub.subCategory}-${index}`,
+          id:
+            req.id ||
+            `${target.majorCategory || target.category}-${
+              sub.subCategory || sub.subcategory
+            }-${index}`,
           title: req.title,
           description: req.description,
           category: categoryId,
@@ -326,8 +308,6 @@ function HomePageContent() {
         }))
       );
 
-      console.log("flat requirements:", flat);
-      console.log("===============================================");
       return flat || [];
     },
     [editableRequirements, extractedRequirements, normalizeId]
@@ -339,9 +319,11 @@ function HomePageContent() {
       const base = editableRequirements || extractedRequirements;
       const target = base?.categories?.find(
         (cat: RequirementCategory) =>
-          cat.majorCategory && normalizeId(cat.majorCategory) === categoryId
+          (cat.majorCategory &&
+            normalizeId(cat.majorCategory) === categoryId) ||
+          (cat.category && normalizeId(cat.category) === categoryId)
       );
-      return target?.majorCategory || "기타";
+      return target?.majorCategory || target?.category || "기타";
     },
     [editableRequirements, extractedRequirements, normalizeId]
   );

@@ -13,9 +13,11 @@ export interface Requirement {
 }
 
 export interface RequirementCategory {
-  majorCategory: string; // 대분류
+  category: string; // 대분류 (백엔드 응답 구조에 맞춤)
+  majorCategory?: string; // 대분류 (기존 호환성을 위해 유지)
   subCategories: {
-    subCategory: string; // 중분류
+    subcategory: string; // 중분류 (백엔드 응답 구조에 맞춤)
+    subCategory?: string; // 중분류 (기존 호환성을 위해 유지)
     requirements: Requirement[]; // 소분류
   }[];
 }
