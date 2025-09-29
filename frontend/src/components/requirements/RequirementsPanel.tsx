@@ -12,6 +12,7 @@ interface Requirement {
   priority: "high" | "medium" | "low";
   needsClarification?: boolean;
   clarificationQuestions?: string[];
+  status?: "draft" | "review" | "approved" | "rejected" | "implemented";
 }
 
 interface RequirementsPanelProps {
@@ -90,12 +91,16 @@ export function RequirementsPanel({
                 };
               }
 
+              // 편집된 요구사항의 경우 needsClarification을 false로 강제 설정
+              const isEdited =
+                req.status === "approved" || req.needsClarification === false;
+
               return {
                 id:
                   req.id ||
                   `${majorCategory.majorCategory || majorCategory.category}-${
                     subCategory.subCategory || subCategory.subcategory
-                  }-${index}`,
+                  }-${index}-${Date.now()}`,
                 title: req.title || "제목 없음",
                 description: req.description || "설명 없음",
                 category:
@@ -108,8 +113,13 @@ export function RequirementsPanel({
                     : req.priority === "medium"
                     ? ("medium" as const)
                     : ("low" as const),
-                needsClarification: req.needsClarification || false,
-                clarificationQuestions: req.clarificationQuestions || [],
+                needsClarification: isEdited
+                  ? false
+                  : req.needsClarification || false,
+                clarificationQuestions: isEdited
+                  ? []
+                  : req.clarificationQuestions || [],
+                status: req.status || "draft",
               };
             });
           });
@@ -161,6 +171,10 @@ export function RequirementsPanel({
   console.log(
     "RequirementsPanel - allRequirements with needsClarification true:",
     allRequirements.filter((req) => req.needsClarification === true)
+  );
+  console.log(
+    "RequirementsPanel - allRequirements with status approved:",
+    allRequirements.filter((req) => req.status === "approved")
   );
 
   // needsClarification이 true인 요구사항들을 별도로 분리

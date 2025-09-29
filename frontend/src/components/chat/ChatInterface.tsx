@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { MessageBubble } from "./MessageBubble";
 import { ChatInput } from "./ChatInput";
 import { TypingIndicator } from "./TypingIndicator";
@@ -88,6 +88,16 @@ export function ChatInterface({
   const [isTyping, setIsTyping] = useState(false);
   const [previousStep, setPreviousStep] = useState(currentStep);
 
+  // 스크롤 영역 참조
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // 스크롤을 최하단으로 이동하는 함수
+  const scrollToBottom = useCallback(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, []);
+
   // currentStep 변경 로그
   // useEffect(() => {
   //   console.log("ChatInterface - currentStep 변경:", currentStep);
@@ -107,6 +117,18 @@ export function ChatInterface({
 
   // 외부에서 전달된 메시지가 있으면 사용, 없으면 내부 상태 사용
   const messages = externalMessages || internalMessages;
+
+  // 메시지가 변경될 때마다 스크롤을 최하단으로 이동
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, scrollToBottom]);
+
+  // 타이핑 인디케이터가 변경될 때도 스크롤 이동
+  useEffect(() => {
+    if (isTyping) {
+      scrollToBottom();
+    }
+  }, [isTyping, scrollToBottom]);
 
   // 단계 전환 시 AI 메시지 추가
   useEffect(() => {
@@ -316,6 +338,9 @@ export function ChatInterface({
 
         {/* Typing Indicator */}
         {isTyping && <TypingIndicator />}
+
+        {/* 스크롤 앵커 */}
+        <div ref={messagesEndRef} />
       </div>
 
       {/* Chat Input */}
