@@ -130,10 +130,9 @@ export class ChatService {
         headers: {
           'Content-Type': 'application/json',
           'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01'
         },
         body: JSON.stringify({
-          model: 'claude-3-5-sonnet-latest',
+          model: 'claude-3-5-sonnet-20241022',
           max_tokens: 4000,
           system: systemPrompt,
           messages: messages
@@ -159,7 +158,7 @@ export class ChatService {
           content: jsonResponse.content || responseText,
           metadata: { 
             timestamp: new Date().toISOString(),
-            model: 'claude-3-5-sonnet-latest'
+            model: 'claude-3-5-sonnet-20241022'
           },
           projectOverview: jsonResponse.projectOverview || null
         };
@@ -169,7 +168,7 @@ export class ChatService {
           content: responseText,
           metadata: { 
             timestamp: new Date().toISOString(),
-            model: 'claude-3-5-sonnet-latest'
+            model: 'claude-3-5-sonnet-20241022'
           },
           projectOverview: null
         };
@@ -224,10 +223,9 @@ export class ChatService {
         headers: {
           'Content-Type': 'application/json',
           'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01'
         },
         body: JSON.stringify({
-          model: 'claude-3-5-sonnet-latest',
+          model: 'claude-3-5-sonnet-20241022',
           max_tokens: 4000,
           system: systemPrompt,
           messages: [
@@ -316,10 +314,9 @@ ${conversationText}
         headers: {
           'Content-Type': 'application/json',
           'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01'
         },
         body: JSON.stringify({
-          model: 'claude-3-5-sonnet-latest',
+          model: 'claude-3-5-sonnet-20241022',
           max_tokens: 4000,
           system: systemPrompt,
           messages: [
