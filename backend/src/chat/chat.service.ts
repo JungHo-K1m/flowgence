@@ -178,9 +178,22 @@ export class ChatService {
       console.log('응답 텍스트:', responseText);
       console.log('응답 길이:', responseText.length);
       
+      // 마크다운 코드 블록에서 JSON 추출
+      let jsonText = responseText;
+      
+      // ```json ... ``` 형태의 코드 블록에서 JSON 추출
+      const jsonBlockMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/);
+      if (jsonBlockMatch) {
+        jsonText = jsonBlockMatch[1];
+        console.log('코드 블록에서 JSON 추출:', jsonText.substring(0, 200) + '...');
+      } else {
+        // 코드 블록이 없는 경우 원본 텍스트 사용
+        console.log('코드 블록 없음, 원본 텍스트 사용');
+      }
+      
       // JSON 응답 파싱 시도
       try {
-        const jsonResponse = JSON.parse(responseText);
+        const jsonResponse = JSON.parse(jsonText);
         console.log('JSON 파싱 성공:', jsonResponse);
         console.log('projectOverview 존재:', !!jsonResponse.projectOverview);
         
@@ -194,7 +207,8 @@ export class ChatService {
         };
       } catch (parseError) {
         console.log('JSON 파싱 실패:', parseError.message);
-        console.log('원본 응답 텍스트:', responseText);
+        console.log('추출된 JSON 텍스트:', jsonText.substring(0, 500));
+        console.log('원본 응답 텍스트:', responseText.substring(0, 500));
         
         // JSON 파싱 실패 시 기본 응답
         return {
