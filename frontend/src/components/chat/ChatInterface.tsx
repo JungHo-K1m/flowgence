@@ -215,23 +215,6 @@ export function ChatInterface({
     try {
       // 프로젝트 개요 업데이트 트리거 (실제 API 호출은 useProjectOverview에서 처리)
       if (onProjectUpdate) {
-        // 간단한 응답 메시지 생성
-        const aiMessage = {
-          id: `ai-${Date.now()}`,
-          type: "ai" as const,
-          content:
-            "프로젝트 정보를 업데이트하고 있습니다. 잠시만 기다려주세요...",
-          icon: "🤖",
-        };
-
-        const finalMessages = [...updatedMessages, aiMessage];
-
-        if (onMessagesChange) {
-          onMessagesChange(finalMessages);
-        } else {
-          setInternalMessages(finalMessages);
-        }
-
         // 프로젝트 개요 업데이트 콜백 호출 (실제 API 호출은 부모 컴포넌트에서 처리)
         onProjectUpdate({
           description: message,
