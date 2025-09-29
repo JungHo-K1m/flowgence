@@ -583,6 +583,7 @@ function HomePageContent() {
               // 새 항목은 첫 번째 중분류에 추가 (추후 UI에서 이동 기능 추가 가능)
               if (newSubCategories.length === 0) {
                 newSubCategories.push({
+                  subcategory: "기본",
                   subCategory: "기본",
                   requirements: [],
                 });
