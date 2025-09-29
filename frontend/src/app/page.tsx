@@ -1276,7 +1276,7 @@ function HomePageContent() {
                       chatMessages,
                     }}
                     requirementsData={
-                      editableRequirements || extractedRequirements
+                      editableRequirements || extractedRequirements || undefined
                     }
                     onOpenEditModal={(category) => {
                       setEditingCategory(category);
