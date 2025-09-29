@@ -241,6 +241,8 @@ export class ChatService {
     const systemPrompt = `당신은 SI 프로젝트 요구사항 분석 전문가입니다.
 대화 내용을 분석하여 요구사항을 추출하고 계층적으로 분류해주세요.
 
+중요: 응답은 반드시 유효한 JSON 형식이어야 하며, 다른 텍스트나 설명은 포함하지 마세요.
+
 응답 형식:
 {
   "categories": [
@@ -303,11 +305,31 @@ export class ChatService {
 
       const responseText = data.content[0].text;
       
+      console.log('=== 요구사항 추출 API 응답 디버깅 ===');
+      console.log('응답 텍스트:', responseText.substring(0, 300) + '...');
+      console.log('응답 길이:', responseText.length);
+      
+      // 마크다운 코드 블록에서 JSON 추출
+      let jsonText = responseText;
+      
+      // ```json ... ``` 형태의 코드 블록에서 JSON 추출
+      const jsonBlockMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/);
+      if (jsonBlockMatch) {
+        jsonText = jsonBlockMatch[1];
+        console.log('코드 블록에서 JSON 추출 성공:', jsonText.substring(0, 200) + '...');
+      } else {
+        console.log('코드 블록 없음, 원본 텍스트 사용');
+      }
+      
       // JSON 응답 파싱
       try {
-        return JSON.parse(responseText);
+        const result = JSON.parse(jsonText);
+        console.log('요구사항 추출 JSON 파싱 성공');
+        return result;
       } catch (parseError) {
         console.error('JSON 파싱 오류:', parseError);
+        console.error('추출된 JSON 텍스트:', jsonText.substring(0, 500));
+        console.error('원본 응답 텍스트:', responseText.substring(0, 500));
         throw new Error('요구사항 추출 응답 파싱 실패');
       }
     } catch (error) {
@@ -330,6 +352,8 @@ export class ChatService {
 
     const systemPrompt = `당신은 SI 프로젝트 요구사항 분석 전문가입니다.
 기존 요구사항과 새로운 대화 내용을 분석하여 요구사항을 업데이트해주세요.
+
+중요: 응답은 반드시 유효한 JSON 형식이어야 하며, 다른 텍스트나 설명은 포함하지 마세요.
 
 기존 요구사항:
 ${JSON.stringify(existingRequirements, null, 2)}
@@ -401,11 +425,31 @@ ${conversationText}
 
       const responseText = data.content[0].text;
       
+      console.log('=== 요구사항 업데이트 API 응답 디버깅 ===');
+      console.log('응답 텍스트:', responseText.substring(0, 300) + '...');
+      console.log('응답 길이:', responseText.length);
+      
+      // 마크다운 코드 블록에서 JSON 추출
+      let jsonText = responseText;
+      
+      // ```json ... ``` 형태의 코드 블록에서 JSON 추출
+      const jsonBlockMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/);
+      if (jsonBlockMatch) {
+        jsonText = jsonBlockMatch[1];
+        console.log('코드 블록에서 JSON 추출 성공:', jsonText.substring(0, 200) + '...');
+      } else {
+        console.log('코드 블록 없음, 원본 텍스트 사용');
+      }
+      
       // JSON 응답 파싱
       try {
-        return JSON.parse(responseText);
+        const result = JSON.parse(jsonText);
+        console.log('요구사항 업데이트 JSON 파싱 성공');
+        return result;
       } catch (parseError) {
         console.error('JSON 파싱 오류:', parseError);
+        console.error('추출된 JSON 텍스트:', jsonText.substring(0, 500));
+        console.error('원본 응답 텍스트:', responseText.substring(0, 500));
         throw new Error('요구사항 업데이트 응답 파싱 실패');
       }
     } catch (error) {
