@@ -246,9 +246,9 @@ export function RequirementsPanel({
       <div className="border-b border-gray-200 p-4">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold text-gray-900">
-            {extractedRequirements ? "AI 추출 요구사항" : "요구사항 카드"}
+            {requirementsData ? "AI 추출 요구사항" : "요구사항 카드"}
           </h2>
-          {extractedRequirements && (
+          {requirementsData && (
             <div className="text-sm text-gray-600">
               총 {allRequirements.length}개 요구사항
               {needsClarificationRequirements.length > 0 && (
