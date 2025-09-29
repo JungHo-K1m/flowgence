@@ -63,5 +63,10 @@ async function bootstrap() {
   console.log(`📚 API Documentation: http://0.0.0.0:${port}/api`);
   console.log(`🔍 Health check: http://0.0.0.0:${port}/api/health`);
   console.log(`✅ Server started successfully on port ${port}`);
+  
+  // Railway 헬스체크를 위한 추가 대기 시간
+  console.log(`⏳ Waiting for health check readiness...`);
+  await new Promise(resolve => setTimeout(resolve, 2000));
+  console.log(`🎯 Server is ready for health checks`);
 }
 bootstrap();
