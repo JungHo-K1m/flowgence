@@ -9,8 +9,9 @@ export function useChat() {
     setIsLoading(true);
     
     try {
-      // 백엔드 API 호출
-      const response = await fetch('http://localhost:3001/api/chat/message', {
+      // Railway 백엔드 API 호출
+      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+      const response = await fetch(`${backendUrl}/chat/message`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
