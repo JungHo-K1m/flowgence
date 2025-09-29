@@ -133,7 +133,7 @@ export class ChatService {
           'anthropic-version': '2023-06-01'
         },
         body: JSON.stringify({
-          model: 'claude-3-5-sonnet-20241022',
+          model: 'claude-3-5-sonnet-20240620',
           max_tokens: 4000,
           system: systemPrompt,
           messages: messages
@@ -165,7 +165,7 @@ export class ChatService {
           content: jsonResponse.content || responseText,
           metadata: { 
             timestamp: new Date().toISOString(),
-            model: 'claude-3-5-sonnet-20241022'
+            model: 'claude-3-5-sonnet-20240620'
           },
           projectOverview: jsonResponse.projectOverview || null
         };
@@ -175,7 +175,7 @@ export class ChatService {
           content: responseText,
           metadata: { 
             timestamp: new Date().toISOString(),
-            model: 'claude-3-5-sonnet-20241022'
+            model: 'claude-3-5-sonnet-20240620'
           },
           projectOverview: null
         };
@@ -233,7 +233,7 @@ export class ChatService {
           'anthropic-version': '2023-06-01'
         },
         body: JSON.stringify({
-          model: 'claude-3-5-sonnet-20241022',
+          model: 'claude-3-5-sonnet-20240620',
           max_tokens: 4000,
           system: systemPrompt,
           messages: [
@@ -331,7 +331,7 @@ ${conversationText}
           'anthropic-version': '2023-06-01'
         },
         body: JSON.stringify({
-          model: 'claude-3-5-sonnet-20241022',
+          model: 'claude-3-5-sonnet-20240620',
           max_tokens: 4000,
           system: systemPrompt,
           messages: [

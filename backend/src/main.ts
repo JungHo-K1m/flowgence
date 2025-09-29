@@ -66,7 +66,20 @@ async function bootstrap() {
   
   // Railway 헬스체크를 위한 추가 대기 시간
   console.log(`⏳ Waiting for health check readiness...`);
-  await new Promise(resolve => setTimeout(resolve, 2000));
+  await new Promise(resolve => setTimeout(resolve, 5000));
   console.log(`🎯 Server is ready for health checks`);
+  
+  // 추가 안정성 확인
+  console.log(`🔍 Testing health endpoint...`);
+  try {
+    const testResponse = await fetch(`http://localhost:${port}/api/health`);
+    if (testResponse.ok) {
+      console.log(`✅ Health endpoint is working`);
+    } else {
+      console.log(`⚠️ Health endpoint returned: ${testResponse.status}`);
+    }
+  } catch (error) {
+    console.log(`⚠️ Health endpoint test failed:`, error.message);
+  }
 }
 bootstrap();
