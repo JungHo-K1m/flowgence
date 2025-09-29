@@ -51,10 +51,17 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
 
   const port = process.env.PORT || 3001;
+  
+  // Railway 환경에서 포트 확인
+  console.log(`🔧 Environment: ${process.env.NODE_ENV}`);
+  console.log(`🔧 PORT from env: ${process.env.PORT}`);
+  console.log(`🔧 Using port: ${port}`);
+  
   await app.listen(port, '0.0.0.0');
   
   console.log(`🚀 Backend server is running on: http://0.0.0.0:${port}`);
   console.log(`📚 API Documentation: http://0.0.0.0:${port}/api`);
   console.log(`🔍 Health check: http://0.0.0.0:${port}/api/health`);
+  console.log(`✅ Server started successfully on port ${port}`);
 }
 bootstrap();
