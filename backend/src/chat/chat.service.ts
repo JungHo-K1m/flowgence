@@ -130,6 +130,7 @@ export class ChatService {
         headers: {
           'Content-Type': 'application/json',
           'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01'
         },
         body: JSON.stringify({
           model: 'claude-3-5-sonnet-20241022',
@@ -140,7 +141,13 @@ export class ChatService {
       });
 
       if (!response.ok) {
-        throw new Error(`Claude API error: ${response.status}`);
+        const errorText = await response.text();
+        console.error('Claude API error details:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText
+        });
+        throw new Error(`Claude API error: ${response.status} - ${errorText}`);
       }
 
       const data = await response.json();
@@ -223,6 +230,7 @@ export class ChatService {
         headers: {
           'Content-Type': 'application/json',
           'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01'
         },
         body: JSON.stringify({
           model: 'claude-3-5-sonnet-20241022',
@@ -238,7 +246,13 @@ export class ChatService {
       });
 
       if (!response.ok) {
-        throw new Error(`Claude API error: ${response.status}`);
+        const errorText = await response.text();
+        console.error('Claude API error details:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText
+        });
+        throw new Error(`Claude API error: ${response.status} - ${errorText}`);
       }
 
       const data = await response.json();
@@ -314,6 +328,7 @@ ${conversationText}
         headers: {
           'Content-Type': 'application/json',
           'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01'
         },
         body: JSON.stringify({
           model: 'claude-3-5-sonnet-20241022',
@@ -329,7 +344,13 @@ ${conversationText}
       });
 
       if (!response.ok) {
-        throw new Error(`Claude API error: ${response.status}`);
+        const errorText = await response.text();
+        console.error('Claude API error details:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText
+        });
+        throw new Error(`Claude API error: ${response.status} - ${errorText}`);
       }
 
       const data = await response.json();
