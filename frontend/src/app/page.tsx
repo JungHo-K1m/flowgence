@@ -339,11 +339,22 @@ function HomePageContent() {
       return {
         ...requirements,
         categories: requirements.categories.map(
-          (category: RequirementCategory) =>
-            category.majorCategory &&
-            normalizeId(category.majorCategory) === categoryId
-              ? { ...category, majorCategory: newTitle }
-              : category
+          (category: RequirementCategory) => {
+            const matchesMajorCategory =
+              category.majorCategory &&
+              normalizeId(category.majorCategory) === categoryId;
+            const matchesCategory =
+              category.category &&
+              normalizeId(category.category) === categoryId;
+
+            if (matchesMajorCategory) {
+              return { ...category, majorCategory: newTitle };
+            } else if (matchesCategory) {
+              return { ...category, category: newTitle };
+            } else {
+              return category;
+            }
+          }
         ),
       };
     },
@@ -470,7 +481,9 @@ function HomePageContent() {
 
       const targetCategory = base.categories.find(
         (cat: RequirementCategory) =>
-          cat.majorCategory && normalizeId(cat.majorCategory) === categoryId
+          (cat.majorCategory &&
+            normalizeId(cat.majorCategory) === categoryId) ||
+          (cat.category && normalizeId(cat.category) === categoryId)
       );
 
       if (targetCategory) {
@@ -481,7 +494,10 @@ function HomePageContent() {
 
         setCategoryToDelete({
           id: categoryId,
-          title: targetCategory.majorCategory,
+          title:
+            targetCategory.majorCategory ||
+            targetCategory.category ||
+            "Unknown Category",
           requirementCount,
         });
         setShowCategoryDeleteModal(true);
@@ -509,8 +525,11 @@ function HomePageContent() {
         ...base,
         categories: base.categories.map((cat: RequirementCategory) => {
           if (
-            !cat.majorCategory ||
-            normalizeId(cat.majorCategory) !== categoryId
+            !(
+              (cat.majorCategory &&
+                normalizeId(cat.majorCategory) === categoryId) ||
+              (cat.category && normalizeId(cat.category) === categoryId)
+            )
           )
             return cat;
 
