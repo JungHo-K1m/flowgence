@@ -98,6 +98,13 @@ export function ChatInterface({
     }
   }, []);
 
+  // 강제로 스크롤을 최하단으로 이동하는 함수 (즉시 실행)
+  const forceScrollToBottom = useCallback(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "auto" });
+    }
+  }, []);
+
   // currentStep 변경 로그
   // useEffect(() => {
   //   console.log("ChatInterface - currentStep 변경:", currentStep);
@@ -120,15 +127,19 @@ export function ChatInterface({
 
   // 메시지가 변경될 때마다 스크롤을 최하단으로 이동
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, scrollToBottom]);
+    setTimeout(() => {
+      forceScrollToBottom();
+    }, 100);
+  }, [messages, forceScrollToBottom]);
 
   // 타이핑 인디케이터가 변경될 때도 스크롤 이동
   useEffect(() => {
     if (isTyping) {
-      scrollToBottom();
+      setTimeout(() => {
+        forceScrollToBottom();
+      }, 50);
     }
-  }, [isTyping, scrollToBottom]);
+  }, [isTyping, forceScrollToBottom]);
 
   // 단계 전환 시 AI 메시지 추가
   useEffect(() => {
@@ -170,6 +181,11 @@ export function ChatInterface({
         } else {
           setInternalMessages((prev: Message[]) => [...prev, stepMessage]);
         }
+
+        // 단계 전환 시 스크롤을 하단으로 이동
+        setTimeout(() => {
+          forceScrollToBottom();
+        }, 100);
       }
 
       setPreviousStep(currentStep);
@@ -210,6 +226,11 @@ export function ChatInterface({
 
       // 타이핑 인디케이터 숨기기
       setIsTyping(false);
+
+      // AI 응답 완료 시 스크롤을 하단으로 이동
+      setTimeout(() => {
+        forceScrollToBottom();
+      }, 100);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [aiResponse, onMessagesChange]);
@@ -230,6 +251,11 @@ export function ChatInterface({
     } else {
       setInternalMessages(updatedMessages);
     }
+
+    // 사용자 메시지 전송 시 스크롤을 하단으로 이동
+    setTimeout(() => {
+      forceScrollToBottom();
+    }, 50);
 
     // 타이핑 인디케이터 표시
     setIsTyping(true);
