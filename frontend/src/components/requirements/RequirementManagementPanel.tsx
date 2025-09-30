@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { InlineEditInput } from "./InlineEditInput";
@@ -42,13 +42,19 @@ export function RequirementManagementPanel({
   isSaving = false,
   saveError = null,
 }: RequirementManagementPanelProps) {
-  const [editingRequirement, setEditingRequirement] = useState<string | null>(
-    null
-  );
   const [savingStates, setSavingStates] = useState<Record<string, boolean>>({});
   const [errorStates, setErrorStates] = useState<Record<string, string | null>>(
     {}
   );
+
+  // 로컬 상태로 요구사항 관리 (즉시 UI 반영을 위해)
+  const [localRequirements, setLocalRequirements] =
+    useState<Requirement[]>(requirements);
+
+  // requirements prop이 변경되면 로컬 상태도 업데이트
+  useEffect(() => {
+    setLocalRequirements(requirements);
+  }, [requirements]);
 
   const handleTitleEdit = async (
     requirement: Requirement,
@@ -67,8 +73,16 @@ export function RequirementManagementPanel({
         needsClarification: false,
         clarificationQuestions: [],
       };
+
+      // 로컬 상태 즉시 업데이트 (UI 즉시 반영)
+      setLocalRequirements((prev) =>
+        prev.map((req) =>
+          req.id === requirement.id ? updatedRequirement : req
+        )
+      );
+
+      // 서버에 저장
       await onUpdateRequirement(updatedRequirement);
-      setEditingRequirement(null);
     } catch (error) {
       setErrorStates((prev) => ({
         ...prev,
@@ -97,8 +111,16 @@ export function RequirementManagementPanel({
         needsClarification: false,
         clarificationQuestions: [],
       };
+
+      // 로컬 상태 즉시 업데이트 (UI 즉시 반영)
+      setLocalRequirements((prev) =>
+        prev.map((req) =>
+          req.id === requirement.id ? updatedRequirement : req
+        )
+      );
+
+      // 서버에 저장
       await onUpdateRequirement(updatedRequirement);
-      setEditingRequirement(null);
     } catch (error) {
       setErrorStates((prev) => ({
         ...prev,
@@ -155,7 +177,6 @@ export function RequirementManagementPanel({
             onSave={handleCategoryTitleEdit}
             className="text-lg font-semibold text-gray-900"
             placeholder="카테고리 제목"
-            isSaving={isSaving}
             saveError={saveError}
           />
           <div className="flex items-center space-x-2">
@@ -187,7 +208,7 @@ export function RequirementManagementPanel({
 
       {/* Requirements List */}
       <div className="flex-1 overflow-y-auto p-3 space-y-3">
-        {requirements.length === 0 ? (
+        {localRequirements.length === 0 ? (
           <div className="text-center text-gray-500 py-8">
             <p className="mb-4">아직 추가된 요구사항이 없습니다.</p>
             <p className="text-sm">
@@ -195,7 +216,7 @@ export function RequirementManagementPanel({
             </p>
           </div>
         ) : (
-          requirements.map((requirement) => (
+          localRequirements.map((requirement) => (
             <div
               key={requirement.id}
               className="p-4 bg-white border border-gray-200 rounded-lg hover:shadow-sm transition-shadow"
@@ -211,8 +232,8 @@ export function RequirementManagementPanel({
                       }
                       className="font-medium text-gray-900"
                       placeholder="요구사항 제목"
-                      isSaving={savingStates[`${requirement.id}-title`]}
                       saveError={errorStates[`${requirement.id}-title`]}
+                      showEditButton={true}
                     />
                   </div>
 
@@ -226,8 +247,8 @@ export function RequirementManagementPanel({
                       className="text-sm text-gray-600"
                       placeholder="요구사항 설명"
                       multiline
-                      isSaving={savingStates[`${requirement.id}-description`]}
                       saveError={errorStates[`${requirement.id}-description`]}
+                      showEditButton={true}
                     />
                   </div>
 
@@ -298,13 +319,18 @@ export function RequirementManagementPanel({
                             console.error("상태 변경 실패:", error);
                           }
                         }}
-                        className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 text-xs"
+                        className="p-1 hover:opacity-70 transition-opacity"
                         disabled={
                           savingStates[`${requirement.id}-title`] ||
                           savingStates[`${requirement.id}-description`]
                         }
                       >
-                        ✓ 승인
+                        <Image
+                          src="/images/edit-icon.png"
+                          alt="승인"
+                          width={14}
+                          height={14}
+                        />
                       </Button>
                     )}
 
@@ -319,7 +345,7 @@ export function RequirementManagementPanel({
                         console.error("삭제 실패:", error);
                       }
                     }}
-                    className="p-1 hover:opacity-70 transition-opacity"
+                    className="p-1 transition-opacity"
                     disabled={
                       savingStates[`${requirement.id}-title`] ||
                       savingStates[`${requirement.id}-description`]

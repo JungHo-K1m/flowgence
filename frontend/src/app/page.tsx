@@ -110,6 +110,7 @@ function HomePageContent() {
     isLoading: isSaving,
     error: saveError,
     savedProjectId,
+    getProjectData,
   } = useProjectStorage();
 
   // 요구사항 편집 모달 상태
@@ -736,6 +737,7 @@ function HomePageContent() {
       // });
 
       if (user && !loading) {
+        // 로그인 유도 후 로그인한 사용자만 복구 (tempState가 있는 경우)
         if (hasTempState && tempState?.projectData) {
           // console.log("로그인 후 상태 복원 시작:", tempState);
 
@@ -755,8 +757,10 @@ function HomePageContent() {
               setChatMessages(projectData.chatMessages || []);
 
               // 요구사항 데이터 복원
-              if (result.extractedRequirements) {
-                setEditableRequirements(result.extractedRequirements);
+              if (result.existingProjectData?.requirements) {
+                setEditableRequirements(
+                  result.existingProjectData.requirements
+                );
               }
 
               // 채팅 인터페이스가 활성화되어 있었다면 복원
@@ -872,6 +876,14 @@ function HomePageContent() {
 
   useEffect(() => {
     const handleRequirementsExtraction = async () => {
+      // 로그인 유도 후 로그인한 사용자는 이미 복구되었으므로 API 요청하지 않음
+      if (user && hasTempState) {
+        console.log(
+          "로그인 유도 후 로그인한 사용자 - 복구 완료, API 요청 생략"
+        );
+        return;
+      }
+
       // 2단계이고 요구사항이 없고 아직 추출하지 않았으면 추출 실행
       if (
         currentStep === 2 &&
@@ -937,6 +949,7 @@ function HomePageContent() {
     overview,
     chatMessages,
     user,
+    hasTempState,
   ]);
 
   const steps = [

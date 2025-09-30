@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import Image from "next/image";
 
 interface InlineEditInputProps {
   value: string;
@@ -10,9 +11,9 @@ interface InlineEditInputProps {
   className?: string;
   placeholder?: string;
   multiline?: boolean;
-  isSaving?: boolean;
   saveError?: string | null;
   disabled?: boolean;
+  showEditButton?: boolean;
 }
 
 export function InlineEditInput({
@@ -22,9 +23,9 @@ export function InlineEditInput({
   className = "",
   placeholder = "",
   multiline = false,
-  isSaving = false,
   saveError = null,
   disabled = false,
+  showEditButton = false,
 }: InlineEditInputProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(value);
@@ -180,28 +181,35 @@ export function InlineEditInput({
 
   // 표시 모드
   return (
-    <div className="relative group">
+    <div className="flex items-center space-x-2">
       <span
-        className={`cursor-pointer hover:text-blue-600 transition-colors ${className} ${
+        className={`${
+          showEditButton
+            ? "cursor-default"
+            : "cursor-pointer hover:text-blue-600"
+        } transition-colors ${className} ${
           disabled ? "cursor-not-allowed opacity-50" : ""
         }`}
-        onClick={handleStartEdit}
+        onClick={showEditButton ? undefined : handleStartEdit}
       >
         {value || placeholder}
       </span>
 
-      {/* 편집 아이콘 (호버 시 표시) */}
-      {!disabled && (
-        <span className="absolute -right-8 top-0 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 text-sm">
-          ✏️
-        </span>
-      )}
-
-      {/* 저장 상태 표시 */}
-      {isSaving && (
-        <span className="absolute -right-14 top-0 text-blue-500 text-sm">
-          💾
-        </span>
+      {/* 편집 버튼 (showEditButton이 true일 때만 표시) */}
+      {showEditButton && !disabled && (
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={handleStartEdit}
+          className="p-1 hover:opacity-70 transition-opacity"
+        >
+          <Image
+            src="/images/edit-icon.png"
+            alt="편집"
+            width={14}
+            height={14}
+          />
+        </Button>
       )}
     </div>
   );

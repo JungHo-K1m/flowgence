@@ -406,51 +406,11 @@ export function RequirementsPanel({
                               console.log("새 요구사항 추가");
                             });
                           }}
-                          className="px-3 py-1 text-xs bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors"
+                          className="px-3 py-1 text-sm font-medium text-[#4F46E5] rounded hover:bg-purple-700 transition-colors"
                           title="새 요구사항 추가"
                         >
                           + 새 요구사항
                         </button>
-                      )}
-
-                    {/* 편집 버튼 */}
-                    {category.id !== "needs_clarification" &&
-                      onOpenEditModal && (
-                        <div
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onOpenEditModal(category.id);
-                          }}
-                          className="p-1 hover:opacity-70 transition-opacity cursor-pointer"
-                          title="카테고리 편집"
-                        >
-                          <Image
-                            src="/images/edit-icon.png"
-                            alt="편집"
-                            width={14}
-                            height={14}
-                          />
-                        </div>
-                      )}
-
-                    {/* 중분류 삭제 버튼 (결정 필요 카테고리 제외) */}
-                    {category.id !== "needs_clarification" &&
-                      onDeleteCategory && (
-                        <div
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onDeleteCategory(category.id);
-                          }}
-                          className="p-1 hover:opacity-70 transition-opacity cursor-pointer"
-                          title="카테고리 삭제"
-                        >
-                          <Image
-                            src="/images/delete-icon.png"
-                            alt="삭제"
-                            width={14}
-                            height={14}
-                          />
-                        </div>
                       )}
                   </div>
                 </div>

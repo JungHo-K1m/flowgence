@@ -10,7 +10,7 @@ import { ChatMessageData } from "@/types/chat";
 export function useAuthGuard() {
   const { user, loading } = useAuthContext();
   const { saveState, tempState, clearState } = useStatePersistence();
-  const { saveProjectWithMessages, saveRequirements } = useProjectStorage();
+  const { saveProjectWithMessages, saveRequirements, getProjectData } = useProjectStorage();
   const { extractRequirements } = useRequirementsExtraction();
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [isProcessingLogin, setIsProcessingLogin] = useState(false);
@@ -82,37 +82,44 @@ export function useAuthGuard() {
       if (projectResult.status === 'success') {
         console.log('프로젝트 저장 성공:', projectResult.project_id);
         
-        // 2. 요구사항 추출 및 저장 (채팅 메시지가 있는 경우)
-        let extractedRequirements = null;
-        if (projectData.chatMessages && projectData.chatMessages.length > 0) {
-          try {
-            console.log('요구사항 추출 시작');
-            extractedRequirements = await extractRequirements(
-              {
-                description: projectData.description,
-                serviceType: projectData.serviceType,
-                uploadedFiles: projectData.uploadedFiles || [],
-                projectOverview: projectData.projectOverview, // 프로젝트 개요 추가
-              },
-              projectData.chatMessages.map((msg: { type: string; content: string }) => ({
-                type: (msg.type === 'ai' ? 'ai' : msg.type === 'user' ? 'user' : 'system') as 'user' | 'ai' | 'system',
-                content: msg.content
-              }))
-            );
+        // 2. 기존 프로젝트 데이터가 있는지 확인하고 가져오기
+        let existingProjectData = null;
+        try {
+          console.log('기존 프로젝트 데이터 확인 중...');
+          existingProjectData = await getProjectData(projectResult.project_id);
+          console.log('기존 프로젝트 데이터 로드 완료:', existingProjectData);
+        } catch (error) {
+          console.log('기존 프로젝트 데이터 없음 또는 로드 실패:', error);
+          // 기존 데이터가 없으면 새로 추출
+          if (projectData.chatMessages && projectData.chatMessages.length > 0) {
+            try {
+              console.log('새로운 요구사항 추출 시작');
+              const extractedRequirements = await extractRequirements(
+                {
+                  description: projectData.description,
+                  serviceType: projectData.serviceType,
+                  uploadedFiles: projectData.uploadedFiles || [],
+                  projectOverview: projectData.projectOverview,
+                },
+                projectData.chatMessages.map((msg: { type: string; content: string }) => ({
+                  type: (msg.type === 'ai' ? 'ai' : msg.type === 'user' ? 'user' : 'system') as 'user' | 'ai' | 'system',
+                  content: msg.content
+                }))
+              );
 
-            if (extractedRequirements) {
-              console.log('요구사항 저장 시작');
-              const requirementsResult = await saveRequirements(projectResult.project_id, extractedRequirements);
-              
-              if (requirementsResult.status === 'success') {
-                console.log('요구사항 저장 성공');
-              } else {
-                console.error('요구사항 저장 실패:', requirementsResult.message);
+              if (extractedRequirements) {
+                console.log('새로운 요구사항 저장 시작');
+                const requirementsResult = await saveRequirements(projectResult.project_id, extractedRequirements);
+                
+                if (requirementsResult.status === 'success') {
+                  console.log('새로운 요구사항 저장 성공');
+                } else {
+                  console.error('새로운 요구사항 저장 실패:', requirementsResult.message);
+                }
               }
+            } catch (extractError) {
+              console.error('새로운 요구사항 추출/저장 중 오류:', extractError);
             }
-          } catch (error) {
-            console.error('요구사항 추출/저장 중 오류:', error);
-            // 요구사항 추출 실패해도 프로젝트는 저장되었으므로 계속 진행
           }
         }
 
@@ -125,7 +132,7 @@ export function useAuthGuard() {
           projectId: projectResult.project_id,
           targetStep: targetStep || 2,
           projectData: projectData,
-          extractedRequirements: extractedRequirements
+          existingProjectData: existingProjectData
         };
       } else {
         console.error('프로젝트 저장 실패:', projectResult.message);
