@@ -56,31 +56,31 @@ function HomePageContent() {
   const [isRequirementsLoading, setIsRequirementsLoading] = useState(false);
   const [chatMessages, setChatMessages] = useState<Message[]>([]);
 
-  // 페이지 로드 시 스크롤 위치 조정 (단계별로 다르게 처리)
-  useEffect(() => {
-    // 채팅 UI가 있는 단계(2단계)에서는 스크롤하지 않음
-    if (showChatInterface && showRequirements) {
-      return; // 채팅 UI에서는 스크롤 위치 유지
-    }
+  // 페이지 로드 시 스크롤 위치 조정 제거 (전체 화면 레이아웃으로 변경)
+  // useEffect(() => {
+  //   // 채팅 UI가 있는 단계(2단계)에서는 스크롤하지 않음
+  //   if (showChatInterface && showRequirements) {
+  //     return; // 채팅 UI에서는 스크롤 위치 유지
+  //   }
 
-    // 메인 페이지(1단계)에서만 상단으로 스크롤
-    if (
-      !showChatInterface &&
-      !showRequirements &&
-      !showConfirmation &&
-      !showFinalResult
-    ) {
-      // 즉시 스크롤
-      window.scrollTo(0, 0);
+  //   // 메인 페이지(1단계)에서만 상단으로 스크롤
+  //   if (
+  //     !showChatInterface &&
+  //     !showRequirements &&
+  //     !showConfirmation &&
+  //     !showFinalResult
+  //   ) {
+  //     // 즉시 스크롤
+  //     window.scrollTo(0, 0);
 
-      // 추가적으로 약간의 지연 후에도 스크롤 (일부 브라우저에서 지연 로딩으로 인한 문제 방지)
-      const timeoutId = setTimeout(() => {
-        window.scrollTo(0, 0);
-      }, 100);
+  //     // 추가적으로 약간의 지연 후에도 스크롤 (일부 브라우저에서 지연 로딩으로 인한 문제 방지)
+  //     const timeoutId = setTimeout(() => {
+  //       window.scrollTo(0, 0);
+  //     }, 100);
 
-      return () => clearTimeout(timeoutId);
-    }
-  }, [showChatInterface, showRequirements, showConfirmation, showFinalResult]);
+  //     return () => clearTimeout(timeoutId);
+  //   }
+  // }, [showChatInterface, showRequirements, showConfirmation, showFinalResult]);
 
   // useProjectOverview 훅 사용
   const {
@@ -1231,7 +1231,7 @@ function HomePageContent() {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="flex-1 bg-white flex flex-col min-h-0">
       {/* Progress Bar - Show when any interface is active */}
       {(showChatInterface ||
         showRequirements ||
@@ -1245,83 +1245,79 @@ function HomePageContent() {
         !showRequirements &&
         !showConfirmation &&
         !showFinalResult && (
-          <div className="max-w-4xl mx-auto px-4 py-16">
-            <div className="text-center">
-              {/* Main Title */}
-              <h1 className="text-[48px] font-bold text-black mb-4">
-                당신이 만들고 싶은 서비스를 말하거나
-                <br /> 자료를 업로드해보세요!
-              </h1>
+          <div className="flex-1 flex flex-col items-center justify-center min-h-0">
+            <div className="max-w-4xl mx-auto px-4 py-8 w-full">
+              <div className="text-center">
+                {/* Main Title */}
+                <h1 className="text-[48px] font-bold text-black mb-4">
+                  당신이 만들고 싶은 서비스를 말하거나
+                  <br /> 자료를 업로드해보세요!
+                </h1>
 
-              {/* Subtitle */}
-              <p className="text-[20px] text-[#4B5563] mb-12 max-w-2xl mx-auto">
-                사업계획서 없이도 한 문장만 적어도 됩니다.
-                <br />
-                자료가 있다면 더 정확한 초안을 만들어 드려요.
-              </p>
+                {/* Subtitle */}
+                <p className="text-[16px] text-[#4B5563] mb-8 max-w-2xl mx-auto">
+                  사업계획서 없이도 한 문장만 적어도 됩니다.
+                  <br />
+                  자료가 있다면 더 정확한 초안을 만들어 드려요.
+                </p>
 
-              {/* Text Input Section */}
-              <div className="mb-8">
-                <div className="relative max-w-[760px] w-full mx-auto mb-8 px-4 sm:px-0">
-                  <div
-                    className="relative flex items-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden focus-within:ring-2 focus-within:border-blue-500"
-                    style={
-                      {
-                        "--tw-ring-color": "#6366F1",
-                      } as React.CSSProperties
-                    }
-                  >
-                    <input
-                      type="text"
-                      value={projectDescription}
-                      onChange={(e) => setProjectDescription(e.target.value)}
-                      placeholder="예: 음식 배달 앱을 만들고 싶어요"
-                      className="flex-1 px-6 py-4 bg-transparent border-0 focus:outline-none text-gray-700 placeholder-gray-500"
-                    />
-                    <button
-                      onClick={handleStart}
-                      className="bg-[#6366F1] text-white px-8 hover:bg-[#6366F1] transition-colors duration-200 font-medium m-2 rounded-lg h-[40px] flex items-center justify-center"
+                {/* Text Input Section */}
+                <div className="mb-6">
+                  <div className="relative max-w-[760px] w-full mx-auto mb-6 px-4 sm:px-0">
+                    <div
+                      className="relative flex items-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden focus-within:ring-2 focus-within:border-blue-500"
+                      style={
+                        {
+                          "--tw-ring-color": "#6366F1",
+                        } as React.CSSProperties
+                      }
                     >
-                      시작하기
-                    </button>
+                      <input
+                        type="text"
+                        value={projectDescription}
+                        onChange={(e) => setProjectDescription(e.target.value)}
+                        placeholder="예: 음식 배달 앱을 만들고 싶어요"
+                        className="flex-1 px-6 py-4 bg-transparent border-0 focus:outline-none text-gray-700 placeholder-gray-500"
+                      />
+                      <button
+                        onClick={handleStart}
+                        className="bg-[#6366F1] text-white px-8 hover:bg-[#6366F1] transition-colors duration-200 font-medium m-2 rounded-lg h-[40px] flex items-center justify-center"
+                      >
+                        시작하기
+                      </button>
+                    </div>
                   </div>
+
+                  {/* Service Type Buttons */}
+                  <ServiceTypeButtons
+                    onSelect={handleServiceTypeSelect}
+                    selectedType={selectedServiceType}
+                  />
                 </div>
 
-                {/* Service Type Buttons */}
-                <ServiceTypeButtons
-                  onSelect={handleServiceTypeSelect}
-                  selectedType={selectedServiceType}
-                />
-              </div>
+                {/* Separator */}
+                <div className="flex items-center justify-center mb-8">
+                  <span className="text-gray-500 font-medium">또는</span>
+                </div>
 
-              {/* Separator */}
-              <div className="flex items-center justify-center mb-8">
-                <span className="text-gray-500 font-medium">또는</span>
-              </div>
-
-              {/* File Upload Section */}
-              <div className="max-w-2xl mx-auto">
-                <FileUpload onFileSelect={handleFileSelect} />
+                {/* File Upload Section */}
+                <div className="max-w-2xl mx-auto">
+                  <FileUpload onFileSelect={handleFileSelect} />
+                </div>
               </div>
             </div>
           </div>
         )}
 
       {/* Chat Interface with Slide Animation - Hide in confirmation and final result steps */}
-      {!showConfirmation && !showFinalResult && (
-        <div
-          className={`transition-all duration-700 ease-in-out ${
-            showChatInterface
-              ? "opacity-100 translate-x-0"
-              : "opacity-0 -translate-x-full pointer-events-none"
-          }`}
-        >
-          <div className="flex h-screen">
+      {!showConfirmation && !showFinalResult && showChatInterface && (
+        <div className="flex-1 transition-all duration-700 ease-in-out opacity-100 translate-x-0">
+          <div className="flex h-full">
             {/* Left Chat Interface */}
             <div
-              className={`transition-all duration-700 ease-in-out ${
-                showChatInterface ? "translate-x-0" : "-translate-x-full"
-              } ${showRequirements ? "w-1/3" : "flex-1"}`}
+              className={`transition-all duration-700 ease-in-out translate-x-0 ${
+                showRequirements ? "w-1/3" : "flex-1"
+              }`}
             >
               <ChatInterface
                 initialMessage=""
@@ -1337,9 +1333,9 @@ function HomePageContent() {
 
             {/* Right Panel - Project Overview or Requirements */}
             <div
-              className={`border-l border-gray-200 transition-all duration-700 ease-in-out ${
-                showChatInterface ? "translate-x-0" : "translate-x-full"
-              } ${showRequirements ? "w-2/3" : "w-1/3"}`}
+              className={`border-l border-gray-200 transition-all duration-700 ease-in-out translate-x-0 ${
+                showRequirements ? "w-2/3" : "w-1/3"
+              }`}
             >
               {showRequirements ? (
                 isProcessing ? (
@@ -1398,7 +1394,7 @@ function HomePageContent() {
 
       {/* Confirmation Panel - Full Screen */}
       {showConfirmation && (
-        <div className="h-screen">
+        <div className="flex-1">
           <ConfirmationPanel
             onNextStep={handleNextStep}
             onPrevStep={handlePrevStep}
@@ -1417,7 +1413,7 @@ function HomePageContent() {
 
       {/* Final Result Panel - Full Screen */}
       {showFinalResult && (
-        <div className="h-screen">
+        <div className="flex-1">
           <RequirementsResultPanel
             projectData={{
               description: projectDescription,

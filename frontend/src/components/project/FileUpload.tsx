@@ -89,9 +89,6 @@ export function FileUpload({ onFileSelect, className = "" }: FileUploadProps) {
         <p className="text-lg font-medium text-gray-700 mb-2">
           파일이나 이미지를 여기로 끌어오세요
         </p>
-        <p className="text-sm text-gray-500 mb-4">
-          PDF, Word, Excel, 이미지 파일 지원
-        </p>
 
         {/* File Select Button */}
         <button

@@ -20,11 +20,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko">
-      <body className={`${inter.variable} font-sans antialiased`}>
+    <html lang="ko" className="h-full">
+      <body
+        className={`${inter.variable} font-sans antialiased h-full flex flex-col`}
+      >
         <AuthProvider>
           <Header />
-          {children}
+          <main className="flex-1 flex flex-col min-h-0">{children}</main>
         </AuthProvider>
       </body>
     </html>
