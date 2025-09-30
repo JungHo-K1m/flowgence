@@ -396,24 +396,21 @@ export function RequirementsPanel({
                   </div>
 
                   <div className="flex items-center space-x-2">
-                    {/* 중분류 삭제 버튼 (결정 필요 카테고리 제외) */}
-                    {category.id !== "needs_clarification" &&
-                      onDeleteCategory && (
-                        <div
+                    {/* 새 요구사항 버튼 (드롭다운이 열렸을 때만 표시) */}
+                    {expandedSections.has(category.id) &&
+                      category.id !== "needs_clarification" && (
+                        <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            onDeleteCategory(category.id);
+                            requireAuth(() => {
+                              console.log("새 요구사항 추가");
+                            });
                           }}
-                          className="p-1 hover:opacity-70 transition-opacity cursor-pointer"
-                          title="카테고리 삭제"
+                          className="px-3 py-1 text-xs bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors"
+                          title="새 요구사항 추가"
                         >
-                          <Image
-                            src="/images/delete-icon.png"
-                            alt="삭제"
-                            width={14}
-                            height={14}
-                          />
-                        </div>
+                          + 새 요구사항
+                        </button>
                       )}
 
                     {/* 편집 버튼 */}
@@ -430,6 +427,26 @@ export function RequirementsPanel({
                           <Image
                             src="/images/edit-icon.png"
                             alt="편집"
+                            width={14}
+                            height={14}
+                          />
+                        </div>
+                      )}
+
+                    {/* 중분류 삭제 버튼 (결정 필요 카테고리 제외) */}
+                    {category.id !== "needs_clarification" &&
+                      onDeleteCategory && (
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteCategory(category.id);
+                          }}
+                          className="p-1 hover:opacity-70 transition-opacity cursor-pointer"
+                          title="카테고리 삭제"
+                        >
+                          <Image
+                            src="/images/delete-icon.png"
+                            alt="삭제"
                             width={14}
                             height={14}
                           />
@@ -519,37 +536,23 @@ export function RequirementsPanel({
           이전 단계
         </button>
 
-        <div className="flex items-center space-x-4">
-          <button
-            onClick={() =>
-              requireAuth(() => {
-                // 새 요구사항 추가 로직
-                console.log("새 요구사항 추가");
-              })
-            }
-            className="px-4 py-2 text-purple-600 border border-purple-600 rounded-lg hover:bg-purple-50 transition-colors"
-          >
-            + 새 요구사항
-          </button>
-
-          <button
-            onClick={() => onNextStep?.()}
-            disabled={currentStep >= 4 || !isNextButtonEnabled || isLoading}
-            className={`px-6 py-3 rounded-lg transition-colors ${
+        <button
+          onClick={() => onNextStep?.()}
+          disabled={currentStep >= 4 || !isNextButtonEnabled || isLoading}
+          className={`px-6 py-3 rounded-lg transition-colors ${
+            currentStep >= 4 || !isNextButtonEnabled || isLoading
+              ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+              : "text-white"
+          }`}
+          style={{
+            backgroundColor:
               currentStep >= 4 || !isNextButtonEnabled || isLoading
-                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                : "text-white"
-            }`}
-            style={{
-              backgroundColor:
-                currentStep >= 4 || !isNextButtonEnabled || isLoading
-                  ? undefined
-                  : "#6366F1",
-            }}
-          >
-            {isLoading ? "처리 중..." : currentStep >= 4 ? "완료" : "다음 단계"}
-          </button>
-        </div>
+                ? undefined
+                : "#6366F1",
+          }}
+        >
+          {isLoading ? "처리 중..." : currentStep >= 4 ? "완료" : "다음 단계"}
+        </button>
       </div>
 
       {/* 로그인 안내 모달 */}

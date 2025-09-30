@@ -194,8 +194,8 @@ export function ProjectOverviewPanel({
         </div>
       </div>
 
-      {/* Tab Content - Scrollable Area */}
-      <div className="flex-1 overflow-y-auto p-4">
+      {/* Tab Content - Scrollable Area with Bottom Padding */}
+      <div className="flex-1 overflow-y-auto p-4 pb-20">
         {isLoading && !displayOverview ? (
           <div className="space-y-4">
             <LoadingSpinner />
@@ -550,7 +550,7 @@ export function ProjectOverviewPanel({
       </div>
 
       {/* Next Step Button */}
-      <div className="absolute bottom-4 right-4">
+      <div className="border-t border-gray-200 p-4 flex justify-end">
         <button
           onClick={onNextStep}
           disabled={currentStep >= 4 || !isButtonEnabled || isLoading}

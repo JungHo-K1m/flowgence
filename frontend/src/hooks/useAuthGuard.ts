@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useAuthContext } from "@/components/providers/AuthProvider";
 import { useStatePersistence } from "./useStatePersistence";
 import { useProjectStorage } from "./useProjectStorage";
@@ -14,6 +14,7 @@ export function useAuthGuard() {
   const { extractRequirements } = useRequirementsExtraction();
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [isProcessingLogin, setIsProcessingLogin] = useState(false);
+  const processingRef = useRef(false);
 
   // showLoginModal 상태 변경 감지
   // useEffect(() => {
@@ -32,20 +33,17 @@ export function useAuthGuard() {
       };
     }
 
-    // 이미 처리 중이면 기다림
-    if (isProcessingLogin) {
-      console.log('이미 처리 중 - 대기');
-      // 짧은 시간 대기 후 다시 시도
-      await new Promise(resolve => setTimeout(resolve, 100));
-      if (isProcessingLogin) {
-        return {
-          success: false,
-          error: '이미 처리 중입니다'
-        };
-      }
+    // 이미 처리 중이면 실패
+    if (processingRef.current) {
+      console.log('이미 처리 중 - 중복 실행 방지');
+      return {
+        success: false,
+        error: '이미 처리 중입니다'
+      };
     }
 
     try {
+      processingRef.current = true;
       setIsProcessingLogin(true);
       console.log('로그인 후 상태 처리 시작:', tempState);
 
@@ -143,6 +141,7 @@ export function useAuthGuard() {
         error: error instanceof Error ? error.message : 'Unknown error'
       };
     } finally {
+      processingRef.current = false;
       setIsProcessingLogin(false);
     }
   }, [user, tempState, isProcessingLogin, saveProjectWithMessages, saveRequirements, extractRequirements, clearState]);

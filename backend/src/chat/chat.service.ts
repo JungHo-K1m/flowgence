@@ -59,6 +59,42 @@ export class ChatService {
     }
   }
 
+  private parseRequirementsResponse(data: any) {
+    if (!data.content || !data.content[0] || !data.content[0].text) {
+      throw new Error('Invalid response format from Claude API');
+    }
+
+    const responseText = data.content[0].text;
+    
+    console.log('=== 요구사항 추출 API 응답 디버깅 ===');
+    console.log('응답 텍스트:', responseText.substring(0, 300) + '...');
+    console.log('응답 길이:', responseText.length);
+    
+    // 마크다운 코드 블록에서 JSON 추출
+    let jsonText = responseText;
+    
+    // ```json ... ``` 형태의 코드 블록에서 JSON 추출
+    const jsonBlockMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/);
+    if (jsonBlockMatch) {
+      jsonText = jsonBlockMatch[1];
+      console.log('코드 블록에서 JSON 추출 성공:', jsonText.substring(0, 200) + '...');
+    } else {
+      console.log('코드 블록 없음, 원본 텍스트 사용');
+    }
+    
+    // JSON 응답 파싱
+    try {
+      const result = JSON.parse(jsonText);
+      console.log('요구사항 추출 JSON 파싱 성공');
+      return result;
+    } catch (parseError) {
+      console.error('JSON 파싱 오류:', parseError);
+      console.error('추출된 JSON 텍스트:', jsonText.substring(0, 500));
+      console.error('원본 응답 텍스트:', responseText.substring(0, 500));
+      throw new Error('요구사항 추출 응답 파싱 실패');
+    }
+  }
+
   async updateRequirements(updateRequirementsDto: UpdateRequirementsDto) {
     try {
       const updatedRequirements = await this.updateRequirementsFromChat(
@@ -306,44 +342,45 @@ export class ChatService {
           statusText: response.statusText,
           error: errorText
         });
+        
+        // 500 에러의 경우 재시도 로직 추가
+        if (response.status === 500) {
+          console.log('Claude API 500 에러 - 재시도 시도');
+          // 짧은 지연 후 재시도
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          const retryResponse = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-api-key': apiKey,
+              'anthropic-version': '2023-06-01'
+            },
+            body: JSON.stringify({
+              model: 'claude-sonnet-4-20250514',
+              max_tokens: 4000,
+              system: systemPrompt,
+              messages: [
+                {
+                  role: 'user',
+                  content: `다음 대화 내용을 분석하여 요구사항을 추출해주세요:\n\n${conversationText}`
+                }
+              ]
+            })
+          });
+          
+          if (retryResponse.ok) {
+            console.log('재시도 성공');
+            const retryData = await retryResponse.json();
+            return this.parseRequirementsResponse(retryData);
+          }
+        }
+        
         throw new Error(`Claude API error: ${response.status} - ${errorText}`);
       }
 
       const data = await response.json();
-      
-      if (!data.content || !data.content[0] || !data.content[0].text) {
-        throw new Error('Invalid response format from Claude API');
-      }
-
-      const responseText = data.content[0].text;
-      
-      console.log('=== 요구사항 추출 API 응답 디버깅 ===');
-      console.log('응답 텍스트:', responseText.substring(0, 300) + '...');
-      console.log('응답 길이:', responseText.length);
-      
-      // 마크다운 코드 블록에서 JSON 추출
-      let jsonText = responseText;
-      
-      // ```json ... ``` 형태의 코드 블록에서 JSON 추출
-      const jsonBlockMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/);
-      if (jsonBlockMatch) {
-        jsonText = jsonBlockMatch[1];
-        console.log('코드 블록에서 JSON 추출 성공:', jsonText.substring(0, 200) + '...');
-      } else {
-        console.log('코드 블록 없음, 원본 텍스트 사용');
-      }
-      
-      // JSON 응답 파싱
-      try {
-        const result = JSON.parse(jsonText);
-        console.log('요구사항 추출 JSON 파싱 성공');
-        return result;
-      } catch (parseError) {
-        console.error('JSON 파싱 오류:', parseError);
-        console.error('추출된 JSON 텍스트:', jsonText.substring(0, 500));
-        console.error('원본 응답 텍스트:', responseText.substring(0, 500));
-        throw new Error('요구사항 추출 응답 파싱 실패');
-      }
+      return this.parseRequirementsResponse(data);
     } catch (error) {
       console.error('요구사항 추출 오류:', error);
       throw new Error(`요구사항 추출 실패: ${error.message}`);
