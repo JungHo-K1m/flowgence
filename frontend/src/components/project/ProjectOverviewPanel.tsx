@@ -105,13 +105,6 @@ export function ProjectOverviewPanel({
   // 버튼 활성화를 위한 상태 (realtimeOverview가 있으면 즉시 활성화)
   const isButtonEnabled = realtimeOverview ? true : !!overview && !isLoading;
 
-  // console.log("=== ProjectOverviewPanel 버튼 활성화 상태 ===");
-  // console.log("realtimeOverview:", !!realtimeOverview);
-  // console.log("overview:", !!overview);
-  // console.log("isLoading:", isLoading);
-  // console.log("isButtonEnabled:", isButtonEnabled);
-  // console.log("=============================================");
-
   // 수동으로 프로젝트 개요 생성하는 함수 (useCallback으로 최적화)
   const handleGenerateOverview = useCallback(() => {
     if (
@@ -167,9 +160,9 @@ export function ProjectOverviewPanel({
   );
 
   return (
-    <div className="h-full bg-white flex flex-col">
+    <div className="h-full bg-white flex flex-col max-h-screen">
       {/* Tab Header */}
-      <div className="border-b border-gray-200">
+      <div className="border-b border-gray-200 flex-shrink-0">
         <div className="flex">
           <button
             onClick={() => setActiveTab("elements")}
@@ -194,8 +187,8 @@ export function ProjectOverviewPanel({
         </div>
       </div>
 
-      {/* Tab Content - Scrollable Area with Bottom Padding */}
-      <div className="flex-1 overflow-y-auto p-4 pb-20">
+      {/* Tab Content - Scrollable Area with Fixed Height */}
+      <div className="flex-1 overflow-y-auto p-4 min-h-0">
         {isLoading && !displayOverview ? (
           <div className="space-y-4">
             <LoadingSpinner />
@@ -375,6 +368,60 @@ export function ProjectOverviewPanel({
                 )}
               </div>
             </div>
+
+            {/* Real-time AI Analysis */}
+            <div className="mt-6">
+              <div className="bg-white p-4 rounded-lg shadow-sm border border-purple-200">
+                <div className="flex items-center space-x-3 mb-3">
+                  <span className="text-2xl">🤖</span>
+                  <h4 className="font-semibold text-gray-900">
+                    실시간 AI 분석
+                  </h4>
+                </div>
+                <div>
+                  {isLoading ? (
+                    <div className="space-y-3">
+                      <div className="flex items-start space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mt-1"></div>
+                        <p className="text-sm text-gray-600">
+                          AI가 프로젝트를 분석하고 있습니다...
+                        </p>
+                      </div>
+                    </div>
+                  ) : error ? (
+                    <div className="space-y-3">
+                      <div className="flex items-start space-x-2">
+                        <span className="text-red-500 text-lg">❌</span>
+                        <p className="text-sm text-red-600">
+                          분석 중 오류가 발생했습니다: {error}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="flex items-start space-x-2">
+                        <span className="text-green-500 text-lg">✔</span>
+                        <p className="text-sm text-gray-600">
+                          타겟이 명확해요! 멀티펫 시장은 충성도가 높아요
+                        </p>
+                      </div>
+                      <div className="flex items-start space-x-2">
+                        <span className="text-yellow-500 text-lg">💡</span>
+                        <p className="text-sm text-gray-600">
+                          제안: 펫 건강 관리 기능도 고려해보세요
+                        </p>
+                      </div>
+                      <div className="flex items-start space-x-2">
+                        <span className="text-orange-500 text-lg">⚠</span>
+                        <p className="text-sm text-gray-600">
+                          고려: 배송 물류 시스템이 핵심 성공요소입니다
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         ) : (
           <div className="space-y-4">
@@ -497,60 +544,10 @@ export function ProjectOverviewPanel({
             )}
           </div>
         )}
-
-        {/* Real-time AI Analysis */}
-        <div className="mt-6">
-          <div className="bg-white p-4 rounded-lg shadow-sm border border-purple-200">
-            <div className="flex items-center space-x-3 mb-3">
-              <span className="text-2xl">🤖</span>
-              <h4 className="font-semibold text-gray-900">실시간 AI 분석</h4>
-            </div>
-            {isLoading ? (
-              <div className="space-y-3">
-                <div className="flex items-start space-x-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mt-1"></div>
-                  <p className="text-sm text-gray-600">
-                    AI가 프로젝트를 분석하고 있습니다...
-                  </p>
-                </div>
-              </div>
-            ) : error ? (
-              <div className="space-y-3">
-                <div className="flex items-start space-x-2">
-                  <span className="text-red-500 text-lg">❌</span>
-                  <p className="text-sm text-red-600">
-                    분석 중 오류가 발생했습니다: {error}
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <div className="flex items-start space-x-2">
-                  <span className="text-green-500 text-lg">✔</span>
-                  <p className="text-sm text-gray-600">
-                    타겟이 명확해요! 멀티펫 시장은 충성도가 높아요
-                  </p>
-                </div>
-                <div className="flex items-start space-x-2">
-                  <span className="text-yellow-500 text-lg">💡</span>
-                  <p className="text-sm text-gray-600">
-                    제안: 펫 건강 관리 기능도 고려해보세요
-                  </p>
-                </div>
-                <div className="flex items-start space-x-2">
-                  <span className="text-orange-500 text-lg">⚠</span>
-                  <p className="text-sm text-gray-600">
-                    고려: 배송 물류 시스템이 핵심 성공요소입니다
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
       </div>
 
       {/* Next Step Button */}
-      <div className="border-t border-gray-200 p-4 flex justify-end">
+      <div className="border-t border-gray-200 p-4 flex justify-end flex-shrink-0">
         <button
           onClick={onNextStep}
           disabled={currentStep >= 4 || !isButtonEnabled || isLoading}
