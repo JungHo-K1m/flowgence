@@ -1333,7 +1333,7 @@ function HomePageContent() {
 
             {/* Right Panel - Project Overview or Requirements */}
             <div
-              className={`border-l border-gray-200 transition-all duration-700 ease-in-out translate-x-0 ${
+              className={`border-l border-gray-200 transition-all duration-700 ease-in-out translate-x-0 h-full flex flex-col ${
                 showRequirements ? "w-2/3" : "w-1/3"
               }`}
             >
