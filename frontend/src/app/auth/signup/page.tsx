@@ -77,9 +77,6 @@ export default function SignupPage() {
       <div className="min-h-screen bg-gray-50 flex items-start justify-center pt-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-6">
           <div className="text-center">
-            <div className="mx-auto w-16 h-16 bg-[#6366F1] rounded-full flex items-center justify-center mb-4">
-              <span className="text-white text-2xl font-bold">F</span>
-            </div>
             <h2 className="text-2xl font-bold text-gray-900">회원가입 완료!</h2>
             <p className="mt-1 text-sm text-gray-600">
               이메일을 확인해주세요. 잠시 후 홈페이지로 이동합니다.
@@ -95,9 +92,6 @@ export default function SignupPage() {
       <div className="max-w-md w-full space-y-6">
         {/* Logo - Symbol Only */}
         <div className="text-center">
-          <div className="mx-auto w-16 h-16 bg-[#6366F1] rounded-full flex items-center justify-center mb-4">
-            <span className="text-white text-2xl font-bold">F</span>
-          </div>
           <h2 className="text-2xl font-bold text-gray-900">회원가입</h2>
           <p className="mt-1 text-sm text-gray-600">
             Flowgence와 함께 프로젝트를 시작하세요

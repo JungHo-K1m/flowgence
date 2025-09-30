@@ -58,9 +58,6 @@ function LoginForm() {
       <div className="max-w-md w-full space-y-6">
         {/* Logo - Symbol Only */}
         <div className="text-center">
-          <div className="mx-auto w-16 h-16 bg-[#6366F1] rounded-full flex items-center justify-center mb-4">
-            <span className="text-white text-2xl font-bold">F</span>
-          </div>
           <h2 className="text-2xl font-bold text-gray-900">로그인</h2>
           <p className="mt-1 text-sm text-gray-600">
             Flowgence에 오신 것을 환영합니다
