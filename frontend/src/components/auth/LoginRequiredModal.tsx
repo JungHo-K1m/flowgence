@@ -62,7 +62,7 @@ export function LoginRequiredModal({
           </DialogDescription>
         </DialogHeader>
 
-        <DialogFooter className="flex gap-2 sm:gap-0">
+        <DialogFooter className="flex gap-2 sm:gap-2">
           <Button
             variant="outline"
             onClick={onClose}

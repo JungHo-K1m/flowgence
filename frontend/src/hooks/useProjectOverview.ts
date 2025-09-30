@@ -16,6 +16,13 @@ interface ProjectOverview {
       database: string[];
       infrastructure: string[];
     };
+    businessModel?: {
+      revenueStreams: string[];
+      monetizationStrategy: string;
+      pricingModel: string;
+      targetMarketSize: string;
+      competitiveAdvantage: string;
+    };
   };
   userJourney: {
     steps: Array<{
@@ -145,6 +152,13 @@ export const useProjectOverview = () => {
               backend: ['Node.js', 'NestJS'],
               database: ['PostgreSQL'],
               infrastructure: ['AWS', 'Vercel']
+            },
+            businessModel: processedOverview.businessModel || {
+              revenueStreams: ['구독료', '수수료'],
+              monetizationStrategy: '구독 기반 수익 모델',
+              pricingModel: '월 구독',
+              targetMarketSize: '중소기업',
+              competitiveAdvantage: 'AI 기반 자동화'
             }
           },
           userJourney: processedOverview.userJourney || {

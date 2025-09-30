@@ -1,3 +1,38 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* 브라우저 기본 스타일 완전 오버라이드 */
+html {
+  height: auto !important;
+  min-height: auto !important;
+  max-height: none !important;
+}
+
+body {
+  height: auto !important;
+  min-height: auto !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* 모든 요소의 높이를 콘텐츠에 맞게 강제 설정 */
+*, *::before, *::after {
+  box-sizing: border-box;
+  height: auto !important;
+  min-height: auto !important;
+  max-height: none !important;
+}
+
+/* Next.js 루트 컨테이너 */
+#__next {
+  height: auto !important;
+  min-height: auto !important;
+}
+
+/* Tailwind 높이 클래스 오버라이드 */
+.min-h-screen, .h-screen, .h-full {
+  height: auto !important;
+  min-height: auto !important;
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import Image from "next/image";
 import { LoginRequiredModal } from "@/components/auth/LoginRequiredModal";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 
@@ -357,6 +358,18 @@ export function RequirementsPanel({
                   onClick={() => toggleSection(category.id)}
                 >
                   <div className="flex items-center space-x-3">
+                    <Image
+                      src={
+                        expandedSections.has(category.id)
+                          ? "/images/up-icon.png"
+                          : "/images/down-icon.png"
+                      }
+                      alt={
+                        expandedSections.has(category.id) ? "접기" : "펼치기"
+                      }
+                      width={14}
+                      height={8}
+                    />
                     <span
                       className={`font-medium ${
                         category.id === "needs_clarification"
@@ -391,10 +404,15 @@ export function RequirementsPanel({
                             e.stopPropagation();
                             onDeleteCategory(category.id);
                           }}
-                          className="p-1 text-gray-400 hover:text-red-600 transition-colors cursor-pointer"
+                          className="p-1 hover:opacity-70 transition-opacity cursor-pointer"
                           title="카테고리 삭제"
                         >
-                          🗑️
+                          <Image
+                            src="/images/delete-icon.png"
+                            alt="삭제"
+                            width={14}
+                            height={14}
+                          />
                         </div>
                       )}
 
@@ -406,16 +424,17 @@ export function RequirementsPanel({
                             e.stopPropagation();
                             onOpenEditModal(category.id);
                           }}
-                          className="p-1 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer"
+                          className="p-1 hover:opacity-70 transition-opacity cursor-pointer"
                           title="카테고리 편집"
                         >
-                          ✏️
+                          <Image
+                            src="/images/edit-icon.png"
+                            alt="편집"
+                            width={14}
+                            height={14}
+                          />
                         </div>
                       )}
-
-                    <span className="text-gray-400">
-                      {expandedSections.has(category.id) ? "▲" : "▼"}
-                    </span>
                   </div>
                 </div>
 
@@ -471,9 +490,14 @@ export function RequirementsPanel({
                                   onOpenEditModal?.(req.category || "unknown");
                                 })
                               }
-                              className="p-1 text-gray-400 hover:text-gray-600"
+                              className="p-1 hover:opacity-70 transition-opacity"
                             >
-                              📝
+                              <Image
+                                src="/images/edit-icon.png"
+                                alt="편집"
+                                width={14}
+                                height={14}
+                              />
                             </button>
                           </div>
                         </div>

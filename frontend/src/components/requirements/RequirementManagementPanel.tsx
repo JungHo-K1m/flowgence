@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { InlineEditInput } from "./InlineEditInput";
 
@@ -167,13 +168,18 @@ export function RequirementManagementPanel({
             <Button
               variant="outline"
               size="sm"
-              className="p-2"
+              className="p-2 hover:opacity-70 transition-opacity"
               onClick={() => {
                 // 편집 모드 토글 로직
                 console.log("편집 모드");
               }}
             >
-              ✏️
+              <Image
+                src="/images/edit-icon.png"
+                alt="편집"
+                width={14}
+                height={14}
+              />
             </Button>
           </div>
         </div>
@@ -313,13 +319,18 @@ export function RequirementManagementPanel({
                         console.error("삭제 실패:", error);
                       }
                     }}
-                    className="p-1 text-gray-400 hover:text-red-600"
+                    className="p-1 hover:opacity-70 transition-opacity"
                     disabled={
                       savingStates[`${requirement.id}-title`] ||
                       savingStates[`${requirement.id}-description`]
                     }
                   >
-                    🗑️
+                    <Image
+                      src="/images/delete-icon.png"
+                      alt="삭제"
+                      width={14}
+                      height={14}
+                    />
                   </Button>
                 </div>
               </div>

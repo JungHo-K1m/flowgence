@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Image from "next/image";
 import { useProjectOverview } from "@/hooks/useProjectOverview";
 import React from "react";
 
@@ -24,6 +25,13 @@ interface ProjectOverview {
       backend: string[];
       database: string[];
       infrastructure: string[];
+    };
+    businessModel?: {
+      revenueStreams: string[];
+      monetizationStrategy: string;
+      pricingModel: string;
+      targetMarketSize: string;
+      competitiveAdvantage: string;
     };
   };
   userJourney: {
@@ -191,25 +199,52 @@ export function ProjectOverviewPanel({
         {isLoading && !displayOverview ? (
           <div className="space-y-4">
             <LoadingSpinner />
-            <div className="space-y-4">
-              <div className="bg-gray-50 p-4 rounded-lg">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
                 <div className="flex items-center space-x-3 mb-2">
-                  <span className="text-2xl">👥</span>
+                  <Image
+                    src="/images/target-client.png"
+                    alt="타겟 고객"
+                    width={30}
+                    height={24}
+                  />
                   <h3 className="font-semibold text-gray-900">타겟 고객</h3>
                 </div>
                 <LoadingSkeleton />
               </div>
-              <div className="bg-gray-50 p-4 rounded-lg">
+              <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
                 <div className="flex items-center space-x-3 mb-2">
-                  <span className="text-2xl">❓</span>
+                  <Image
+                    src="/images/question-mark.png"
+                    alt="핵심 문제"
+                    width={24}
+                    height={24}
+                  />
                   <h3 className="font-semibold text-gray-900">핵심 문제</h3>
                 </div>
                 <LoadingSkeleton />
               </div>
-              <div className="bg-gray-50 p-4 rounded-lg">
+              <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
                 <div className="flex items-center space-x-3 mb-2">
-                  <span className="text-2xl">🎯</span>
+                  <Image
+                    src="/images/core-feature.png"
+                    alt="핵심 기능"
+                    width={24}
+                    height={24}
+                  />
                   <h3 className="font-semibold text-gray-900">핵심 기능</h3>
+                </div>
+                <LoadingSkeleton />
+              </div>
+              <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                <div className="flex items-center space-x-3 mb-2">
+                  <Image
+                    src="/images/bm.png"
+                    alt="수익 모델"
+                    width={19}
+                    height={25}
+                  />
+                  <h3 className="font-semibold text-gray-900">수익 모델</h3>
                 </div>
                 <LoadingSkeleton />
               </div>
@@ -217,163 +252,128 @@ export function ProjectOverviewPanel({
           </div>
         ) : activeTab === "elements" ? (
           <div className="space-y-4">
-            {/* Target Customer */}
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <div className="flex items-center space-x-3 mb-2">
-                <span className="text-2xl">👥</span>
-                <h3 className="font-semibold text-gray-900">타겟 고객</h3>
-              </div>
-              {isLoading ? (
-                <LoadingSkeleton />
-              ) : (
-                <div className="space-y-2">
-                  {displayOverview?.serviceCoreElements?.targetUsers?.map(
-                    (user: string, index: number) => (
-                      <p key={index} className="text-sm text-gray-600">
-                        • {user}
+            {/* 2x2 Grid Layout */}
+            <div className="grid grid-cols-2 gap-4">
+              {/* Target Customer */}
+              <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                <div className="flex items-center space-x-3 mb-2">
+                  <Image
+                    src="/images/target-client.png"
+                    alt="타겟 고객"
+                    width={30}
+                    height={24}
+                  />
+                  <h3 className="font-semibold text-gray-900">타겟 고객</h3>
+                </div>
+                {isLoading ? (
+                  <LoadingSkeleton />
+                ) : (
+                  <div className="space-y-2">
+                    {displayOverview?.serviceCoreElements?.targetUsers?.map(
+                      (user: string, index: number) => (
+                        <p key={index} className="text-sm text-gray-600">
+                          • {user}
+                        </p>
+                      )
+                    ) || (
+                      <p className="text-sm text-gray-600">
+                        {serviceType
+                          ? serviceTypeMap[serviceType] || serviceType
+                          : "분석 중..."}
                       </p>
-                    )
-                  ) || (
-                    <p className="text-sm text-gray-600">
-                      {serviceType
-                        ? serviceTypeMap[serviceType] || serviceType
-                        : "분석 중..."}
-                    </p>
-                  )}
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Core Problem */}
+              <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                <div className="flex items-center space-x-3 mb-2">
+                  <Image
+                    src="/images/question-mark.png"
+                    alt="핵심 문제"
+                    width={24}
+                    height={24}
+                  />
+                  <h3 className="font-semibold text-gray-900">핵심 문제</h3>
                 </div>
-              )}
-            </div>
-
-            {/* Core Problem */}
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <div className="flex items-center space-x-3 mb-2">
-                <span className="text-2xl">❓</span>
-                <h3 className="font-semibold text-gray-900">핵심 문제</h3>
-              </div>
-              {isLoading ? (
-                <LoadingSkeleton />
-              ) : (
-                <p className="text-sm text-gray-600">
-                  {displayOverview?.serviceCoreElements?.description ||
-                    projectDescription ||
-                    "사용자 입력 대기 중..."}
-                </p>
-              )}
-            </div>
-
-            {/* Core Feature */}
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <div className="flex items-center space-x-3 mb-2">
-                <span className="text-2xl">🎯</span>
-                <h3 className="font-semibold text-gray-900">핵심 기능</h3>
-              </div>
-              {isLoading ? (
-                <LoadingSkeleton />
-              ) : (
-                <div className="space-y-2">
-                  {displayOverview?.serviceCoreElements?.keyFeatures?.map(
-                    (feature: string, index: number) => (
-                      <p key={index} className="text-sm text-gray-600">
-                        • {feature}
+                {isLoading ? (
+                  <LoadingSkeleton />
+                ) : (
+                  <div className="space-y-2">
+                    {displayOverview?.serviceCoreElements?.description ? (
+                      <p className="text-sm text-gray-600">
+                        {displayOverview.serviceCoreElements.description}
                       </p>
-                    )
-                  ) || <p className="text-sm text-gray-600">AI 기반 자동화</p>}
-                </div>
-              )}
-            </div>
-
-            {/* Project Scale & Complexity */}
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <div className="flex items-center space-x-3 mb-2">
-                <span className="text-2xl">📊</span>
-                <h3 className="font-semibold text-gray-900">프로젝트 규모</h3>
-              </div>
-              {isLoading ? (
-                <LoadingSkeleton />
-              ) : (
-                <div className="space-y-2">
-                  <p className="text-sm text-gray-600">
-                    <strong>규모:</strong>{" "}
-                    {displayOverview?.serviceCoreElements?.projectScale ||
-                      "분석 중..."}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    <strong>복잡도:</strong>{" "}
-                    {displayOverview?.serviceCoreElements?.techComplexity ||
-                      "분석 중..."}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    <strong>예상 기간:</strong>{" "}
-                    {displayOverview?.serviceCoreElements?.estimatedDuration ||
-                      "분석 중..."}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Required Team */}
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <div className="flex items-center space-x-3 mb-2">
-                <span className="text-2xl">👥</span>
-                <h3 className="font-semibold text-gray-900">필요 인력</h3>
-              </div>
-              {isLoading ? (
-                <LoadingSkeleton />
-              ) : (
-                <div className="space-y-1">
-                  {displayOverview?.serviceCoreElements?.requiredTeam?.map(
-                    (role: string, index: number) => (
-                      <p key={index} className="text-sm text-gray-600">
-                        • {role}
+                    ) : (
+                      <p className="text-sm text-gray-600">
+                        {projectDescription || "사용자 입력 대기 중..."}
                       </p>
-                    )
-                  ) || <p className="text-sm text-gray-600">분석 중...</p>}
-                </div>
-              )}
-            </div>
-
-            {/* Tech Stack */}
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <div className="flex items-center space-x-3 mb-2">
-                <span className="text-2xl">⚙️</span>
-                <h3 className="font-semibold text-gray-900">기술 스택</h3>
+                    )}
+                  </div>
+                )}
               </div>
-              {isLoading ? (
-                <LoadingSkeleton />
-              ) : displayOverview?.serviceCoreElements?.techStack ? (
-                <div className="space-y-2">
-                  <div>
-                    <p className="text-xs font-medium text-gray-500">
-                      프론트엔드
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      {displayOverview?.serviceCoreElements?.techStack?.frontend?.join(
-                        ", "
-                      )}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-gray-500">백엔드</p>
-                    <p className="text-sm text-gray-600">
-                      {displayOverview?.serviceCoreElements?.techStack?.backend?.join(
-                        ", "
-                      )}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-gray-500">
-                      데이터베이스
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      {displayOverview?.serviceCoreElements?.techStack?.database?.join(
-                        ", "
-                      )}
-                    </p>
-                  </div>
+
+              {/* Core Feature */}
+              <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                <div className="flex items-center space-x-3 mb-2">
+                  <Image
+                    src="/images/core-feature.png"
+                    alt="핵심 기능"
+                    width={24}
+                    height={24}
+                  />
+                  <h3 className="font-semibold text-gray-900">핵심 기능</h3>
                 </div>
-              ) : (
-                <p className="text-sm text-gray-600">분석 중...</p>
-              )}
+                {isLoading ? (
+                  <LoadingSkeleton />
+                ) : (
+                  <div className="space-y-2">
+                    {displayOverview?.serviceCoreElements?.keyFeatures?.map(
+                      (feature: string, index: number) => (
+                        <p key={index} className="text-sm text-gray-600">
+                          • {feature}
+                        </p>
+                      )
+                    ) || (
+                      <p className="text-sm text-gray-600">AI 기반 자동화</p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Revenue Model */}
+              <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                <div className="flex items-center space-x-3 mb-2">
+                  <Image
+                    src="/images/bm.png"
+                    alt="수익 모델"
+                    width={19}
+                    height={25}
+                  />
+                  <h3 className="font-semibold text-gray-900">수익 모델</h3>
+                </div>
+                {isLoading ? (
+                  <LoadingSkeleton />
+                ) : (
+                  <div className="space-y-2">
+                    {displayOverview?.serviceCoreElements?.businessModel?.revenueStreams?.map(
+                      (stream: string, index: number) => (
+                        <p key={index} className="text-sm text-gray-600">
+                          • {stream}
+                        </p>
+                      )
+                    ) || (
+                      <>
+                        <p className="text-sm text-gray-600">
+                          • 사료 판매 수수료
+                        </p>
+                        <p className="text-sm text-gray-600">• 프리미엄 구독</p>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         ) : (
@@ -499,49 +499,53 @@ export function ProjectOverviewPanel({
         )}
 
         {/* Real-time AI Analysis */}
-        <div className="mt-6 border-t border-gray-200 pt-4">
-          <h4 className="font-semibold text-gray-900 mb-3">실시간 AI 분석</h4>
-          {isLoading ? (
-            <div className="space-y-3">
-              <div className="flex items-start space-x-2">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mt-1"></div>
-                <p className="text-sm text-gray-600">
-                  AI가 프로젝트를 분석하고 있습니다...
-                </p>
-              </div>
+        <div className="mt-6">
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-purple-200">
+            <div className="flex items-center space-x-3 mb-3">
+              <span className="text-2xl">🤖</span>
+              <h4 className="font-semibold text-gray-900">실시간 AI 분석</h4>
             </div>
-          ) : error ? (
-            <div className="space-y-3">
-              <div className="flex items-start space-x-2">
-                <span className="text-red-500">❌</span>
-                <p className="text-sm text-red-600">
-                  분석 중 오류가 발생했습니다: {error}
-                </p>
+            {isLoading ? (
+              <div className="space-y-3">
+                <div className="flex items-start space-x-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mt-1"></div>
+                  <p className="text-sm text-gray-600">
+                    AI가 프로젝트를 분석하고 있습니다...
+                  </p>
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <div className="flex items-start space-x-2">
-                <span className="text-green-500">✅</span>
-                <p className="text-sm text-gray-600">
-                  타겟이 명확해요! {serviceTypeMap[serviceType] || "해당"}{" "}
-                  시장은 충성도가 높아요
-                </p>
+            ) : error ? (
+              <div className="space-y-3">
+                <div className="flex items-start space-x-2">
+                  <span className="text-red-500 text-lg">❌</span>
+                  <p className="text-sm text-red-600">
+                    분석 중 오류가 발생했습니다: {error}
+                  </p>
+                </div>
               </div>
-              <div className="flex items-start space-x-2">
-                <span className="text-yellow-500">💡</span>
-                <p className="text-sm text-gray-600">
-                  제안: 사용자 경험 개선 기능도 고려해보세요
-                </p>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-start space-x-2">
+                  <span className="text-green-500 text-lg">✔</span>
+                  <p className="text-sm text-gray-600">
+                    타겟이 명확해요! 멀티펫 시장은 충성도가 높아요
+                  </p>
+                </div>
+                <div className="flex items-start space-x-2">
+                  <span className="text-yellow-500 text-lg">💡</span>
+                  <p className="text-sm text-gray-600">
+                    제안: 펫 건강 관리 기능도 고려해보세요
+                  </p>
+                </div>
+                <div className="flex items-start space-x-2">
+                  <span className="text-orange-500 text-lg">⚠</span>
+                  <p className="text-sm text-gray-600">
+                    고려: 배송 물류 시스템이 핵심 성공요소입니다
+                  </p>
+                </div>
               </div>
-              <div className="flex items-start space-x-2">
-                <span className="text-red-500">⚠️</span>
-                <p className="text-sm text-gray-600">
-                  고려: 확장성 있는 아키텍처가 핵심 성공요소입니다
-                </p>
-              </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
 

@@ -56,6 +56,32 @@ function HomePageContent() {
   const [isRequirementsLoading, setIsRequirementsLoading] = useState(false);
   const [chatMessages, setChatMessages] = useState<Message[]>([]);
 
+  // 페이지 로드 시 스크롤 위치 조정 (단계별로 다르게 처리)
+  useEffect(() => {
+    // 채팅 UI가 있는 단계(2단계)에서는 스크롤하지 않음
+    if (showChatInterface && showRequirements) {
+      return; // 채팅 UI에서는 스크롤 위치 유지
+    }
+
+    // 메인 페이지(1단계)에서만 상단으로 스크롤
+    if (
+      !showChatInterface &&
+      !showRequirements &&
+      !showConfirmation &&
+      !showFinalResult
+    ) {
+      // 즉시 스크롤
+      window.scrollTo(0, 0);
+
+      // 추가적으로 약간의 지연 후에도 스크롤 (일부 브라우저에서 지연 로딩으로 인한 문제 방지)
+      const timeoutId = setTimeout(() => {
+        window.scrollTo(0, 0);
+      }, 100);
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [showChatInterface, showRequirements, showConfirmation, showFinalResult]);
+
   // useProjectOverview 훅 사용
   const {
     overview,

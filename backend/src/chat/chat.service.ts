@@ -106,7 +106,8 @@ export class ChatService {
 1. 이전 대화 내용을 모두 고려하여 프로젝트 개요를 누적적으로 업데이트하세요.
 2. 새로운 정보만 추가하지 말고, 기존 정보와 새로운 정보를 통합하세요.
 3. keyFeatures 배열에는 이전에 언급된 모든 기능들을 포함하세요.
-4. 응답은 반드시 유효한 JSON 형식이어야 하며, 다른 텍스트나 설명은 포함하지 마세요.
+4. 비즈니스 모델 정보를 분석하여 수익 모델을 제안하세요.
+5. 응답은 반드시 유효한 JSON 형식이어야 하며, 다른 텍스트나 설명은 포함하지 마세요.
 
 응답 형식:
 {
@@ -126,6 +127,13 @@ export class ChatService {
         "backend": ["Node.js", "NestJS", "PostgreSQL"],
         "database": ["PostgreSQL", "Redis"],
         "infrastructure": ["AWS", "Vercel", "Railway"]
+      },
+      "businessModel": {
+        "revenueStreams": ["주요 수익원 1", "주요 수익원 2"],
+        "monetizationStrategy": "수익화 전략 설명",
+        "pricingModel": "가격 모델 (예: 구독, 수수료, 일회성)",
+        "targetMarketSize": "타겟 시장 규모",
+        "competitiveAdvantage": "경쟁 우위 요소"
       }
     },
     "userJourney": {
