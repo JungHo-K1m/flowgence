@@ -189,7 +189,7 @@ export function RequirementManagementPanel({
             <Button
               variant="outline"
               size="sm"
-              className="p-2 hover:opacity-70 transition-opacity"
+              className="transition-opacity"
               onClick={() => {
                 // 편집 모드 토글 로직
                 console.log("편집 모드");
@@ -319,7 +319,7 @@ export function RequirementManagementPanel({
                             console.error("상태 변경 실패:", error);
                           }
                         }}
-                        className="p-1 hover:opacity-70 transition-opacity"
+                        className="transition-opacity"
                         disabled={
                           savingStates[`${requirement.id}-title`] ||
                           savingStates[`${requirement.id}-description`]
@@ -345,7 +345,7 @@ export function RequirementManagementPanel({
                         console.error("삭제 실패:", error);
                       }
                     }}
-                    className="p-1 transition-opacity"
+                    className="transition-opacity"
                     disabled={
                       savingStates[`${requirement.id}-title`] ||
                       savingStates[`${requirement.id}-description`]

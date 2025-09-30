@@ -199,9 +199,8 @@ export function InlineEditInput({
       {showEditButton && !disabled && (
         <Button
           size="sm"
-          variant="outline"
           onClick={handleStartEdit}
-          className="p-1 hover:opacity-70 transition-opacity"
+          className="transition-opacity"
         >
           <Image
             src="/images/edit-icon.png"
