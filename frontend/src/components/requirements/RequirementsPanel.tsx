@@ -289,9 +289,9 @@ export function RequirementsPanel({
   });
 
   return (
-    <div className="h-full bg-white flex flex-col">
+    <div className="h-full bg-white flex flex-col max-h-screen">
       {/* Header */}
-      <div className="border-b border-gray-200 p-4">
+      <div className="border-b border-gray-200 p-4 flex-shrink-0">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold text-gray-900">
             {data ? "AI 추출 요구사항" : "요구사항 카드"}
@@ -333,7 +333,7 @@ export function RequirementsPanel({
       </div>
 
       {/* Content - Scrollable Area */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto p-4 min-h-0">
         {/* 동적 섹션 렌더링 */}
         {categories
           .filter((cat) => cat.id !== "all")
@@ -488,7 +488,7 @@ export function RequirementsPanel({
       </div>
 
       {/* Footer - Navigation Buttons */}
-      <div className="border-t border-gray-200 p-4 flex justify-between">
+      <div className="border-t border-gray-200 p-4 flex justify-between flex-shrink-0">
         <button
           onClick={onPrevStep}
           className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
