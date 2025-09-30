@@ -406,7 +406,7 @@ export function RequirementsPanel({
                               console.log("새 요구사항 추가");
                             });
                           }}
-                          className="px-3 py-1 text-sm font-medium text-[#4F46E5] rounded hover:bg-purple-700 transition-colors"
+                          className="px-3 py-1 text-sm font-medium text-[#4F46E5] rounded transition-colors"
                           title="새 요구사항 추가"
                         >
                           + 새 요구사항

@@ -611,8 +611,18 @@ function HomePageContent() {
           });
 
           // 2) 업데이트/추가 처리
+          console.log(
+            "편집 처리 시작 - requirementIndexMap:",
+            requirementIndexMap
+          );
+          console.log("편집 처리 시작 - updatedFlatList:", updatedFlatList);
+
           updatedFlatList.forEach((item) => {
             const found = item.id && requirementIndexMap.get(item.id);
+            console.log(
+              `요구사항 처리: ${item.title}, ID: ${item.id}, found:`,
+              found
+            );
             if (found) {
               const { subIndex, reqIndex } = found;
               const prev =
@@ -628,37 +638,78 @@ function HomePageContent() {
                 clarificationQuestions: [],
               };
             } else {
-              // 새 항목은 첫 번째 중분류에 추가 (추후 UI에서 이동 기능 추가 가능)
-              if (newSubCategories.length === 0) {
-                newSubCategories.push({
-                  subcategory: "기본",
-                  subCategory: "기본",
-                  requirements: [],
+              // ID 매핑 실패 시, 제목과 설명으로 기존 요구사항 찾기
+              let existingRequirementFound = false;
+              for (
+                let subIndex = 0;
+                subIndex < newSubCategories.length;
+                subIndex++
+              ) {
+                const sub = newSubCategories[subIndex];
+                for (
+                  let reqIndex = 0;
+                  reqIndex < sub.requirements.length;
+                  reqIndex++
+                ) {
+                  const req = sub.requirements[reqIndex];
+                  // 제목이 같고 설명이 더 짧은 경우 (원본 요구사항)
+                  if (
+                    req.title === item.title &&
+                    req.description.length < item.description.length &&
+                    req.needsClarification === true
+                  ) {
+                    // 기존 요구사항을 업데이트
+                    newSubCategories[subIndex].requirements[reqIndex] = {
+                      ...req,
+                      id: item.id || req.id,
+                      title: item.title,
+                      description: item.description,
+                      status: "approved",
+                      needsClarification: false,
+                      clarificationQuestions: [],
+                    };
+                    existingRequirementFound = true;
+                    break;
+                  }
+                }
+                if (existingRequirementFound) break;
+              }
+
+              // 기존 요구사항을 찾지 못한 경우에만 새로 추가
+              if (!existingRequirementFound) {
+                if (newSubCategories.length === 0) {
+                  newSubCategories.push({
+                    subcategory: "기본",
+                    subCategory: "기본",
+                    requirements: [],
+                  });
+                }
+                newSubCategories[0].requirements.push({
+                  id: item.id,
+                  title: item.title,
+                  description: item.description,
+                  priority: "medium",
+                  needsClarification: false,
+                  clarificationQuestions: [],
+                  status: "approved", // 새로 추가된 요구사항은 승인 상태로 설정
                 });
               }
-              newSubCategories[0].requirements.push({
-                id: item.id,
-                title: item.title,
-                description: item.description,
-                priority: "medium",
-                needsClarification: false,
-                clarificationQuestions: [],
-                status: "approved", // 새로 추가된 요구사항은 승인 상태로 설정
-              });
             }
           });
 
-          // 3) 중복 제거 - 같은 title과 description을 가진 요구사항 제거
+          // 3) 중복 제거 - 같은 title을 가진 요구사항 중 더 긴 설명을 가진 것만 유지
           newSubCategories.forEach((sub) => {
-            const seen = new Set();
-            sub.requirements = sub.requirements.filter((req) => {
-              const key = `${req.title}-${req.description}`;
-              if (seen.has(key)) {
-                return false;
+            const titleMap = new Map<string, Requirement>();
+            sub.requirements.forEach((req) => {
+              const existing = titleMap.get(req.title);
+              if (
+                !existing ||
+                req.description.length > existing.description.length
+              ) {
+                titleMap.set(req.title, req);
               }
-              seen.add(key);
-              return true;
             });
+            sub.requirements = Array.from(titleMap.values());
           });
 
           return {
