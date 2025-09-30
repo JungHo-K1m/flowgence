@@ -1231,7 +1231,7 @@ function HomePageContent() {
   };
 
   return (
-    <div className="flex-1 bg-white flex flex-col min-h-0">
+    <div className="flex-1 bg-white flex flex-col min-h-0 overflow-hidden">
       {/* Progress Bar - Show when any interface is active */}
       {(showChatInterface ||
         showRequirements ||
@@ -1311,8 +1311,8 @@ function HomePageContent() {
 
       {/* Chat Interface with Slide Animation - Hide in confirmation and final result steps */}
       {!showConfirmation && !showFinalResult && showChatInterface && (
-        <div className="flex-1 transition-all duration-700 ease-in-out opacity-100 translate-x-0">
-          <div className="flex h-full">
+        <div className="flex-1 transition-all duration-700 ease-in-out opacity-100 translate-x-0 overflow-hidden">
+          <div className="flex h-full max-h-[calc(100vh-120px)]">
             {/* Left Chat Interface */}
             <div
               className={`transition-all duration-700 ease-in-out translate-x-0 ${

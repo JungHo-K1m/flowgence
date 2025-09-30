@@ -289,9 +289,9 @@ export function ChatInterface({
   };
 
   return (
-    <div className="flex flex-col h-full bg-gray-50">
+    <div className="flex flex-col h-full bg-gray-50 max-h-[calc(100vh-120px)]">
       {/* Chat Messages - Scrollable Area */}
-      <div className="flex-1 overflow-y-auto p-4 pl-[90px] space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 pl-[90px] space-y-4 min-h-0">
         {/* Step Header - Fixed */}
         <div className="bg-white border-1 border-[#E5E7EB] p-4 pl-[90px] rounded-[16px]">
           <div className="flex items-center space-x-3">
