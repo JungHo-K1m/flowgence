@@ -12,6 +12,24 @@ export function Header() {
 
   const handleSignOut = async () => {
     await signOut();
+    
+    // 로그아웃 시 모든 저장된 상태 초기화
+    localStorage.removeItem('flowgence_temp_state');
+    sessionStorage.removeItem('flowgence_resume_project');
+    
+    // 메인 페이지로 리다이렉트
+    window.location.href = '/';
+  };
+
+  const handleLogoClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    
+    // 모든 저장된 상태 초기화
+    localStorage.removeItem('flowgence_temp_state');
+    sessionStorage.removeItem('flowgence_resume_project');
+    
+    // 메인 페이지로 리다이렉트
+    window.location.href = '/';
   };
 
   return (
@@ -20,7 +38,7 @@ export function Header() {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <div className="flex items-center">
-            <Link href="/" className="flex items-center">
+            <Link href="/" className="flex items-center" onClick={handleLogoClick}>
               <div className="relative w-[124px] h-[37px]">
                 <Image
                   src="/images/flowgence-logo.png"

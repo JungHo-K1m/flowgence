@@ -814,6 +814,29 @@ function HomePageContent() {
     hasTempState,
   } = useAuthGuard();
 
+  // 로그아웃 시 상태 초기화
+  useEffect(() => {
+    if (!user && !loading) {
+      // 로그아웃된 상태이고 로딩이 끝났으면 상태 초기화
+      const isLoggedOut = !user;
+      const hasState = showChatInterface || showRequirements || showConfirmation || showFinalResult;
+      
+      if (isLoggedOut && hasState) {
+        console.log("로그아웃 감지 - 상태 초기화");
+        setShowChatInterface(false);
+        setShowRequirements(false);
+        setShowConfirmation(false);
+        setShowFinalResult(false);
+        setCurrentStep(1);
+        setProjectDescription("");
+        setSelectedServiceType("");
+        setUploadedFiles([]);
+        setChatMessages([]);
+        setEditableRequirements(null);
+      }
+    }
+  }, [user, loading, showChatInterface, showRequirements, showConfirmation, showFinalResult]);
+
   // showLoginModal 상태 디버깅
   // useEffect(() => {
   //   console.log("showLoginModal 상태 변경:", showLoginModal);

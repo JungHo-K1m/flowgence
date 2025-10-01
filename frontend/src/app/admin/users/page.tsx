@@ -43,21 +43,43 @@ export default function UsersPage() {
     try {
       const supabase = createClient();
 
-      // 사용자 프로필 조회
+      // 사용자 프로필 조회 (디버깅 로그 추가)
+      console.log("사용자 프로필 조회 시작...");
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
         .select("*")
         .order("created_at", { ascending: false });
 
-      if (profilesError) throw profilesError;
+      console.log("프로필 조회 결과:", { profiles, error: profilesError });
+
+      if (profilesError) {
+        console.error("프로필 조회 에러:", profilesError);
+        throw profilesError;
+      }
+
+      if (!profiles || profiles.length === 0) {
+        console.warn("프로필 데이터가 없습니다");
+        setUsers([]);
+        setFilteredUsers([]);
+        setLoading(false);
+        return;
+      }
 
       // 각 사용자의 프로젝트 수 조회
+      console.log(`${profiles.length}명의 사용자에 대해 프로젝트 수 조회 중...`);
       const usersWithProjects = await Promise.all(
-        (profiles || []).map(async (profile) => {
-          const { count } = await supabase
+        profiles.map(async (profile) => {
+          const { count, error: countError } = await supabase
             .from("projects")
             .select("*", { count: "exact", head: true })
             .eq("user_id", profile.id);
+
+          if (countError) {
+            console.error(
+              `사용자 ${profile.id}의 프로젝트 수 조회 실패:`,
+              countError
+            );
+          }
 
           return {
             id: profile.id,
@@ -72,10 +94,14 @@ export default function UsersPage() {
         })
       );
 
+      console.log("최종 사용자 데이터:", usersWithProjects);
       setUsers(usersWithProjects);
       setFilteredUsers(usersWithProjects);
     } catch (error) {
       console.error("사용자 로드 실패:", error);
+      // 에러 발생해도 빈 배열로 설정하여 UI는 표시
+      setUsers([]);
+      setFilteredUsers([]);
     } finally {
       setLoading(false);
     }
