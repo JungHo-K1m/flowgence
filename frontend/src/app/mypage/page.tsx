@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuthContext } from "@/components/providers/AuthProvider";
 import { createClient } from "@/lib/supabase";
+import Link from "next/link";
 
 interface Project {
   id: string;
@@ -176,6 +177,9 @@ export default function MyPage() {
 
   const stats = getProjectStats();
 
+  // 최근 6개 프로젝트만 표시
+  const recentProjects = filteredProjects.slice(0, 6);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -261,49 +265,34 @@ export default function MyPage() {
         </div>
       </div>
 
-      {/* Project List */}
+      {/* Recent Projects */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
         <div className="p-6 border-b border-gray-200">
           <div className="flex justify-between items-center">
             <h2 className="text-lg font-semibold text-gray-900">
-              프로젝트 목록
+              최근 프로젝트
             </h2>
-            <div className="flex space-x-4">
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            {projects.length > 6 && (
+              <Link
+                href="/mypage/in-progress"
+                className="text-sm text-[#6366F1] hover:text-[#4F46E5] font-medium flex items-center"
               >
-                <option value="all">모든 상태</option>
-                <option value="requirements_review">요구사항 검토</option>
-                <option value="requirements_extraction">요구사항 추출</option>
-                <option value="estimation">견적 산출</option>
-                <option value="contract">계약 진행</option>
-                <option value="in_progress">진행중</option>
-                <option value="completed">완료</option>
-                <option value="draft">임시저장</option>
-              </select>
-              <select
-                value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="latest">최신순</option>
-                <option value="oldest">오래된순</option>
-              </select>
-            </div>
+                전체 보기 ({projects.length}개)
+                <span className="ml-1">→</span>
+              </Link>
+            )}
           </div>
         </div>
 
         <div className="p-6">
-          {filteredProjects.length === 0 ? (
+          {recentProjects.length === 0 ? (
             <div className="text-center py-12">
               <div className="text-gray-500 text-lg">프로젝트가 없습니다</div>
               <p className="text-gray-400 mt-2">새 프로젝트를 시작해보세요</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-              {filteredProjects.map((project) => (
+              {recentProjects.map((project) => (
                 <div
                   key={project.id}
                   className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-lg transition-all duration-200 hover:border-gray-300 overflow-hidden"
@@ -375,6 +364,18 @@ export default function MyPage() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Link href="/project/new">
+          <button className="w-full py-4 bg-[#6366F1] text-white rounded-lg hover:bg-[#4F46E5] transition-colors duration-200 font-medium">
+            + 새 프로젝트 시작하기
+          </button>
+        </Link>
+        <button className="w-full py-4 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200 font-medium">
+          📋 템플릿으로 시작하기
+        </button>
       </div>
     </div>
   );
