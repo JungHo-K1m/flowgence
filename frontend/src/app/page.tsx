@@ -815,13 +815,13 @@ function HomePageContent() {
   } = useAuthGuard();
 
   // 로그아웃 시 상태 초기화
+  const previousUser = useRef(user);
   useEffect(() => {
-    if (!user && !loading) {
-      // 로그아웃된 상태이고 로딩이 끝났으면 상태 초기화
-      const isLoggedOut = !user;
+    // 로그인 → 로그아웃 전환 감지
+    if (previousUser.current && !user && !loading) {
       const hasState = showChatInterface || showRequirements || showConfirmation || showFinalResult;
       
-      if (isLoggedOut && hasState) {
+      if (hasState) {
         console.log("로그아웃 감지 - 상태 초기화");
         setShowChatInterface(false);
         setShowRequirements(false);
@@ -835,6 +835,7 @@ function HomePageContent() {
         setEditableRequirements(null);
       }
     }
+    previousUser.current = user;
   }, [user, loading, showChatInterface, showRequirements, showConfirmation, showFinalResult]);
 
   // showLoginModal 상태 디버깅
@@ -972,11 +973,11 @@ function HomePageContent() {
             // 오류 복원 완료 플래그 설정
             hasRestoredState.current = true;
           }
-        } else {
-          // tempState가 없는 경우 - URL 파라미터로 단계 이동
+        } else if (targetStep) {
+          // tempState가 없지만 URL 파라미터가 있는 경우만 단계 이동
           console.log("tempState 없음 - URL 파라미터로 단계 이동");
           
-          const stepToMove = parseInt(String(targetStep || 1));
+          const stepToMove = parseInt(String(targetStep));
           
           // 공통 복원 로직 사용 (데이터 없이 단계만 이동)
           restoreProjectState(
@@ -1000,6 +1001,10 @@ function HomePageContent() {
           }
 
           // URL 파라미터 복원 완료 플래그 설정
+          hasRestoredState.current = true;
+        } else {
+          // tempState도 없고 URL 파라미터도 없으면 아무것도 하지 않음
+          console.log("복원할 상태 없음 - 초기 페이지 유지");
           hasRestoredState.current = true;
         }
       }
