@@ -96,6 +96,14 @@ function HomePageContent() {
   // useProjectRestore 훅 사용 (공통 복원 로직)
   const { restoreProjectState } = useProjectRestore();
 
+  // 요구사항 추출 및 저장 훅 사용
+  const {
+    extractRequirements,
+    isLoading: isExtractingRequirements,
+    extractedRequirements,
+    updateExtractedRequirements,
+  } = useRequirementsExtraction();
+
   // 프로젝트 복구 로직 (이어서 작업하기)
   useEffect(() => {
     const resumeProjectId = searchParams.get("resume");
@@ -141,14 +149,6 @@ function HomePageContent() {
     updateOverview,
     updateExtractedRequirements,
   ]);
-
-  // 요구사항 추출 및 저장 훅 사용
-  const {
-    extractRequirements,
-    isLoading: isExtractingRequirements,
-    extractedRequirements,
-    updateExtractedRequirements,
-  } = useRequirementsExtraction();
 
   // 요구사항 업데이트 훅 사용
   const {
