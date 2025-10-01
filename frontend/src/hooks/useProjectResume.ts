@@ -41,6 +41,7 @@ export function useProjectResume() {
         id: msg.id || `msg-${Date.now()}-${Math.random()}`,
         type: msg.role === "user" ? "user" : "ai", // role을 type으로 변환
         content: msg.content || "",
+        icon: msg.role === "user" ? "👤" : "🤖", // 아이콘 추가
       }));
 
       // 요구사항 조회
