@@ -33,6 +33,7 @@ import {
   Requirement,
 } from "@/types/requirements";
 import { useProjectOverview } from "@/hooks/useProjectOverview";
+import { useProjectRestore } from "@/hooks/useProjectRestore";
 
 interface Message {
   id: string;
@@ -44,6 +45,7 @@ interface Message {
 }
 
 function HomePageContent() {
+  const searchParams = useSearchParams();
   const [projectDescription, setProjectDescription] = useState("");
   const [selectedServiceType, setSelectedServiceType] = useState<string>("");
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
@@ -55,6 +57,53 @@ function HomePageContent() {
   const [showFinalModal, setShowFinalModal] = useState(false);
   const [isRequirementsLoading, setIsRequirementsLoading] = useState(false);
   const [chatMessages, setChatMessages] = useState<Message[]>([]);
+  const hasResumedProject = useRef(false);
+
+  // 프로젝트 복구 로직 (이어서 작업하기)
+  useEffect(() => {
+    const resumeProjectId = searchParams.get("resume");
+    const targetStep = searchParams.get("step");
+
+    if (resumeProjectId && targetStep && !hasResumedProject.current) {
+      hasResumedProject.current = true;
+
+      const resumeData = sessionStorage.getItem("flowgence_resume_project");
+      if (resumeData) {
+        try {
+          const projectData = JSON.parse(resumeData);
+          console.log("프로젝트 복구 시작 (이어서 작업하기):", projectData);
+
+          const step = parseInt(targetStep);
+
+          // 공통 복원 로직 사용
+          restoreProjectState(projectData, step, {
+            setProjectDescription,
+            setSelectedServiceType,
+            setChatMessages,
+            setCurrentStep,
+            setShowChatInterface,
+            setShowRequirements,
+            setShowConfirmation,
+            setShowFinalResult,
+            updateOverview,
+            updateExtractedRequirements,
+            setEditableRequirements,
+          });
+
+          // 복구 완료 후 sessionStorage 정리
+          sessionStorage.removeItem("flowgence_resume_project");
+          console.log("프로젝트 복구 완료 (이어서 작업하기)");
+        } catch (error) {
+          console.error("프로젝트 복구 실패:", error);
+        }
+      }
+    }
+  }, [
+    searchParams,
+    restoreProjectState,
+    updateOverview,
+    updateExtractedRequirements,
+  ]);
 
   // 페이지 로드 시 스크롤 위치 조정 제거 (전체 화면 레이아웃으로 변경)
   // useEffect(() => {
@@ -89,6 +138,9 @@ function HomePageContent() {
     isLoading: isOverviewLoading,
     aiMessage,
   } = useProjectOverview();
+
+  // useProjectRestore 훅 사용 (공통 복원 로직)
+  const { restoreProjectState } = useProjectRestore();
 
   // 요구사항 추출 및 저장 훅 사용
   const {
@@ -843,43 +895,56 @@ function HomePageContent() {
               console.log("기본 상태 복원 시도");
               const { projectData, targetStep: savedTargetStep } = tempState;
 
-              setProjectDescription(projectData.description || "");
-              setSelectedServiceType(projectData.serviceType || "");
-              setUploadedFiles(projectData.uploadedFiles || []);
-              setChatMessages(projectData.chatMessages || []);
+              const stepToMove = parseInt(String(targetStep || savedTargetStep || 2));
 
-              if (projectData.chatMessages?.length > 0) {
-                setShowChatInterface(true);
-              }
-
-              const stepToMove = targetStep || savedTargetStep || 2;
-              if (stepToMove === "2" || stepToMove === 2) {
-                setShowRequirements(true);
-                setCurrentStep(2);
-              } else if (stepToMove === "3" || stepToMove === 3) {
-                setShowConfirmation(true);
-                setCurrentStep(3);
-              }
+              // 공통 복원 로직 사용 (로그인 후 DB 저장 실패 시)
+              restoreProjectState(
+                {
+                  description: projectData.description,
+                  serviceType: projectData.serviceType,
+                  chatMessages: projectData.chatMessages,
+                },
+                stepToMove,
+                {
+                  setProjectDescription,
+                  setSelectedServiceType,
+                  setChatMessages,
+                  setCurrentStep,
+                  setShowChatInterface,
+                  setShowRequirements,
+                  setShowConfirmation,
+                  setShowFinalResult,
+                }
+              );
 
               // 기본 복원 완료 플래그 설정
               hasRestoredState.current = true;
+              console.log("기본 상태 복원 완료 (공통 로직 사용)");
             }
           } catch (error) {
             console.error("로그인 후 상태 복원 중 오류:", error);
             // 오류 발생 시 기본 상태 복원
             const { projectData } = tempState;
             if (projectData) {
-              setProjectDescription(projectData.description || "");
-              setSelectedServiceType(projectData.serviceType || "");
-              setUploadedFiles(projectData.uploadedFiles || []);
-              setChatMessages(projectData.chatMessages || []);
-
-              if (projectData.chatMessages?.length > 0) {
-                setShowChatInterface(true);
-              }
-
-              setShowRequirements(true);
-              setCurrentStep(2);
+              // 공통 복원 로직 사용 (오류 시 2단계로 이동)
+              restoreProjectState(
+                {
+                  description: projectData.description,
+                  serviceType: projectData.serviceType,
+                  chatMessages: projectData.chatMessages,
+                },
+                2,
+                {
+                  setProjectDescription,
+                  setSelectedServiceType,
+                  setChatMessages,
+                  setCurrentStep,
+                  setShowChatInterface,
+                  setShowRequirements,
+                  setShowConfirmation,
+                  setShowFinalResult,
+                }
+              );
             }
 
             // 오류 복원 완료 플래그 설정
@@ -887,21 +952,29 @@ function HomePageContent() {
           }
         } else {
           // tempState가 없는 경우 - URL 파라미터로 단계 이동
-          // console.log("tempState 없음 - URL 파라미터로 단계 이동");
-          if (targetStep === "2" || targetStep === "2") {
-            setShowRequirements(true);
-            setCurrentStep(2);
-
-            // 요구사항이 없으면 추출 실행 (별도 useEffect에서 처리)
-            if (!extractedRequirements && !editableRequirements) {
-              console.log("요구사항 없음 - 추출 필요");
+          console.log("tempState 없음 - URL 파라미터로 단계 이동");
+          
+          const stepToMove = parseInt(String(targetStep || 1));
+          
+          // 공통 복원 로직 사용 (데이터 없이 단계만 이동)
+          restoreProjectState(
+            {},
+            stepToMove,
+            {
+              setProjectDescription,
+              setSelectedServiceType,
+              setChatMessages,
+              setCurrentStep,
+              setShowChatInterface,
+              setShowRequirements,
+              setShowConfirmation,
+              setShowFinalResult,
             }
-          } else if (targetStep === "3" || targetStep === "3") {
-            setShowConfirmation(true);
-            setCurrentStep(3);
-          } else if (targetStep === "4" || targetStep === "4") {
-            setShowFinalResult(true);
-            setCurrentStep(4);
+          );
+
+          // 요구사항이 없으면 추출 실행 (별도 useEffect에서 처리)
+          if (stepToMove === 2 && !extractedRequirements && !editableRequirements) {
+            console.log("요구사항 없음 - 추출 필요");
           }
 
           // URL 파라미터 복원 완료 플래그 설정

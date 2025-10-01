@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useAuthContext } from "@/components/providers/AuthProvider";
 import { createClient } from "@/lib/supabase";
 import Link from "next/link";
+import { useProjectResume } from "@/hooks/useProjectResume";
 
 interface Project {
   id: string;
@@ -24,6 +25,7 @@ export default function InProgressProjects() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const hasLoaded = useRef(false);
+  const { resumeProject } = useProjectResume();
 
   const loadProjects = async () => {
     if (!user) return;
@@ -256,7 +258,10 @@ export default function InProgressProjects() {
                   </div>
 
                   <div className="flex space-x-3">
-                    <button className="flex-1 px-4 py-2 text-sm text-white bg-[#6366F1] hover:bg-[#4F46E5] rounded-md transition-colors duration-200 truncate">
+                    <button
+                      onClick={() => resumeProject(project.id)}
+                      className="flex-1 px-4 py-2 text-sm text-white bg-[#6366F1] hover:bg-[#4F46E5] rounded-md transition-colors duration-200 truncate"
+                    >
                       작성 이어하기
                     </button>
                   </div>
