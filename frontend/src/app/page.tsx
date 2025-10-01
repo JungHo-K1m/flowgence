@@ -819,7 +819,6 @@ function HomePageContent() {
   //   console.log("showLoginModal 상태 변경:", showLoginModal);
   // }, [showLoginModal]);
   const {} = useStatePersistence();
-  const searchParams = useSearchParams();
   const targetStep = searchParams.get("step");
 
   // 로그인 후 상태 복원 및 자동 단계 이동
