@@ -36,6 +36,13 @@ export function useProjectResume() {
 
       if (messagesError) throw messagesError;
 
+      // 채팅 메시지 형식 변환 (role → type)
+      const formattedMessages = (messages || []).map((msg: any) => ({
+        id: msg.id || `msg-${Date.now()}-${Math.random()}`,
+        type: msg.role === "user" ? "user" : "ai", // role을 type으로 변환
+        content: msg.content || "",
+      }));
+
       // 요구사항 조회
       const { data: requirements, error: requirementsError } = await supabase
         .from("requirements")
@@ -53,7 +60,7 @@ export function useProjectResume() {
         status: project.status,
         overview: project.overview || {},
         requirements: project.requirements || {},
-        chatMessages: messages || [],
+        chatMessages: formattedMessages, // 변환된 메시지 사용
         extractedRequirements: requirements || [],
         timestamp: Date.now(),
       };
