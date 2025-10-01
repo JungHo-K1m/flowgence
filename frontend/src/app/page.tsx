@@ -59,6 +59,43 @@ function HomePageContent() {
   const [chatMessages, setChatMessages] = useState<Message[]>([]);
   const hasResumedProject = useRef(false);
 
+  // 페이지 로드 시 스크롤 위치 조정 제거 (전체 화면 레이아웃으로 변경)
+  // useEffect(() => {
+  //   // 채팅 UI가 있는 단계(2단계)에서는 스크롤하지 않음
+  //   if (showChatInterface && showRequirements) {
+  //     return; // 채팅 UI에서는 스크롤 위치 유지
+  //   }
+
+  //   // 메인 페이지(1단계)에서만 상단으로 스크롤
+  //   if (
+  //     !showChatInterface &&
+  //     !showRequirements &&
+  //     !showConfirmation &&
+  //     !showFinalResult
+  //   ) {
+  //     // 즉시 스크롤
+  //     window.scrollTo(0, 0);
+
+  //     // 추가적으로 약간의 지연 후에도 스크롤 (일부 브라우저에서 지연 로딩으로 인한 문제 방지)
+  //     const timeoutId = setTimeout(() => {
+  //       window.scrollTo(0, 0);
+  //     }, 100);
+
+  //     return () => clearTimeout(timeoutId);
+  //   }
+  // }, [showChatInterface, showRequirements, showConfirmation, showFinalResult]);
+
+  // useProjectOverview 훅 사용
+  const {
+    overview,
+    updateOverview,
+    isLoading: isOverviewLoading,
+    aiMessage,
+  } = useProjectOverview();
+
+  // useProjectRestore 훅 사용 (공통 복원 로직)
+  const { restoreProjectState } = useProjectRestore();
+
   // 프로젝트 복구 로직 (이어서 작업하기)
   useEffect(() => {
     const resumeProjectId = searchParams.get("resume");
@@ -104,43 +141,6 @@ function HomePageContent() {
     updateOverview,
     updateExtractedRequirements,
   ]);
-
-  // 페이지 로드 시 스크롤 위치 조정 제거 (전체 화면 레이아웃으로 변경)
-  // useEffect(() => {
-  //   // 채팅 UI가 있는 단계(2단계)에서는 스크롤하지 않음
-  //   if (showChatInterface && showRequirements) {
-  //     return; // 채팅 UI에서는 스크롤 위치 유지
-  //   }
-
-  //   // 메인 페이지(1단계)에서만 상단으로 스크롤
-  //   if (
-  //     !showChatInterface &&
-  //     !showRequirements &&
-  //     !showConfirmation &&
-  //     !showFinalResult
-  //   ) {
-  //     // 즉시 스크롤
-  //     window.scrollTo(0, 0);
-
-  //     // 추가적으로 약간의 지연 후에도 스크롤 (일부 브라우저에서 지연 로딩으로 인한 문제 방지)
-  //     const timeoutId = setTimeout(() => {
-  //       window.scrollTo(0, 0);
-  //     }, 100);
-
-  //     return () => clearTimeout(timeoutId);
-  //   }
-  // }, [showChatInterface, showRequirements, showConfirmation, showFinalResult]);
-
-  // useProjectOverview 훅 사용
-  const {
-    overview,
-    updateOverview,
-    isLoading: isOverviewLoading,
-    aiMessage,
-  } = useProjectOverview();
-
-  // useProjectRestore 훅 사용 (공통 복원 로직)
-  const { restoreProjectState } = useProjectRestore();
 
   // 요구사항 추출 및 저장 훅 사용
   const {
