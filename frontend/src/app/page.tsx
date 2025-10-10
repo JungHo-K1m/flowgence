@@ -1173,8 +1173,47 @@ function HomePageContent() {
     console.log("Selected files:", files);
   };
 
+  // 서비스 타입 ID -> 한국어 이름 매핑
+  const serviceTypeNames: { [key: string]: string } = {
+    "food-delivery": "음식 배달 앱",
+    "real-estate": "부동산 플랫폼",
+    "work-management": "업무 관리 도구",
+    "online-education": "온라인 교육",
+    "shopping-mall": "쇼핑몰",
+  };
+
+  // 받침 유무에 따라 적절한 조사 반환 (을/를)
+  const getParticle = (word: string): string => {
+    if (!word || word.length === 0) return "을";
+    
+    const lastChar = word[word.length - 1];
+    const lastCharCode = lastChar.charCodeAt(0);
+    
+    // 한글 유니코드 범위: 0xAC00 ~ 0xD7A3
+    if (lastCharCode >= 0xAC00 && lastCharCode <= 0xD7A3) {
+      // 받침이 있는지 확인: (코드 - 0xAC00) % 28 !== 0이면 받침 있음
+      const hasJongseong = (lastCharCode - 0xAC00) % 28 !== 0;
+      return hasJongseong ? "을" : "를";
+    }
+    
+    // 한글이 아닌 경우 기본값
+    return "을";
+  };
+
   const handleServiceTypeSelect = (serviceType: string) => {
     setSelectedServiceType(serviceType);
+    
+    // 서비스 타입의 한국어 이름 가져오기
+    const serviceName = serviceTypeNames[serviceType];
+    
+    if (serviceName) {
+      // 받침에 따라 적절한 조사 선택
+      const particle = getParticle(serviceName);
+      
+      // 입력란에 텍스트 자동 삽입
+      const text = `${serviceName}${particle} 만들고 싶어요.`;
+      setProjectDescription(text);
+    }
   };
 
   // 메시지 변경 핸들러 (useCallback으로 최적화)
