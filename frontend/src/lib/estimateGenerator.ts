@@ -368,13 +368,13 @@ ${category.subCategories.map((subCategory, subIndex) => {
 | ID | 요구사항 | 설명 | 우선순위 | 공수 | 견적 |
 |---|---|---|---|---|---|
 ${reqs.map((req, reqIndex) => {
-  const id = \`REQ-\${categoryIndex + 1}-\${subIndex + 1}-\${reqIndex + 1}\`;
+  const id = `REQ-${categoryIndex + 1}-${subIndex + 1}-${reqIndex + 1}`;
   const priority = req.priority === 'high' ? '필수' : req.priority === 'medium' ? '권장' : '선택';
   const priorityClass = req.priority === 'high' ? 'mandatory' : req.priority === 'medium' ? 'recommended' : 'optional';
   const effort = req.priority === 'high' ? '5일' : req.priority === 'medium' ? '3일' : '2일';
   const cost = req.priority === 'high' ? 1500000 : req.priority === 'medium' ? 1000000 : 500000;
   
-  return \`| \${id} | <span class="requirement-name">\${req.title}</span> | <span class="requirement-description">\${req.description}</span> | <span class="priority-badge \${priorityClass}">\${priority}</span> | \${effort} | \${formatCurrency(cost)} |\`;
+  return `| ${id} | <span class="requirement-name">${req.title}</span> | <span class="requirement-description">${req.description}</span> | <span class="priority-badge ${priorityClass}">${priority}</span> | ${effort} | ${formatCurrency(cost)} |`;
 }).join('\n')}
 `;
 }).join('')}
