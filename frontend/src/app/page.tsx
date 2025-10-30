@@ -653,18 +653,6 @@ function HomePageContent() {
           )
             return cat;
 
-          // 기존 요구사항을 id -> 위치 매핑으로 빠르게 찾도록 준비
-          const requirementIndexMap = new Map<
-            string,
-            { subIndex: number; reqIndex: number }
-          >();
-          cat.subCategories.forEach((sub, si: number) => {
-            (sub.requirements || []).forEach((req: Requirement, ri: number) => {
-              if (req.id)
-                requirementIndexMap.set(req.id, { subIndex: si, reqIndex: ri });
-            });
-          });
-
           // 변환용 얕은 복사
           const newSubCategories = cat.subCategories.map((s) => ({
             ...s,
@@ -676,15 +664,31 @@ function HomePageContent() {
           const keepIds = new Set(
             updatedFlatList.filter((i) => i.id).map((i) => i.id)
           );
+
+          // 삭제된 항목 제거
           newSubCategories.forEach((sub) => {
             sub.requirements = sub.requirements.filter(
               (req: Requirement) => !req.id || keepIds.has(req.id)
             );
           });
 
-          // 2) 업데이트/추가 처리
+          // 2) 삭제 후 requirementIndexMap 재생성 (삭제 작업 후에 생성)
+          // 중요: 삭제된 항목이 제거된 후에 매핑을 생성해야 올바른 인덱스 보장
+          const requirementIndexMap = new Map<
+            string,
+            { subIndex: number; reqIndex: number }
+          >();
+          newSubCategories.forEach((sub, si: number) => {
+            (sub.requirements || []).forEach((req: Requirement, ri: number) => {
+              if (req.id) {
+                requirementIndexMap.set(req.id, { subIndex: si, reqIndex: ri });
+              }
+            });
+          });
+
+          // 3) 업데이트/추가 처리
           console.log(
-            "편집 처리 시작 - requirementIndexMap:",
+            "편집 처리 시작 - requirementIndexMap (삭제 후 재생성):",
             requirementIndexMap
           );
           console.log("편집 처리 시작 - updatedFlatList:", updatedFlatList);
@@ -769,7 +773,7 @@ function HomePageContent() {
             }
           });
 
-          // 3) 중복 제거 - 같은 title을 가진 요구사항 중 더 긴 설명을 가진 것만 유지
+          // 4) 중복 제거 - 같은 title을 가진 요구사항 중 더 긴 설명을 가진 것만 유지
           newSubCategories.forEach((sub) => {
             const titleMap = new Map<string, Requirement>();
             sub.requirements.forEach((req) => {
