@@ -319,7 +319,8 @@ export function ConfirmationPanel({
         estimateData,
         requirementsData,
         projectData,
-        projectOverview
+        projectOverview,
+        extractedRequirements
       );
 
       await downloadMarkdownAsPDF(markdown, {
@@ -343,7 +344,8 @@ export function ConfirmationPanel({
         estimateData,
         requirementsData,
         projectData,
-        projectOverview
+        projectOverview,
+        extractedRequirements
       );
 
       downloadMarkdownAsFile(
@@ -365,7 +367,8 @@ export function ConfirmationPanel({
         estimateData,
         requirementsData,
         projectData,
-        projectOverview
+        projectOverview,
+        extractedRequirements
       );
 
       // HTML로 변환
@@ -435,13 +438,15 @@ export function ConfirmationPanel({
               estimateData,
               requirementsData,
               projectData,
-              projectOverview
+              projectOverview,
+              extractedRequirements
             ),
             html: generateEstimateMarkdown(
               estimateData,
               requirementsData,
               projectData,
-              projectOverview
+              projectOverview,
+              extractedRequirements
             ).replace(/\n/g, "<br>"),
           };
           shareToNotionManually(data);
@@ -470,7 +475,8 @@ export function ConfirmationPanel({
         requirementsData,
         projectData,
         projectOverview,
-        notionSetup.config!
+        notionSetup.config!,
+        extractedRequirements
       );
 
       // 성공 메시지 표시
@@ -510,13 +516,15 @@ export function ConfirmationPanel({
         estimateData,
         requirementsData,
         projectData,
-        projectOverview
+        projectOverview,
+        extractedRequirements
       ),
       html: generateEstimateMarkdown(
         estimateData,
         requirementsData,
         projectData,
-        projectOverview
+        projectOverview,
+        extractedRequirements
       ).replace(/\n/g, "<br>"),
     };
 

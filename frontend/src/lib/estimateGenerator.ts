@@ -40,11 +40,30 @@ interface ProjectData {
   serviceType: string;
 }
 
+interface ExtractedRequirements {
+  categories: Array<{
+    majorCategory?: string;
+    category?: string;
+    subCategories: Array<{
+      subCategory?: string;
+      subcategory?: string;
+      requirements: Array<{
+        id: string;
+        title: string;
+        description: string;
+        priority: "high" | "medium" | "low";
+      }>;
+    }>;
+  }>;
+  totalCount: number;
+}
+
 export function generateEstimateMarkdown(
   estimateData: EstimateData,
   requirementsData: RequirementsData,
   projectData: ProjectData,
-  projectOverview?: any
+  projectOverview?: any,
+  extractedRequirements?: ExtractedRequirements | null
 ): string {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("ko-KR").format(amount) + "원";
@@ -312,6 +331,59 @@ ${projectOverview?.serviceCoreElements?.keyFeatures ?
 | 03 | <span class="requirement-name">🔧 관리 기능</span> | <span class="requirement-description">관리자용 관리 도구</span> | <span class="priority-badge recommended">권장</span> |
 | 04 | <span class="requirement-name">📱 모바일 지원</span> | <span class="requirement-description">모바일 환경 최적화</span> | <span class="priority-badge recommended">권장</span> |`
 }
+
+---
+
+## 📋 상세 요구사항 내역
+
+### 📊 요구사항 개요
+- **총 요구사항**: ${extractedRequirements?.totalCount || 0}개
+- **카테고리**: ${extractedRequirements?.categories?.length || 0}개
+- **중요도 분류**:
+  - 필수(HIGH): ${requirementsData.mandatory}개
+  - 권장(MEDIUM): ${requirementsData.recommended}개
+  - 선택(LOW): ${requirementsData.optional}개
+
+${extractedRequirements && extractedRequirements.categories && extractedRequirements.categories.length > 0 ? `
+### 🔍 카테고리별 상세 내역
+
+${extractedRequirements.categories.map((category, categoryIndex) => {
+  const categoryName = category.majorCategory || category.category || `카테고리 ${categoryIndex + 1}`;
+  const allRequirements = category.subCategories.flatMap(sub => sub.requirements || []);
+  
+  return `
+#### ${categoryName}
+**소분류 수**: ${category.subCategories.length}개  
+**요구사항 수**: ${allRequirements.length}개
+
+${category.subCategories.map((subCategory, subIndex) => {
+  const subName = subCategory.subCategory || subCategory.subcategory || `소분류 ${subIndex + 1}`;
+  const reqs = subCategory.requirements || [];
+  
+  if (reqs.length === 0) return '';
+  
+  return `
+##### ${subName} (${reqs.length}개)
+  
+| ID | 요구사항 | 설명 | 우선순위 | 공수 | 견적 |
+|---|---|---|---|---|---|
+${reqs.map((req, reqIndex) => {
+  const id = \`REQ-\${categoryIndex + 1}-\${subIndex + 1}-\${reqIndex + 1}\`;
+  const priority = req.priority === 'high' ? '필수' : req.priority === 'medium' ? '권장' : '선택';
+  const priorityClass = req.priority === 'high' ? 'mandatory' : req.priority === 'medium' ? 'recommended' : 'optional';
+  const effort = req.priority === 'high' ? '5일' : req.priority === 'medium' ? '3일' : '2일';
+  const cost = req.priority === 'high' ? 1500000 : req.priority === 'medium' ? 1000000 : 500000;
+  
+  return \`| \${id} | <span class="requirement-name">\${req.title}</span> | <span class="requirement-description">\${req.description}</span> | <span class="priority-badge \${priorityClass}">\${priority}</span> | \${effort} | \${formatCurrency(cost)} |\`;
+}).join('\n')}
+`;
+}).join('')}
+`;
+}).join('')}
+` : `
+### ℹ️ 요구사항 정보
+현재 추출된 요구사항이 없습니다. 상세 요구사항은 별도 명세서를 참고해주세요.
+`}
 
 ---
 

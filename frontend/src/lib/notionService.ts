@@ -380,7 +380,8 @@ export async function shareEstimateToNotion(
   requirementsData: any,
   projectData: any,
   projectOverview: any,
-  notionConfig: { apiKey: string; databaseId: string }
+  notionConfig: { apiKey: string; databaseId: string },
+  extractedRequirements?: any
 ): Promise<string> {
   try {
     const notionService = createNotionService(notionConfig.apiKey, notionConfig.databaseId);
@@ -399,7 +400,8 @@ export async function shareEstimateToNotion(
       estimateData,
       requirementsData,
       projectData,
-      projectOverview
+      projectOverview,
+      extractedRequirements
     );
 
     // 마크다운을 Notion 블록으로 변환
