@@ -337,14 +337,45 @@ export function RequirementsResultPanel({
 
   const scrollToSection = (sectionId: string) => {
     setActiveSection(sectionId);
-    const element = document.getElementById(sectionId);
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth" });
-    }
+    // 약간의 지연을 두어 DOM이 업데이트된 후 스크롤
+    setTimeout(() => {
+      const element = document.getElementById(sectionId);
+      if (element) {
+        // 컨텐츠 영역 내에서 스크롤
+        const contentArea = element.closest('.flex-1.overflow-y-auto');
+        if (contentArea) {
+          const rect = element.getBoundingClientRect();
+          const absoluteElementTop = rect.top + window.pageYOffset;
+          const absoluteContentTop = (contentArea as HTMLElement).getBoundingClientRect().top + window.pageYOffset;
+          const relativeTop = absoluteElementTop - absoluteContentTop;
+          
+          (contentArea as HTMLElement).scrollTo({
+            top: relativeTop - 20,
+            behavior: "smooth"
+          });
+        }
+      }
+    }, 100);
   };
 
   return (
     <>
+      <style jsx>{`
+        .requirements-content::-webkit-scrollbar {
+          width: 8px;
+        }
+        .requirements-content::-webkit-scrollbar-track {
+          background: #f1f1f1;
+          border-radius: 10px;
+        }
+        .requirements-content::-webkit-scrollbar-thumb {
+          background: #888;
+          border-radius: 10px;
+        }
+        .requirements-content::-webkit-scrollbar-thumb:hover {
+          background: #555;
+        }
+      `}</style>
       <div className="h-full bg-white flex">
         {/* Left Sidebar */}
         <div className="w-64 bg-gray-50 border-r border-gray-200 flex flex-col">
@@ -459,7 +490,7 @@ export function RequirementsResultPanel({
           </div>
 
           {/* Content */}
-          <div className="flex-1 overflow-y-auto p-6">
+          <div className="flex-1 overflow-y-auto p-6 max-h-[calc(100vh-200px)] requirements-content">
             {/* Overview Section */}
             <section id="overview" className="mb-8">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">개요</h2>

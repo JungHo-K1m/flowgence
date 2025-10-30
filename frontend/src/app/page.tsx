@@ -636,6 +636,9 @@ function HomePageContent() {
         description: string;
         category: string;
         priority: "high" | "medium" | "low";
+        needsClarification?: boolean;
+        clarificationQuestions?: string[];
+        status?: "approved" | "rejected" | "draft";
       }>
     ) => {
       const base = editableRequirements || extractedRequirements;
@@ -721,15 +724,26 @@ function HomePageContent() {
               const { subIndex, reqIndex } = found;
               const prev =
                 newSubCategories[subIndex].requirements[reqIndex] || {};
+              // item에 status가 있으면 사용, 없으면 기존 값 유지
               newSubCategories[subIndex].requirements[reqIndex] = {
                 ...prev,
                 id: item.id,
                 title: item.title,
                 description: item.description,
-                // 편집된 요구사항은 자동으로 승인 상태로 변경
-                status: "approved",
-                needsClarification: false,
-                clarificationQuestions: [],
+                // item에 status가 있으면 사용, 없으면 기존 값 유지
+                status: item.status || prev.status || "approved",
+                // item에 needsClarification이 있으면 사용, 없으면 기존 값 유지
+                needsClarification:
+                  item.needsClarification !== undefined
+                    ? item.needsClarification
+                    : prev.needsClarification,
+                // item에 clarificationQuestions가 있으면 사용, 없으면 기존 값 유지
+                clarificationQuestions:
+                  item.clarificationQuestions ||
+                  prev.clarificationQuestions ||
+                  [],
+                // 다른 필드들은 기존 값 유지
+                priority: item.priority || prev.priority || "medium",
               };
             } else {
               // ID 매핑 실패 시, 제목과 설명으로 기존 요구사항 찾기
@@ -754,9 +768,20 @@ function HomePageContent() {
                       id: item.id || req.id,
                       title: item.title,
                       description: item.description,
-                      status: "approved",
-                      needsClarification: false,
-                      clarificationQuestions: [],
+                      // item에 status가 있으면 사용, 없으면 기존 값 유지
+                      status: item.status || req.status || "approved",
+                      // item에 needsClarification이 있으면 사용, 없으면 기존 값 유지
+                      needsClarification:
+                        item.needsClarification !== undefined
+                          ? item.needsClarification
+                          : req.needsClarification,
+                      // item에 clarificationQuestions가 있으면 사용, 없으면 기존 값 유지
+                      clarificationQuestions:
+                        item.clarificationQuestions ||
+                        req.clarificationQuestions ||
+                        [],
+                      // 다른 필드들은 기존 값 유지
+                      priority: item.priority || req.priority || "medium",
                     };
                     existingRequirementFound = true;
                     console.log(
