@@ -686,14 +686,32 @@ function HomePageContent() {
             });
           });
 
-          // 3) 업데이트/추가 처리
+          // 3) 중복 제거: ID를 기준으로 마지막 항목만 유지
+          const uniqueUpdatedList = new Map<
+            string,
+            (typeof updatedFlatList)[0]
+          >();
+          updatedFlatList.forEach((item) => {
+            if (item.id) {
+              uniqueUpdatedList.set(item.id, item);
+            }
+          });
+
           console.log(
             "편집 처리 시작 - requirementIndexMap (삭제 후 재생성):",
             requirementIndexMap
           );
-          console.log("편집 처리 시작 - updatedFlatList:", updatedFlatList);
+          console.log(
+            "편집 처리 시작 - updatedFlatList (원본):",
+            updatedFlatList
+          );
+          console.log(
+            "편집 처리 시작 - uniqueUpdatedList (중복 제거 후):",
+            Array.from(uniqueUpdatedList.values())
+          );
 
-          updatedFlatList.forEach((item) => {
+          // 4) 업데이트/추가 처리
+          uniqueUpdatedList.forEach((item) => {
             const found = item.id && requirementIndexMap.get(item.id);
             console.log(
               `요구사항 처리: ${item.title}, ID: ${item.id}, found:`,
@@ -773,7 +791,7 @@ function HomePageContent() {
             }
           });
 
-          // 4) 중복 제거 - 같은 title을 가진 요구사항 중 더 긴 설명을 가진 것만 유지
+          // 5) 중복 제거 - 같은 title을 가진 요구사항 중 더 긴 설명을 가진 것만 유지
           newSubCategories.forEach((sub) => {
             const titleMap = new Map<string, Requirement>();
             sub.requirements.forEach((req) => {
