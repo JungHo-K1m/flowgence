@@ -159,6 +159,7 @@ function HomePageContent() {
   const {
     saveProjectWithMessages,
     saveRequirements,
+    updateProjectStatus,
     isLoading: isSaving,
     error: saveError,
     savedProjectId,
@@ -1444,11 +1445,21 @@ function HomePageContent() {
     }
   };
 
-  const handleFinalConfirm = () => {
+  const handleFinalConfirm = async () => {
     setShowFinalModal(false);
     setShowConfirmation(false);
     setShowFinalResult(true);
     setCurrentStep(4);
+
+    // 프로젝트 상태를 completed로 업데이트
+    if (user && savedProjectId) {
+      try {
+        await updateProjectStatus(savedProjectId, "completed");
+        console.log("프로젝트 상태를 completed로 업데이트했습니다.");
+      } catch (error) {
+        console.error("프로젝트 상태 업데이트 실패:", error);
+      }
+    }
   };
 
   const handlePrevStep = () => {
