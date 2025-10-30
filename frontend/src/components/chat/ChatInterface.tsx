@@ -84,6 +84,10 @@ export function ChatInterface({
   const [internalMessages, setInternalMessages] = useState<Message[]>(
     getInitialMessages()
   );
+  
+  // 타이핑 효과를 위한 상태
+  const [typingMessage, setTypingMessage] = useState<string>("");
+  const [isTypingMessage, setIsTypingMessage] = useState<boolean>(false);
 
   const [isTyping, setIsTyping] = useState(false);
   const [previousStep, setPreviousStep] = useState(currentStep);
@@ -192,7 +196,7 @@ export function ChatInterface({
     }
   }, [currentStep, previousStep, onMessagesChange, messages]);
 
-  // aiResponse가 변경될 때 AI 메시지 추가
+  // aiResponse가 변경될 때 AI 메시지 추가 (타이핑 효과 포함)
   useEffect(() => {
     if (aiResponse && aiResponse.trim()) {
       // 이미 같은 내용의 AI 메시지가 있는지 확인
@@ -209,28 +213,53 @@ export function ChatInterface({
         return;
       }
 
-      const aiMessage = {
-        id: `ai-${Date.now()}`,
-        type: "ai" as const,
-        content: aiResponse,
-        icon: "🤖",
-      };
+      // 타이핑 효과 시작
+      setIsTypingMessage(true);
+      setTypingMessage("");
+      
+      let currentIndex = 0;
+      const fullText = aiResponse;
+      
+      // 한 글자씩 타이핑
+      const typingInterval = setInterval(() => {
+        if (currentIndex < fullText.length) {
+          setTypingMessage(fullText.substring(0, currentIndex + 1));
+          currentIndex++;
+          
+          // 스크롤을 실시간으로 이동
+          forceScrollToBottom();
+        } else {
+          // 타이핑 완료
+          clearInterval(typingInterval);
+          setIsTypingMessage(false);
+          
+          // 완전한 메시지를 배열에 추가
+          const aiMessage = {
+            id: `ai-${Date.now()}`,
+            type: "ai" as const,
+            content: fullText,
+            icon: "🤖",
+          };
 
-      const updatedMessages = [...currentMessages, aiMessage];
+          const updatedMessages = [...currentMessages, aiMessage];
 
-      if (onMessagesChange) {
-        onMessagesChange(updatedMessages);
-      } else {
-        setInternalMessages(updatedMessages);
-      }
-
-      // 타이핑 인디케이터 숨기기
-      setIsTyping(false);
-
-      // AI 응답 완료 시 스크롤을 하단으로 이동
-      setTimeout(() => {
-        forceScrollToBottom();
-      }, 100);
+          if (onMessagesChange) {
+            onMessagesChange(updatedMessages);
+          } else {
+            setInternalMessages(updatedMessages);
+          }
+          
+          // 타이핑 인디케이터 숨기기
+          setIsTyping(false);
+          
+          // 최종 스크롤
+          setTimeout(() => {
+            forceScrollToBottom();
+          }, 100);
+        }
+      }, 30); // 30ms 간격 (1초에 약 33글자)
+      
+      return () => clearInterval(typingInterval);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [aiResponse, onMessagesChange]);
@@ -361,9 +390,21 @@ export function ChatInterface({
             onOptionSelect={handleOptionSelect}
           />
         ))}
+        
+        {/* 타이핑 중인 메시지 표시 */}
+        {isTypingMessage && typingMessage && (
+          <MessageBubble
+            message={{
+              id: "typing-message",
+              type: "ai" as const,
+              content: typingMessage,
+              icon: "🤖",
+            }}
+          />
+        )}
 
         {/* Typing Indicator */}
-        {isTyping && <TypingIndicator />}
+        {isTyping && !isTypingMessage && <TypingIndicator />}
 
         {/* 스크롤 앵커 */}
         <div ref={messagesEndRef} />

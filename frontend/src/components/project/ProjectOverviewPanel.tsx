@@ -158,13 +158,39 @@ export function ProjectOverviewPanel({
     </div>
   );
 
-  // 로딩 스피너 컴포넌트
-  const LoadingSpinner = () => (
-    <div className="flex items-center justify-center py-4">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      <span className="ml-2 text-sm text-gray-600">AI가 분석 중입니다...</span>
-    </div>
-  );
+  // 텍스트 스트리밍 로딩 컴포넌트
+  const LoadingSpinner = () => {
+    const [currentMessage, setCurrentMessage] = useState(0);
+    
+    const loadingMessages = [
+      "프로젝트를 분석하고 있습니다",
+      "핵심 요소를 추출하고 있습니다",
+      "서비스 구조를 설계하고 있습니다",
+      "최종 검토를 진행하고 있습니다"
+    ];
+    
+    useEffect(() => {
+      if (!isLoading) return;
+      
+      const interval = setInterval(() => {
+        setCurrentMessage((prev) => (prev + 1) % loadingMessages.length);
+      }, 2000); // 2초마다 메시지 변경
+      
+      return () => clearInterval(interval);
+    }, [isLoading, loadingMessages.length]);
+    
+    return (
+      <div className="flex flex-col items-center justify-center py-6">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-3"></div>
+        <span className="text-sm text-gray-600 animate-pulse">
+          {loadingMessages[currentMessage]}
+        </span>
+        <span className="text-xs text-gray-400 mt-1 animate-pulse">
+          잠시만 기다려주세요...
+        </span>
+      </div>
+    );
+  };
 
   return (
     <div className="h-full bg-white flex flex-col max-h-screen">
