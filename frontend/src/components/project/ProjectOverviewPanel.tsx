@@ -60,6 +60,13 @@ interface ProjectOverview {
       deployment: string;
     };
   };
+  aiAnalysis?: {
+    insights: Array<{
+      type: "strength" | "suggestion" | "warning";
+      icon: string;
+      message: string;
+    }>;
+  };
 }
 
 interface ProjectOverviewPanelProps {
@@ -399,24 +406,39 @@ export function ProjectOverviewPanel({
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      <div className="flex items-start space-x-2">
-                        <span className="text-green-500 text-lg">✔</span>
-                        <p className="text-sm text-gray-600">
-                          타겟이 명확해요! 멀티펫 시장은 충성도가 높아요
-                        </p>
-                      </div>
-                      <div className="flex items-start space-x-2">
-                        <span className="text-yellow-500 text-lg">💡</span>
-                        <p className="text-sm text-gray-600">
-                          제안: 펫 건강 관리 기능도 고려해보세요
-                        </p>
-                      </div>
-                      <div className="flex items-start space-x-2">
-                        <span className="text-orange-500 text-lg">⚠</span>
-                        <p className="text-sm text-gray-600">
-                          고려: 배송 물류 시스템이 핵심 성공요소입니다
-                        </p>
-                      </div>
+                      {displayOverview?.aiAnalysis?.insights &&
+                      displayOverview.aiAnalysis.insights.length > 0 ? (
+                        displayOverview.aiAnalysis.insights.map(
+                          (insight, index) => (
+                            <div key={index} className="flex items-start space-x-2">
+                              <span
+                                className={`text-lg ${
+                                  insight.type === "strength"
+                                    ? "text-green-500"
+                                    : insight.type === "suggestion"
+                                    ? "text-yellow-500"
+                                    : "text-orange-500"
+                                }`}
+                              >
+                                {insight.icon}
+                              </span>
+                              <p className="text-sm text-gray-600">
+                                {insight.message}
+                              </p>
+                            </div>
+                          )
+                        )
+                      ) : (
+                        // Fallback: aiAnalysis가 없는 경우 기본 메시지
+                        <>
+                          <div className="flex items-start space-x-2">
+                            <span className="text-green-500 text-lg">✔</span>
+                            <p className="text-sm text-gray-600">
+                              프로젝트 분석 중...
+                            </p>
+                          </div>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>

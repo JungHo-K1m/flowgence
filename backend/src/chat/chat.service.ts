@@ -143,7 +143,9 @@ export class ChatService {
 2. 새로운 정보만 추가하지 말고, 기존 정보와 새로운 정보를 통합하세요.
 3. keyFeatures 배열에는 이전에 언급된 모든 기능들을 포함하세요.
 4. 비즈니스 모델 정보를 분석하여 수익 모델을 제안하세요.
-5. 응답은 반드시 유효한 JSON 형식이어야 하며, 다른 텍스트나 설명은 포함하지 마세요.
+5. aiAnalysis 섹션에는 프로젝트의 강점, 개선 제안, 주의사항을 구체적으로 분석하여 3개의 insights를 제공하세요.
+6. aiAnalysis의 insights는 프로젝트의 타겟 사용자, 비즈니스 모델, 기술 스택, 시장 경쟁력을 종합적으로 고려하여 작성하세요.
+7. 응답은 반드시 유효한 JSON 형식이어야 하며, 다른 텍스트나 설명은 포함하지 마세요.
 
 응답 형식:
 {
@@ -182,6 +184,25 @@ export class ChatService {
           "systemResponse": "시스템 응답",
           "estimatedHours": "예상 소요 시간",
           "requiredSkills": ["필요한 기술 스택"]
+        }
+      ]
+    },
+    "aiAnalysis": {
+      "insights": [
+        {
+          "type": "strength",
+          "icon": "✔",
+          "message": "프로젝트의 강점이나 긍정적인 분석 내용"
+        },
+        {
+          "type": "suggestion",
+          "icon": "💡",
+          "message": "개선 제안이나 추가 기능 아이디어"
+        },
+        {
+          "type": "warning",
+          "icon": "⚠",
+          "message": "주의해야 할 사항이나 핵심 고려 요소"
         }
       ]
     }

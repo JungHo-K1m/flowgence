@@ -235,27 +235,47 @@ function HomePageContent() {
   const saveEditedRequirements = useCallback(
     async (updatedRequirements: ExtractedRequirements) => {
       if (!savedProjectId) {
-        console.warn("저장된 프로젝트 ID가 없습니다. DB 저장을 건너뜁니다.");
+        console.warn("저장된 프로젝트 ID가 없습니다. DB 저장을 건너뜁니다.", {
+          savedProjectId,
+          requirementsCount: updatedRequirements.totalCount,
+        });
         return;
       }
 
       try {
-        console.log("편집된 요구사항 DB 저장 시작:", savedProjectId);
+        console.log("편집된 요구사항 DB 저장 시작:", {
+          savedProjectId,
+          categoriesCount: updatedRequirements.categories?.length,
+          totalCount: updatedRequirements.totalCount,
+          requirementsData: updatedRequirements,
+        });
+
         const result = await saveRequirements(
           savedProjectId,
           updatedRequirements
         );
 
         if (result.status === "success") {
-          console.log("편집된 요구사항 DB 저장 성공");
+          console.log("편집된 요구사항 DB 저장 성공:", {
+            status: result.status,
+            message: result.message,
+          });
           // 성공 토스트 표시 (추후 구현)
         } else {
-          console.error("편집된 요구사항 DB 저장 실패:", result.message);
+          console.error("편집된 요구사항 DB 저장 실패:", {
+            status: result.status,
+            message: result.message,
+          });
           // 실패 토스트 표시 (추후 구현)
           throw new Error(result.message || "저장에 실패했습니다");
         }
       } catch (error) {
-        console.error("편집된 요구사항 DB 저장 중 오류:", error);
+        console.error("편집된 요구사항 DB 저장 중 오류:", error, {
+          savedProjectId,
+          errorType:
+            error instanceof Error ? error.constructor.name : typeof error,
+          errorMessage: error instanceof Error ? error.message : String(error),
+        });
         // 오류 토스트 표시 (추후 구현)
         throw error;
       }
@@ -771,6 +791,18 @@ function HomePageContent() {
         }),
       };
 
+      // totalCount 재계산
+      const newTotalCount = next.categories.reduce(
+        (total, cat) =>
+          total +
+          cat.subCategories.reduce(
+            (subTotal, sub) => subTotal + (sub.requirements?.length || 0),
+            0
+          ),
+        0
+      );
+      next.totalCount = newTotalCount;
+
       // 즉시 UI 상태 업데이트
       setEditableRequirements(next);
 
@@ -778,9 +810,14 @@ function HomePageContent() {
       updateExtractedRequirements(next);
 
       // 변경사항을 즉시 DB에 저장 (낙관적 업데이트)
-      await saveEditedRequirements(next);
-
-      console.log("편집 완료 - 업데이트된 요구사항:", next);
+      try {
+        await saveEditedRequirements(next);
+        console.log("편집 완료 - 업데이트된 요구사항:", next);
+      } catch (error) {
+        console.error("편집된 요구사항 저장 실패:", error);
+        // 저장 실패해도 UI는 업데이트된 상태 유지 (낙관적 업데이트)
+        // 사용자에게는 저장 실패 알림이 필요할 수 있음 (추후 구현)
+      }
     },
     [
       editableRequirements,
@@ -819,8 +856,12 @@ function HomePageContent() {
   useEffect(() => {
     // 로그인 → 로그아웃 전환 감지
     if (previousUser.current && !user && !loading) {
-      const hasState = showChatInterface || showRequirements || showConfirmation || showFinalResult;
-      
+      const hasState =
+        showChatInterface ||
+        showRequirements ||
+        showConfirmation ||
+        showFinalResult;
+
       if (hasState) {
         console.log("로그아웃 감지 - 상태 초기화");
         setShowChatInterface(false);
@@ -836,7 +877,14 @@ function HomePageContent() {
       }
     }
     previousUser.current = user;
-  }, [user, loading, showChatInterface, showRequirements, showConfirmation, showFinalResult]);
+  }, [
+    user,
+    loading,
+    showChatInterface,
+    showRequirements,
+    showConfirmation,
+    showFinalResult,
+  ]);
 
   // showLoginModal 상태 디버깅
   // useEffect(() => {
@@ -918,7 +966,9 @@ function HomePageContent() {
               console.log("기본 상태 복원 시도");
               const { projectData, targetStep: savedTargetStep } = tempState;
 
-              const stepToMove = parseInt(String(targetStep || savedTargetStep || 2));
+              const stepToMove = parseInt(
+                String(targetStep || savedTargetStep || 2)
+              );
 
               // 공통 복원 로직 사용 (로그인 후 DB 저장 실패 시)
               restoreProjectState(
@@ -976,27 +1026,27 @@ function HomePageContent() {
         } else if (targetStep) {
           // tempState가 없지만 URL 파라미터가 있는 경우만 단계 이동
           console.log("tempState 없음 - URL 파라미터로 단계 이동");
-          
+
           const stepToMove = parseInt(String(targetStep));
-          
+
           // 공통 복원 로직 사용 (데이터 없이 단계만 이동)
-          restoreProjectState(
-            {},
-            stepToMove,
-            {
-              setProjectDescription,
-              setSelectedServiceType,
-              setChatMessages,
-              setCurrentStep,
-              setShowChatInterface,
-              setShowRequirements,
-              setShowConfirmation,
-              setShowFinalResult,
-            }
-          );
+          restoreProjectState({}, stepToMove, {
+            setProjectDescription,
+            setSelectedServiceType,
+            setChatMessages,
+            setCurrentStep,
+            setShowChatInterface,
+            setShowRequirements,
+            setShowConfirmation,
+            setShowFinalResult,
+          });
 
           // 요구사항이 없으면 추출 실행 (별도 useEffect에서 처리)
-          if (stepToMove === 2 && !extractedRequirements && !editableRequirements) {
+          if (
+            stepToMove === 2 &&
+            !extractedRequirements &&
+            !editableRequirements
+          ) {
             console.log("요구사항 없음 - 추출 필요");
           }
 
@@ -1185,31 +1235,31 @@ function HomePageContent() {
   // 받침 유무에 따라 적절한 조사 반환 (을/를)
   const getParticle = (word: string): string => {
     if (!word || word.length === 0) return "을";
-    
+
     const lastChar = word[word.length - 1];
     const lastCharCode = lastChar.charCodeAt(0);
-    
+
     // 한글 유니코드 범위: 0xAC00 ~ 0xD7A3
-    if (lastCharCode >= 0xAC00 && lastCharCode <= 0xD7A3) {
+    if (lastCharCode >= 0xac00 && lastCharCode <= 0xd7a3) {
       // 받침이 있는지 확인: (코드 - 0xAC00) % 28 !== 0이면 받침 있음
-      const hasJongseong = (lastCharCode - 0xAC00) % 28 !== 0;
+      const hasJongseong = (lastCharCode - 0xac00) % 28 !== 0;
       return hasJongseong ? "을" : "를";
     }
-    
+
     // 한글이 아닌 경우 기본값
     return "을";
   };
 
   const handleServiceTypeSelect = (serviceType: string) => {
     setSelectedServiceType(serviceType);
-    
+
     // 서비스 타입의 한국어 이름 가져오기
     const serviceName = serviceTypeNames[serviceType];
-    
+
     if (serviceName) {
       // 받침에 따라 적절한 조사 선택
       const particle = getParticle(serviceName);
-      
+
       // 입력란에 텍스트 자동 삽입
       const text = `${serviceName}${particle} 만들고 싶어요.`;
       setProjectDescription(text);

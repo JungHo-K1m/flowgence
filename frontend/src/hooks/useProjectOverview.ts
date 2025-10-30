@@ -50,6 +50,13 @@ interface ProjectOverview {
       deployment: string;
     };
   };
+  aiAnalysis?: {
+    insights: Array<{
+      type: "strength" | "suggestion" | "warning";
+      icon: string;
+      message: string;
+    }>;
+  };
 }
 
 interface ProjectInput {
