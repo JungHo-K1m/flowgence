@@ -746,12 +746,8 @@ function HomePageContent() {
                   reqIndex++
                 ) {
                   const req = sub.requirements[reqIndex];
-                  // 제목이 같고 설명이 더 짧은 경우 (원본 요구사항)
-                  if (
-                    req.title === item.title &&
-                    req.description.length < item.description.length &&
-                    req.needsClarification === true
-                  ) {
+                  // 제목이 같은 경우 기존 요구사항으로 간주
+                  if (req.title === item.title) {
                     // 기존 요구사항을 업데이트
                     newSubCategories[subIndex].requirements[reqIndex] = {
                       ...req,
@@ -763,6 +759,11 @@ function HomePageContent() {
                       clarificationQuestions: [],
                     };
                     existingRequirementFound = true;
+                    console.log(
+                      `제목 매칭으로 찾은 요구사항 업데이트: ${
+                        item.title
+                      }, ID: ${item.id || req.id}`
+                    );
                     break;
                   }
                 }
@@ -771,6 +772,11 @@ function HomePageContent() {
 
               // 기존 요구사항을 찾지 못한 경우에만 새로 추가
               if (!existingRequirementFound) {
+                console.log(
+                  `새로운 요구사항 추가: ${item.title}, ID: ${
+                    item.id || "없음"
+                  }`
+                );
                 if (newSubCategories.length === 0) {
                   newSubCategories.push({
                     subcategory: "기본",
