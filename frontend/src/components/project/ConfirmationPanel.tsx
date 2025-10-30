@@ -551,9 +551,26 @@ export function ConfirmationPanel({
   };
 
   return (
-    <div className="h-full bg-white flex flex-col">
-      {/* Tabs */}
-      <div className="border-b border-gray-200 px-6">
+    <>
+      <style jsx>{`
+        .confirmation-content::-webkit-scrollbar {
+          width: 8px;
+        }
+        .confirmation-content::-webkit-scrollbar-track {
+          background: #f1f1f1;
+          border-radius: 10px;
+        }
+        .confirmation-content::-webkit-scrollbar-thumb {
+          background: #888;
+          border-radius: 10px;
+        }
+        .confirmation-content::-webkit-scrollbar-thumb:hover {
+          background: #555;
+        }
+      `}</style>
+      <div className="h-full bg-white flex flex-col">
+        {/* Tabs */}
+        <div className="border-b border-gray-200 px-6">
         <div className="flex space-x-8">
           <button
             onClick={() => setActiveTab("requirements")}
@@ -579,7 +596,7 @@ export function ConfirmationPanel({
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto max-h-[calc(100vh-250px)] confirmation-content">
         {activeTab === "requirements" ? (
           <div className="p-6">
             {/* Confirmation Banner */}
@@ -1089,5 +1106,6 @@ export function ConfirmationPanel({
         </div>
       </div>
     </div>
+    </>
   );
 }
