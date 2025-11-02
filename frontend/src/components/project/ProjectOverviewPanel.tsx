@@ -157,14 +157,21 @@ export function ProjectOverviewPanel({
       typingIntervalRef.current = null;
     }
 
-    // 초기 로딩 시에는 스트리밍하지 않음
-    if (!prevOverviewRef.current) {
+    // overview가 변경되었는지 확인
+    if (!displayOverview) return;
+
+    // 초기 로딩 체크
+    const isInitialLoad = !prevOverviewRef.current;
+
+    if (isInitialLoad && displayOverview) {
+      // 초기 로딩: 첫 데이터가 들어왔을 때도 스트리밍 적용하지 않음
+      // (로딩 애니메이션이 이미 표시됨)
       prevOverviewRef.current = displayOverview;
       return;
     }
 
-    // overview가 변경되었는지 확인
-    if (!displayOverview || !prevOverviewRef.current) return;
+    // 이후 업데이트
+    if (!prevOverviewRef.current) return;
 
     const prev = prevOverviewRef.current.serviceCoreElements;
     const curr = displayOverview.serviceCoreElements;
