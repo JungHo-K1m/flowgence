@@ -13,25 +13,35 @@ async function bootstrap() {
   
   app.enableCors({
     origin: (origin, callback) => {
+      console.log('CORS 체크 - Origin:', origin);
+      
       // Allow requests with no origin (like mobile apps or curl requests)
-      if (!origin) return callback(null, true);
+      if (!origin) {
+        console.log('CORS 허용: origin 없음');
+        return callback(null, true);
+      }
+      
+      // Allow Vercel deployments (모든 vercel.app 서브도메인 허용)
+      if (origin.includes('vercel.app')) {
+        console.log('CORS 허용: Vercel deployment');
+        return callback(null, true);
+      }
       
       // Check if origin is in allowed list
       if (allowedOrigins.includes(origin)) {
+        console.log('CORS 허용: 허용 목록에 포함');
         return callback(null, true);
       }
       
       // For development, allow localhost with any port
       if (process.env.NODE_ENV === 'development' && origin.includes('localhost')) {
+        console.log('CORS 허용: localhost (development)');
         return callback(null, true);
       }
       
-      // Allow Vercel preview deployments
-      if (origin.includes('vercel.app')) {
-        return callback(null, true);
-      }
-      
-      callback(new Error('Not allowed by CORS'));
+      console.log('CORS 거부:', origin);
+      console.log('허용된 Origins:', allowedOrigins);
+      callback(new Error(`Not allowed by CORS: ${origin}`));
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],

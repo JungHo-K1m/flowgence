@@ -106,7 +106,14 @@ export const useProjectOverview = () => {
     try {
       // Railway 백엔드로 직접 요청
       const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
-      const response = await fetch(`${backendUrl}/chat/message`, {
+      const requestUrl = `${backendUrl}/chat/message`;
+      
+      console.log('=== API 요청 시작 ===');
+      console.log('요청 URL:', requestUrl);
+      console.log('Origin:', window.location.origin);
+      console.log('Request Headers:', { 'Content-Type': 'application/json' });
+      
+      const response = await fetch(requestUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -124,7 +131,9 @@ export const useProjectOverview = () => {
         })
       });
       
-      console.log('API 응답 상태:', response.status);
+      console.log('=== API 응답 수신 ===');
+      console.log('응답 상태:', response.status);
+      console.log('응답 Headers:', Object.fromEntries(response.headers.entries()));
       
       if (!response.ok) {
         const errorData = await response.json();
