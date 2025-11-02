@@ -117,7 +117,8 @@ export function ProjectOverviewPanel({
   const [streamingData, setStreamingData] = useState<{
     type: "targetUsers" | "keyFeatures" | null;
     data: string[] | null;
-  }>({ type: null, data: null });
+    currentIndex: number;
+  }>({ type: null, data: null, currentIndex: 0 });
 
   // 수동으로 프로젝트 개요 생성하는 함수 (useCallback으로 최적화)
   const handleGenerateOverview = useCallback(() => {
@@ -169,11 +170,24 @@ export function ProjectOverviewPanel({
       JSON.stringify(prev.targetUsers) !== JSON.stringify(curr.targetUsers) &&
       curr.targetUsers
     ) {
-      setStreamingData({ type: "targetUsers", data: curr.targetUsers });
+      // 항목별로 하나씩 표시하는 스트리밍
+      setStreamingData({
+        type: "targetUsers",
+        data: curr.targetUsers,
+        currentIndex: 0,
+      });
+
+      // 각 항목을 순차적으로 표시
+      curr.targetUsers.forEach((item, index) => {
+        setTimeout(() => {
+          setStreamingData((prev) => ({ ...prev, currentIndex: index }));
+        }, index * 500); // 500ms 간격으로 각 항목 표시
+      });
+
       // 스트리밍 완료 후 상태 초기화
       setTimeout(() => {
-        setStreamingData({ type: null, data: null });
-      }, curr.targetUsers.join("\n").length * 50 + 100); // 예상 완료 시간
+        setStreamingData({ type: null, data: null, currentIndex: 0 });
+      }, curr.targetUsers.length * 500 + 100);
     }
     // 핵심 기능이 변경되었는지 확인
     else if (
@@ -182,11 +196,24 @@ export function ProjectOverviewPanel({
       JSON.stringify(prev.keyFeatures) !== JSON.stringify(curr.keyFeatures) &&
       curr.keyFeatures
     ) {
-      setStreamingData({ type: "keyFeatures", data: curr.keyFeatures });
+      // 항목별로 하나씩 표시하는 스트리밍
+      setStreamingData({
+        type: "keyFeatures",
+        data: curr.keyFeatures,
+        currentIndex: 0,
+      });
+
+      // 각 항목을 순차적으로 표시
+      curr.keyFeatures.forEach((item, index) => {
+        setTimeout(() => {
+          setStreamingData((prev) => ({ ...prev, currentIndex: index }));
+        }, index * 500); // 500ms 간격으로 각 항목 표시
+      });
+
       // 스트리밍 완료 후 상태 초기화
       setTimeout(() => {
-        setStreamingData({ type: null, data: null });
-      }, curr.keyFeatures.join("\n").length * 50 + 100); // 예상 완료 시간
+        setStreamingData({ type: null, data: null, currentIndex: 0 });
+      }, curr.keyFeatures.length * 500 + 100);
     }
 
     prevOverviewRef.current = displayOverview;
@@ -349,16 +376,14 @@ export function ProjectOverviewPanel({
                 ) : (
                   <div className="space-y-2">
                     {(streamingData.type === "targetUsers" && streamingData.data
-                      ? streamingData.data
+                      ? streamingData.data.slice(
+                          0,
+                          streamingData.currentIndex + 1
+                        )
                       : displayOverview?.serviceCoreElements?.targetUsers
                     )?.map((user: string, index: number) => (
                       <p key={index} className="text-sm text-gray-600">
-                        •{" "}
-                        {streamingData.type === "targetUsers" &&
-                        streamingData.data
-                          ? user +
-                            (index === streamingData.data.length - 1 ? "|" : "")
-                          : user}
+                        • {user}
                       </p>
                     )) || (
                       <p className="text-sm text-gray-600">
@@ -417,16 +442,14 @@ export function ProjectOverviewPanel({
                 ) : (
                   <div className="space-y-2">
                     {(streamingData.type === "keyFeatures" && streamingData.data
-                      ? streamingData.data
+                      ? streamingData.data.slice(
+                          0,
+                          streamingData.currentIndex + 1
+                        )
                       : displayOverview?.serviceCoreElements?.keyFeatures
                     )?.map((feature: string, index: number) => (
                       <p key={index} className="text-sm text-gray-600">
-                        •{" "}
-                        {streamingData.type === "keyFeatures" &&
-                        streamingData.data
-                          ? feature +
-                            (index === streamingData.data.length - 1 ? "|" : "")
-                          : feature}
+                        • {feature}
                       </p>
                     )) || (
                       <p className="text-sm text-gray-600">AI 기반 자동화</p>
