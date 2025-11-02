@@ -168,10 +168,33 @@ export default function MyPage() {
       const projectOverview = project.project_overview;
       
       // 기본 데이터
+      const teamSize = projectOverview?.serviceCoreElements?.requiredTeam?.length || 6;
+      const teamBreakdown = projectOverview?.serviceCoreElements?.requiredTeam?.join(", ") ||
+        "개발자 4명, 디자이너 1명, PM 1명";
+      
       const estimateData = {
         baseEstimate: 8000000,
         discount: 0,
         finalEstimate: 8000000,
+        stages: [
+          { name: "기획 및 설계", duration: projectOverview?.estimation?.timeline?.planning || "2주", percentage: 20, cost: 1600000 },
+          { name: "개발", duration: projectOverview?.estimation?.timeline?.development || "6주", percentage: 50, cost: 4000000 },
+          { name: "테스트", duration: projectOverview?.estimation?.timeline?.testing || "2주", percentage: 15, cost: 1200000 },
+          { name: "배포 및 안정화", duration: projectOverview?.estimation?.timeline?.deployment || "2주", percentage: 15, cost: 1200000 },
+        ],
+        payments: [
+          { stage: "계약 시", percentage: 30, amount: 2400000 },
+          { stage: "중간 검수", percentage: 40, amount: 3200000 },
+          { stage: "최종 납품", percentage: 30, amount: 2400000 },
+        ],
+        projectOverview: {
+          duration: projectOverview?.serviceCoreElements?.estimatedDuration || "12주",
+          period: "2025년 1월~4월",
+          personnel: teamSize,
+          breakdown: teamBreakdown,
+          warranty: "1년",
+          warrantyDetail: "무상 유지보수",
+        },
       };
       
       const requirementsData = {
