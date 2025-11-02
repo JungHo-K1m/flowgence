@@ -150,6 +150,9 @@ function HomePageContent() {
     updateExtractedRequirements,
   ]);
 
+  // 외부 URL 쿼리 파라미터로 프로젝트 초기화 (다른 사이트에서 링크로 접근)
+  const hasInitializedFromQuery = useRef(false);
+
   // 요구사항 업데이트 훅 사용
   const {
     updateRequirements: updateRequirementsFromChat,
@@ -1230,7 +1233,7 @@ function HomePageContent() {
     },
   ];
 
-  const handleStart = () => {
+  const handleStart = useCallback(() => {
     // 채팅 인터페이스와 프로젝트 개요 패널 표시
     setShowChatInterface(true);
     setCurrentStep(1); // 1단계 유지
@@ -1270,7 +1273,53 @@ function HomePageContent() {
     setTimeout(() => {
       generateProjectOverview();
     }, 100); // 컴포넌트 마운트 후 실행
-  };
+  }, [projectDescription, generateProjectOverview]);
+
+  // 외부 URL 쿼리 파라미터로 프로젝트 자동 시작 처리
+  useEffect(() => {
+    // 이미 초기화되었으면 건너뛰기
+    if (hasInitializedFromQuery.current) {
+      return;
+    }
+
+    // resume 파라미터가 있으면 건너뛰기 (이어서 작업하기 우선)
+    if (searchParams.get("resume")) {
+      return;
+    }
+
+    const queryDescription = searchParams.get("description");
+    const queryServiceType = searchParams.get("serviceType");
+    const autoStart = searchParams.get("autoStart");
+
+    // description이나 serviceType이 있으면 초기화
+    if (queryDescription || queryServiceType) {
+      hasInitializedFromQuery.current = true;
+      console.log("외부 URL 쿼리로 프로젝트 초기화:", {
+        description: queryDescription,
+        serviceType: queryServiceType,
+        autoStart,
+      });
+
+      // 프로젝트 설명 설정
+      if (queryDescription) {
+        setProjectDescription(queryDescription);
+      }
+
+      // 서비스 타입 설정
+      if (queryServiceType) {
+        setSelectedServiceType(queryServiceType);
+      }
+
+      // autoStart가 true이면 자동으로 시작
+      if (autoStart === "true" || autoStart === "1") {
+        console.log("자동 시작 옵션 활성화");
+        // 약간의 지연 후 자동 시작 (상태 업데이트 완료 대기)
+        setTimeout(() => {
+          handleStart();
+        }, 500);
+      }
+    }
+  }, [searchParams, handleStart]);
 
   const handleFileSelect = (files: File[]) => {
     setUploadedFiles(files);
