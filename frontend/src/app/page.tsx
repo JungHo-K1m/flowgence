@@ -308,15 +308,33 @@ function HomePageContent() {
       setIsEditingMode(true);
 
       // 1. 프로젝트 개요 업데이트
-      await updateOverview(
-        {
-          description: data.description,
-          serviceType: data.serviceType,
-          uploadedFiles: data.uploadedFiles,
-        },
-        data.messages
-      );
-      console.log("updateOverview 함수 호출 완료");
+      try {
+        await updateOverview(
+          {
+            description: data.description,
+            serviceType: data.serviceType,
+            uploadedFiles: data.uploadedFiles,
+          },
+          data.messages
+        );
+        console.log("updateOverview 함수 호출 완료");
+      } catch (error) {
+        console.error("프로젝트 개요 업데이트 실패:", error);
+        const errorMessage =
+          error instanceof Error ? error.message : "Unknown error";
+
+        // Claude API 529 (Overloaded) 에러 처리
+        if (
+          errorMessage.includes("529") ||
+          errorMessage.includes("Overloaded")
+        ) {
+          setIsEditingMode(false);
+          return; // useProjectOverview에서 이미 알림과 리다이렉트 처리됨
+        }
+
+        // 다른 에러는 그대로 전파
+        throw error;
+      }
 
       // 2. 요구사항이 이미 추출되어 있다면 업데이트
       const currentRequirements = editableRequirements || extractedRequirements;
@@ -352,6 +370,21 @@ function HomePageContent() {
           console.log("요구사항 업데이트 및 저장 완료");
         } catch (error) {
           console.error("요구사항 업데이트 실패:", error);
+          const errorMessage =
+            error instanceof Error ? error.message : "Unknown error";
+
+          // Claude API 529 (Overloaded) 에러 처리
+          if (
+            errorMessage.includes("529") ||
+            errorMessage.includes("Overloaded")
+          ) {
+            alert(
+              "현재 사용량이 많아 서비스가 일시적으로 지연되고 있습니다. 잠시 후 다시 시도해주세요."
+            );
+            window.location.href = "/";
+            return;
+          }
+
           // 업데이트 실패해도 프로젝트 개요는 업데이트되었으므로 계속 진행
         } finally {
           // 채팅 편집 모드 종료
@@ -1184,6 +1217,21 @@ function HomePageContent() {
           }
         } catch (error) {
           console.error("요구사항 추출 실패:", error);
+          const errorMessage =
+            error instanceof Error ? error.message : "Unknown error";
+
+          // Claude API 529 (Overloaded) 에러 처리
+          if (
+            errorMessage.includes("529") ||
+            errorMessage.includes("Overloaded")
+          ) {
+            alert(
+              "현재 사용량이 많아 서비스가 일시적으로 지연되고 있습니다. 잠시 후 다시 시도해주세요."
+            );
+            window.location.href = "/";
+            return;
+          }
+
           hasExtractedRequirements.current = false; // 실패 시 플래그 리셋
         } finally {
           setIsRequirementsLoading(false);
@@ -1463,6 +1511,20 @@ function HomePageContent() {
         }
       } catch (error) {
         console.error("요구사항 추출 또는 저장 중 오류:", error);
+        const errorMessage =
+          error instanceof Error ? error.message : "Unknown error";
+
+        // Claude API 529 (Overloaded) 에러 처리
+        if (
+          errorMessage.includes("529") ||
+          errorMessage.includes("Overloaded")
+        ) {
+          alert(
+            "현재 사용량이 많아 서비스가 일시적으로 지연되고 있습니다. 잠시 후 다시 시도해주세요."
+          );
+          window.location.href = "/";
+          return;
+        }
       } finally {
         setIsRequirementsLoading(false);
       }

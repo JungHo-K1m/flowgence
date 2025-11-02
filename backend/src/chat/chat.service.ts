@@ -45,6 +45,10 @@ export class ChatService {
       };
     } catch (error) {
       console.error('Chat service error:', error);
+      // Claude API 529 에러의 경우 원본 에러 전달 (재시도 실패)
+      if (error instanceof Error && error.message.includes('529')) {
+        throw error; // 원본 에러 전달하여 프론트엔드에서 처리 가능하도록
+      }
       throw new Error('Failed to process chat message');
     }
   }
@@ -55,6 +59,10 @@ export class ChatService {
       return requirements;
     } catch (error) {
       console.error('Requirements extraction error:', error);
+      // Claude API 529 에러의 경우 원본 에러 전달
+      if (error instanceof Error && error.message.includes('529')) {
+        throw error;
+      }
       throw new Error('Failed to extract requirements');
     }
   }
@@ -104,6 +112,10 @@ export class ChatService {
       return updatedRequirements;
     } catch (error) {
       console.error('Requirements update error:', error);
+      // Claude API 529 에러의 경우 원본 에러 전달
+      if (error instanceof Error && error.message.includes('529')) {
+        throw error;
+      }
       throw new Error('Failed to update requirements');
     }
   }
@@ -232,6 +244,69 @@ export class ChatService {
           statusText: response.statusText,
           error: errorText
         });
+        
+        // 529 (Overloaded) 에러의 경우 재시도 로직 추가
+        // 529는 API가 일시적으로 과부하된 경우이므로 재시도 유용
+        // 429는 계정의 rate limit 또는 acceleration limit이므로 재시도해도 실패
+        if (response.status === 529) {
+          console.log('Claude API 529 (Overloaded) 에러 - 재시도 시도');
+          // 짧은 지연 후 재시도
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
+          const retryResponse = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-api-key': apiKey,
+              'anthropic-version': '2023-06-01'
+            },
+            body: JSON.stringify({
+              model: 'claude-sonnet-4-20250514',
+              max_tokens: 4000,
+              system: systemPrompt,
+              messages: messages
+            })
+          });
+          
+          if (retryResponse.ok) {
+            console.log('재시도 성공');
+            const retryData = await retryResponse.json();
+            
+            if (!retryData.content || !retryData.content[0] || !retryData.content[0].text) {
+              throw new Error('Invalid response format from Claude API');
+            }
+            
+            const retryResponseText = retryData.content[0].text;
+            let jsonText = retryResponseText;
+            
+            const jsonBlockMatch = retryResponseText.match(/```json\s*([\s\S]*?)\s*```/);
+            if (jsonBlockMatch) {
+              jsonText = jsonBlockMatch[1];
+            }
+            
+            try {
+              const jsonResponse = JSON.parse(jsonText);
+              return {
+                content: jsonResponse.content || retryResponseText,
+                metadata: { 
+                  timestamp: new Date().toISOString(),
+                  model: 'claude-sonnet-4-20250514'
+                },
+                projectOverview: jsonResponse.projectOverview || null
+              };
+            } catch (parseError) {
+              return {
+                content: retryResponseText,
+                metadata: { 
+                  timestamp: new Date().toISOString(),
+                  model: 'claude-sonnet-4-20250514'
+                },
+                projectOverview: null
+              };
+            }
+          }
+        }
+        
         throw new Error(`Claude API error: ${response.status} - ${errorText}`);
       }
 

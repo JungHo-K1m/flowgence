@@ -207,6 +207,14 @@ export const useProjectOverview = () => {
       console.error('프로젝트 개요 생성 오류:', err);
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       
+      // Claude API 529 (Overloaded) 에러 처리
+      if (errorMessage.includes('529') || errorMessage.includes('Overloaded')) {
+        alert('현재 사용량이 많아 서비스가 일시적으로 지연되고 있습니다. 잠시 후 다시 시도해주세요.');
+        // 메인 페이지로 이동
+        window.location.href = '/';
+        return;
+      }
+      
       // 백엔드 연결 실패인 경우 특별한 메시지 표시
       if (errorMessage.includes('Backend service unavailable') || errorMessage.includes('503')) {
         setError('백엔드 서비스가 일시적으로 사용할 수 없습니다. 잠시 후 다시 시도해주세요.');
