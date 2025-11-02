@@ -115,12 +115,26 @@ export function ProjectOverviewPanel({
   // 스트리밍 효과를 위한 상태
   const prevOverviewRef = useRef<typeof displayOverview>(null);
   const [streamingData, setStreamingData] = useState<{
-    type: "targetUsers" | "keyFeatures" | "coreProblem" | "revenueModel" | null;
+    type:
+      | "targetUsers"
+      | "keyFeatures"
+      | "coreProblem"
+      | "revenueModel"
+      | "aiAnalysis"
+      | null;
     data: string | null;
   }>({ type: null, data: null });
   const typingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const streamingQueueRef = useRef<
-    Array<{ type: "targetUsers" | "keyFeatures"; data: string }>
+    Array<{
+      type:
+        | "targetUsers"
+        | "keyFeatures"
+        | "coreProblem"
+        | "revenueModel"
+        | "aiAnalysis";
+      data: string;
+    }>
   >([]);
 
   // 수동으로 프로젝트 개요 생성하는 함수 (useCallback으로 최적화)
@@ -209,7 +223,12 @@ export function ProjectOverviewPanel({
 
       // 모든 변경된 영역을 큐에 추가
       const changes: Array<{
-        type: "targetUsers" | "keyFeatures";
+        type:
+          | "targetUsers"
+          | "keyFeatures"
+          | "coreProblem"
+          | "revenueModel"
+          | "aiAnalysis";
         data: string;
       }> = [];
 
@@ -224,6 +243,39 @@ export function ProjectOverviewPanel({
         changes.push({
           type: "keyFeatures" as const,
           data: curr.keyFeatures.map((feature) => `• ${feature}\n`).join(""),
+        });
+      }
+
+      if (curr?.description && curr.description.length > 0) {
+        changes.push({
+          type: "coreProblem" as const,
+          data: curr.description,
+        });
+      }
+
+      if (
+        curr?.businessModel?.revenueStreams &&
+        curr.businessModel.revenueStreams.length > 0
+      ) {
+        changes.push({
+          type: "revenueModel" as const,
+          data: curr.businessModel.revenueStreams
+            .map((stream) => `• ${stream}\n`)
+            .join(""),
+        });
+      }
+
+      if (
+        displayOverview?.aiAnalysis?.insights &&
+        displayOverview.aiAnalysis.insights.length > 0
+      ) {
+        // AI 분석 insights를 문자열로 변환
+        const aiAnalysisText = displayOverview.aiAnalysis.insights
+          .map((insight) => `${insight.icon} ${insight.message}\n`)
+          .join("");
+        changes.push({
+          type: "aiAnalysis" as const,
+          data: aiAnalysisText,
         });
       }
 
@@ -245,7 +297,12 @@ export function ProjectOverviewPanel({
 
     // 모든 변경된 영역을 큐에 추가하여 순차적으로 처리
     const changes: Array<{
-      type: "targetUsers" | "keyFeatures";
+      type:
+        | "targetUsers"
+        | "keyFeatures"
+        | "coreProblem"
+        | "revenueModel"
+        | "aiAnalysis";
       data: string;
     }> = [];
 
@@ -272,6 +329,53 @@ export function ProjectOverviewPanel({
       changes.push({
         type: "keyFeatures" as const,
         data: curr.keyFeatures.map((feature) => `• ${feature}\n`).join(""),
+      });
+    }
+
+    // 핵심 문제가 변경되었는지 확인
+    if (
+      prev &&
+      curr &&
+      prev.description !== curr.description &&
+      curr.description
+    ) {
+      changes.push({
+        type: "coreProblem" as const,
+        data: curr.description,
+      });
+    }
+
+    // 수익 모델이 변경되었는지 확인
+    if (
+      prev &&
+      curr &&
+      JSON.stringify(prev.businessModel?.revenueStreams) !==
+        JSON.stringify(curr.businessModel?.revenueStreams) &&
+      curr.businessModel?.revenueStreams
+    ) {
+      changes.push({
+        type: "revenueModel" as const,
+        data: curr.businessModel.revenueStreams
+          .map((stream) => `• ${stream}\n`)
+          .join(""),
+      });
+    }
+
+    // AI 분석이 변경되었는지 확인
+    const prevAnalysis = prevOverviewRef.current?.aiAnalysis?.insights;
+    const currAnalysis = displayOverview?.aiAnalysis?.insights;
+    if (
+      prevAnalysis &&
+      currAnalysis &&
+      JSON.stringify(prevAnalysis) !== JSON.stringify(currAnalysis) &&
+      currAnalysis.length > 0
+    ) {
+      const aiAnalysisText = currAnalysis
+        .map((insight) => `${insight.icon} ${insight.message}\n`)
+        .join("");
+      changes.push({
+        type: "aiAnalysis" as const,
+        data: aiAnalysisText,
       });
     }
 
@@ -491,7 +595,15 @@ export function ProjectOverviewPanel({
                   <LoadingSkeleton />
                 ) : (
                   <div className="space-y-2">
-                    {displayOverview?.serviceCoreElements?.description ? (
+                    {streamingData.type === "coreProblem" &&
+                    streamingData.data ? (
+                      <div className="whitespace-pre-wrap">
+                        <p className="text-sm text-gray-600">
+                          {streamingData.data}
+                          <span className="animate-pulse">|</span>
+                        </p>
+                      </div>
+                    ) : displayOverview?.serviceCoreElements?.description ? (
                       <p className="text-sm text-gray-600">
                         {displayOverview.serviceCoreElements.description}
                       </p>
@@ -560,13 +672,24 @@ export function ProjectOverviewPanel({
                   <LoadingSkeleton />
                 ) : (
                   <div className="space-y-2">
-                    {displayOverview?.serviceCoreElements?.businessModel?.revenueStreams?.map(
-                      (stream: string, index: number) => (
-                        <p key={index} className="text-sm text-gray-600">
-                          • {stream}
+                    {streamingData.type === "revenueModel" &&
+                    streamingData.data ? (
+                      <div className="whitespace-pre-wrap">
+                        <p className="text-sm text-gray-600">
+                          {streamingData.data}
+                          <span className="animate-pulse">|</span>
                         </p>
+                      </div>
+                    ) : displayOverview?.serviceCoreElements?.businessModel
+                        ?.revenueStreams ? (
+                      displayOverview.serviceCoreElements.businessModel.revenueStreams.map(
+                        (stream: string, index: number) => (
+                          <p key={index} className="text-sm text-gray-600">
+                            • {stream}
+                          </p>
+                        )
                       )
-                    ) || (
+                    ) : (
                       <>
                         <p className="text-sm text-gray-600">
                           • 사료 판매 수수료
@@ -610,8 +733,16 @@ export function ProjectOverviewPanel({
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {displayOverview?.aiAnalysis?.insights &&
-                      displayOverview.aiAnalysis.insights.length > 0 ? (
+                      {streamingData.type === "aiAnalysis" &&
+                      streamingData.data ? (
+                        <div className="whitespace-pre-wrap">
+                          <p className="text-sm text-gray-600">
+                            {streamingData.data}
+                            <span className="animate-pulse">|</span>
+                          </p>
+                        </div>
+                      ) : displayOverview?.aiAnalysis?.insights &&
+                        displayOverview.aiAnalysis.insights.length > 0 ? (
                         displayOverview.aiAnalysis.insights.map(
                           (insight, index) => (
                             <div
