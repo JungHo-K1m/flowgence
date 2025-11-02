@@ -95,12 +95,21 @@ export default function CompletedProjects() {
 
   // 프로젝트 견적 금액 계산 함수
   const getEstimateAmount = (project: Project): number => {
-    if (!project.requirements) return 0;
+    // AI가 생성한 견적이 있으면 해당 금액 사용
+    if (project.project_overview?.estimation?.totalCost) {
+      const totalCostStr = project.project_overview.estimation.totalCost;
+      const cost = parseInt(totalCostStr.replace(/[^0-9]/g, "")) || 0;
+      if (cost > 0) return cost;
+    }
     
-    const extractedRequirements = project.requirements as ExtractedRequirements;
-    // 요구사항당 100만원으로 계산
-    const requirementCount = extractedRequirements.totalCount || 0;
-    return requirementCount * 1000000;
+    // AI 견적이 없으면 요구사항당 100만원으로 계산 (임시)
+    if (project.requirements) {
+      const extractedRequirements = project.requirements as ExtractedRequirements;
+      const requirementCount = extractedRequirements.totalCount || 0;
+      return requirementCount * 1000000;
+    }
+    
+    return 0;
   };
 
   const handleDownloadEstimate = async (project: Project) => {
@@ -114,25 +123,30 @@ export default function CompletedProjects() {
       const extractedRequirements = project.requirements as ExtractedRequirements;
       const projectOverview = project.project_overview;
       
+      // AI 견적 또는 기본값으로 baseEstimate 계산
+      const baseEstimate = projectOverview?.estimation?.totalCost
+        ? parseInt(projectOverview.estimation.totalCost.replace(/[^0-9]/g, "")) || 85000000
+        : 85000000;
+      
       // 기본 데이터
       const teamSize = projectOverview?.serviceCoreElements?.requiredTeam?.length || 6;
       const teamBreakdown = projectOverview?.serviceCoreElements?.requiredTeam?.join(", ") ||
         "개발자 4명, 디자이너 1명, PM 1명";
       
       const estimateData = {
-        baseEstimate: 8000000,
+        baseEstimate,
         discount: 0,
-        finalEstimate: 8000000,
+        finalEstimate: baseEstimate,
         stages: [
-          { name: "기획 및 설계", duration: projectOverview?.estimation?.timeline?.planning || "2주", percentage: 20, cost: 1600000 },
-          { name: "개발", duration: projectOverview?.estimation?.timeline?.development || "6주", percentage: 50, cost: 4000000 },
-          { name: "테스트", duration: projectOverview?.estimation?.timeline?.testing || "2주", percentage: 15, cost: 1200000 },
-          { name: "배포 및 안정화", duration: projectOverview?.estimation?.timeline?.deployment || "2주", percentage: 15, cost: 1200000 },
+          { name: "기획 및 설계", duration: projectOverview?.estimation?.timeline?.planning || "2주", percentage: 20, cost: Math.round(baseEstimate * 0.2) },
+          { name: "개발", duration: projectOverview?.estimation?.timeline?.development || "6주", percentage: 50, cost: Math.round(baseEstimate * 0.5) },
+          { name: "테스트", duration: projectOverview?.estimation?.timeline?.testing || "2주", percentage: 15, cost: Math.round(baseEstimate * 0.15) },
+          { name: "배포 및 안정화", duration: projectOverview?.estimation?.timeline?.deployment || "2주", percentage: 15, cost: Math.round(baseEstimate * 0.15) },
         ],
         payments: [
-          { stage: "계약 시", percentage: 30, amount: 2400000 },
-          { stage: "중간 검수", percentage: 40, amount: 3200000 },
-          { stage: "최종 납품", percentage: 30, amount: 2400000 },
+          { stage: "계약 시", percentage: 30, amount: Math.round(baseEstimate * 0.3) },
+          { stage: "중간 검수", percentage: 40, amount: Math.round(baseEstimate * 0.4) },
+          { stage: "최종 납품", percentage: 30, amount: Math.round(baseEstimate * 0.3) },
         ],
         projectOverview: {
           duration: projectOverview?.serviceCoreElements?.estimatedDuration || "12주",
