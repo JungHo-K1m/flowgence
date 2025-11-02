@@ -136,6 +136,17 @@ export function ProjectOverviewPanel({
       data: string;
     }>
   >([]);
+  const [streamingQueue, setStreamingQueue] = useState<
+    Array<{
+      type:
+        | "targetUsers"
+        | "keyFeatures"
+        | "coreProblem"
+        | "revenueModel"
+        | "aiAnalysis";
+      data: string;
+    }>
+  >([]);
 
   // 수동으로 프로젝트 개요 생성하는 함수 (useCallback으로 최적화)
   const handleGenerateOverview = useCallback(() => {
@@ -173,6 +184,9 @@ export function ProjectOverviewPanel({
     const item = streamingQueueRef.current.shift();
     if (!item) return;
 
+    // 큐에서 제거되었음을 반영
+    setStreamingQueue([...streamingQueueRef.current]);
+
     setStreamingData({
       type: item.type,
       data: "",
@@ -197,6 +211,9 @@ export function ProjectOverviewPanel({
           // 다음 항목 처리
           if (streamingQueueRef.current.length > 0) {
             processStreamingQueue();
+          } else {
+            // 큐가 모두 비었으므로 상태 초기화
+            setStreamingQueue([]);
           }
         }, 500);
       }
@@ -282,6 +299,7 @@ export function ProjectOverviewPanel({
       // 큐에 추가된 항목들을 순차적으로 처리
       if (changes.length > 0) {
         streamingQueueRef.current = changes;
+        setStreamingQueue(changes);
         processStreamingQueue();
       }
 
@@ -382,6 +400,7 @@ export function ProjectOverviewPanel({
     // 큐에 추가된 항목들을 순차적으로 처리
     if (changes.length > 0) {
       streamingQueueRef.current = changes;
+      setStreamingQueue(changes);
       processStreamingQueue();
     }
 
@@ -547,35 +566,37 @@ export function ProjectOverviewPanel({
                   />
                   <h3 className="font-semibold text-gray-900">타겟 고객</h3>
                 </div>
-                {isLoading &&
-                !displayOverview?.serviceCoreElements?.targetUsers ? (
-                  <LoadingSkeleton />
-                ) : (
+                {streamingData.type === "targetUsers" && streamingData.data ? (
                   <div className="space-y-2">
-                    {streamingData.type === "targetUsers" &&
-                    streamingData.data ? (
-                      <div className="whitespace-pre-wrap">
-                        <p className="text-sm text-gray-600">
-                          {streamingData.data}
-                          <span className="animate-pulse">|</span>
-                        </p>
-                      </div>
-                    ) : displayOverview?.serviceCoreElements?.targetUsers ? (
-                      displayOverview.serviceCoreElements.targetUsers.map(
-                        (user: string, index: number) => (
-                          <p key={index} className="text-sm text-gray-600">
-                            • {user}
-                          </p>
-                        )
-                      )
-                    ) : (
+                    <div className="whitespace-pre-wrap">
                       <p className="text-sm text-gray-600">
-                        {serviceType
-                          ? serviceTypeMap[serviceType] || serviceType
-                          : "분석 중..."}
+                        {streamingData.data}
+                        <span className="animate-pulse">|</span>
                       </p>
+                    </div>
+                  </div>
+                ) : streamingQueue.some(
+                    (item) => item.type === "targetUsers"
+                  ) ? (
+                  <LoadingSkeleton />
+                ) : displayOverview?.serviceCoreElements?.targetUsers ? (
+                  <div className="space-y-2">
+                    {displayOverview.serviceCoreElements.targetUsers.map(
+                      (user: string, index: number) => (
+                        <p key={index} className="text-sm text-gray-600">
+                          • {user}
+                        </p>
+                      )
                     )}
                   </div>
+                ) : isLoading ? (
+                  <LoadingSkeleton />
+                ) : (
+                  <p className="text-sm text-gray-600">
+                    {serviceType
+                      ? serviceTypeMap[serviceType] || serviceType
+                      : "분석 중..."}
+                  </p>
                 )}
               </div>
 
@@ -590,29 +611,29 @@ export function ProjectOverviewPanel({
                   />
                   <h3 className="font-semibold text-gray-900">핵심 문제</h3>
                 </div>
-                {isLoading &&
-                !displayOverview?.serviceCoreElements?.description ? (
+                {streamingData.type === "coreProblem" && streamingData.data ? (
+                  <div className="space-y-2">
+                    <div className="whitespace-pre-wrap">
+                      <p className="text-sm text-gray-600">
+                        {streamingData.data}
+                        <span className="animate-pulse">|</span>
+                      </p>
+                    </div>
+                  </div>
+                ) : streamingQueue.some(
+                    (item) => item.type === "coreProblem"
+                  ) ? (
+                  <LoadingSkeleton />
+                ) : displayOverview?.serviceCoreElements?.description ? (
+                  <p className="text-sm text-gray-600">
+                    {displayOverview.serviceCoreElements.description}
+                  </p>
+                ) : isLoading ? (
                   <LoadingSkeleton />
                 ) : (
-                  <div className="space-y-2">
-                    {streamingData.type === "coreProblem" &&
-                    streamingData.data ? (
-                      <div className="whitespace-pre-wrap">
-                        <p className="text-sm text-gray-600">
-                          {streamingData.data}
-                          <span className="animate-pulse">|</span>
-                        </p>
-                      </div>
-                    ) : displayOverview?.serviceCoreElements?.description ? (
-                      <p className="text-sm text-gray-600">
-                        {displayOverview.serviceCoreElements.description}
-                      </p>
-                    ) : (
-                      <p className="text-sm text-gray-600">
-                        {projectDescription || "사용자 입력 대기 중..."}
-                      </p>
-                    )}
-                  </div>
+                  <p className="text-sm text-gray-600">
+                    {projectDescription || "사용자 입력 대기 중..."}
+                  </p>
                 )}
               </div>
 
@@ -627,31 +648,33 @@ export function ProjectOverviewPanel({
                   />
                   <h3 className="font-semibold text-gray-900">핵심 기능</h3>
                 </div>
-                {isLoading &&
-                !displayOverview?.serviceCoreElements?.keyFeatures ? (
-                  <LoadingSkeleton />
-                ) : (
+                {streamingData.type === "keyFeatures" && streamingData.data ? (
                   <div className="space-y-2">
-                    {streamingData.type === "keyFeatures" &&
-                    streamingData.data ? (
-                      <div className="whitespace-pre-wrap">
-                        <p className="text-sm text-gray-600">
-                          {streamingData.data}
-                          <span className="animate-pulse">|</span>
+                    <div className="whitespace-pre-wrap">
+                      <p className="text-sm text-gray-600">
+                        {streamingData.data}
+                        <span className="animate-pulse">|</span>
+                      </p>
+                    </div>
+                  </div>
+                ) : streamingQueue.some(
+                    (item) => item.type === "keyFeatures"
+                  ) ? (
+                  <LoadingSkeleton />
+                ) : displayOverview?.serviceCoreElements?.keyFeatures ? (
+                  <div className="space-y-2">
+                    {displayOverview.serviceCoreElements.keyFeatures.map(
+                      (feature: string, index: number) => (
+                        <p key={index} className="text-sm text-gray-600">
+                          • {feature}
                         </p>
-                      </div>
-                    ) : displayOverview?.serviceCoreElements?.keyFeatures ? (
-                      displayOverview.serviceCoreElements.keyFeatures.map(
-                        (feature: string, index: number) => (
-                          <p key={index} className="text-sm text-gray-600">
-                            • {feature}
-                          </p>
-                        )
                       )
-                    ) : (
-                      <p className="text-sm text-gray-600">AI 기반 자동화</p>
                     )}
                   </div>
+                ) : isLoading ? (
+                  <LoadingSkeleton />
+                ) : (
+                  <p className="text-sm text-gray-600">AI 기반 자동화</p>
                 )}
               </div>
 
@@ -666,38 +689,37 @@ export function ProjectOverviewPanel({
                   />
                   <h3 className="font-semibold text-gray-900">수익 모델</h3>
                 </div>
-                {isLoading &&
-                !displayOverview?.serviceCoreElements?.businessModel
-                  ?.revenueStreams ? (
-                  <LoadingSkeleton />
-                ) : (
+                {streamingData.type === "revenueModel" && streamingData.data ? (
                   <div className="space-y-2">
-                    {streamingData.type === "revenueModel" &&
-                    streamingData.data ? (
-                      <div className="whitespace-pre-wrap">
-                        <p className="text-sm text-gray-600">
-                          {streamingData.data}
-                          <span className="animate-pulse">|</span>
+                    <div className="whitespace-pre-wrap">
+                      <p className="text-sm text-gray-600">
+                        {streamingData.data}
+                        <span className="animate-pulse">|</span>
+                      </p>
+                    </div>
+                  </div>
+                ) : streamingQueue.some(
+                    (item) => item.type === "revenueModel"
+                  ) ? (
+                  <LoadingSkeleton />
+                ) : displayOverview?.serviceCoreElements?.businessModel
+                    ?.revenueStreams ? (
+                  <div className="space-y-2">
+                    {displayOverview.serviceCoreElements.businessModel.revenueStreams.map(
+                      (stream: string, index: number) => (
+                        <p key={index} className="text-sm text-gray-600">
+                          • {stream}
                         </p>
-                      </div>
-                    ) : displayOverview?.serviceCoreElements?.businessModel
-                        ?.revenueStreams ? (
-                      displayOverview.serviceCoreElements.businessModel.revenueStreams.map(
-                        (stream: string, index: number) => (
-                          <p key={index} className="text-sm text-gray-600">
-                            • {stream}
-                          </p>
-                        )
                       )
-                    ) : (
-                      <>
-                        <p className="text-sm text-gray-600">
-                          • 사료 판매 수수료
-                        </p>
-                        <p className="text-sm text-gray-600">• 프리미엄 구독</p>
-                      </>
                     )}
                   </div>
+                ) : isLoading ? (
+                  <LoadingSkeleton />
+                ) : (
+                  <>
+                    <p className="text-sm text-gray-600">• 사료 판매 수수료</p>
+                    <p className="text-sm text-gray-600">• 프리미엄 구독</p>
+                  </>
                 )}
               </div>
             </div>
@@ -712,8 +734,18 @@ export function ProjectOverviewPanel({
                   </h4>
                 </div>
                 <div>
-                  {isLoading &&
-                  !displayOverview?.aiAnalysis?.insights?.length ? (
+                  {streamingData.type === "aiAnalysis" && streamingData.data ? (
+                    <div className="space-y-3">
+                      <div className="whitespace-pre-wrap">
+                        <p className="text-sm text-gray-600">
+                          {streamingData.data}
+                          <span className="animate-pulse">|</span>
+                        </p>
+                      </div>
+                    </div>
+                  ) : streamingQueue.some(
+                      (item) => item.type === "aiAnalysis"
+                    ) ? (
                     <div className="space-y-3">
                       <div className="flex items-start space-x-2">
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mt-1"></div>
@@ -731,52 +763,50 @@ export function ProjectOverviewPanel({
                         </p>
                       </div>
                     </div>
-                  ) : (
+                  ) : displayOverview?.aiAnalysis?.insights &&
+                    displayOverview.aiAnalysis.insights.length > 0 ? (
                     <div className="space-y-3">
-                      {streamingData.type === "aiAnalysis" &&
-                      streamingData.data ? (
-                        <div className="whitespace-pre-wrap">
-                          <p className="text-sm text-gray-600">
-                            {streamingData.data}
-                            <span className="animate-pulse">|</span>
-                          </p>
-                        </div>
-                      ) : displayOverview?.aiAnalysis?.insights &&
-                        displayOverview.aiAnalysis.insights.length > 0 ? (
-                        displayOverview.aiAnalysis.insights.map(
-                          (insight, index) => (
-                            <div
-                              key={index}
-                              className="flex items-start space-x-2"
+                      {displayOverview.aiAnalysis.insights.map(
+                        (insight, index) => (
+                          <div
+                            key={index}
+                            className="flex items-start space-x-2"
+                          >
+                            <span
+                              className={`text-lg ${
+                                insight.type === "strength"
+                                  ? "text-green-500"
+                                  : insight.type === "suggestion"
+                                  ? "text-yellow-500"
+                                  : "text-orange-500"
+                              }`}
                             >
-                              <span
-                                className={`text-lg ${
-                                  insight.type === "strength"
-                                    ? "text-green-500"
-                                    : insight.type === "suggestion"
-                                    ? "text-yellow-500"
-                                    : "text-orange-500"
-                                }`}
-                              >
-                                {insight.icon}
-                              </span>
-                              <p className="text-sm text-gray-600">
-                                {insight.message}
-                              </p>
-                            </div>
-                          )
-                        )
-                      ) : (
-                        // Fallback: aiAnalysis가 없는 경우 기본 메시지
-                        <>
-                          <div className="flex items-start space-x-2">
-                            <span className="text-green-500 text-lg">✔</span>
+                              {insight.icon}
+                            </span>
                             <p className="text-sm text-gray-600">
-                              프로젝트 분석 중...
+                              {insight.message}
                             </p>
                           </div>
-                        </>
+                        )
                       )}
+                    </div>
+                  ) : isLoading ? (
+                    <div className="space-y-3">
+                      <div className="flex items-start space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mt-1"></div>
+                        <p className="text-sm text-gray-600">
+                          AI가 프로젝트를 분석하고 있습니다...
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="flex items-start space-x-2">
+                        <span className="text-green-500 text-lg">✔</span>
+                        <p className="text-sm text-gray-600">
+                          프로젝트 분석 중...
+                        </p>
+                      </div>
                     </div>
                   )}
                 </div>
