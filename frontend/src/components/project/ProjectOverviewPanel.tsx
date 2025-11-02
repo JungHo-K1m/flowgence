@@ -115,10 +115,13 @@ export function ProjectOverviewPanel({
   // 스트리밍 효과를 위한 상태
   const prevOverviewRef = useRef<typeof displayOverview>(null);
   const [streamingData, setStreamingData] = useState<{
-    type: "targetUsers" | "keyFeatures" | null;
+    type: "targetUsers" | "keyFeatures" | "coreProblem" | "revenueModel" | null;
     data: string | null;
   }>({ type: null, data: null });
   const typingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const streamingQueueRef = useRef<
+    Array<{ type: "targetUsers" | "keyFeatures"; data: string }>
+  >([]);
 
   // 수동으로 프로젝트 개요 생성하는 함수 (useCallback으로 최적화)
   const handleGenerateOverview = useCallback(() => {
@@ -149,6 +152,43 @@ export function ProjectOverviewPanel({
     }
   }, [onGenerateOverview, handleGenerateOverview]);
 
+  // 스트리밍 큐 처리 함수
+  const processStreamingQueue = useCallback(() => {
+    if (streamingQueueRef.current.length === 0) return;
+
+    const item = streamingQueueRef.current.shift();
+    if (!item) return;
+
+    setStreamingData({
+      type: item.type,
+      data: "",
+    });
+
+    let currentIndex = 0;
+    typingIntervalRef.current = setInterval(() => {
+      if (currentIndex < item.data.length) {
+        setStreamingData({
+          type: item.type,
+          data: item.data.substring(0, currentIndex + 1),
+        });
+        currentIndex++;
+      } else {
+        if (typingIntervalRef.current) {
+          clearInterval(typingIntervalRef.current);
+          typingIntervalRef.current = null;
+        }
+        // 타이핑 완료 후 다음 큐 처리
+        setTimeout(() => {
+          setStreamingData({ type: null, data: null });
+          // 다음 항목 처리
+          if (streamingQueueRef.current.length > 0) {
+            processStreamingQueue();
+          }
+        }, 500);
+      }
+    }, 30);
+  }, []);
+
   // overview 변경 감지 및 스트리밍 효과 적용
   useEffect(() => {
     // 이전 interval 정리
@@ -164,8 +204,35 @@ export function ProjectOverviewPanel({
     const isInitialLoad = !prevOverviewRef.current;
 
     if (isInitialLoad && displayOverview) {
-      // 초기 로딩: 첫 데이터가 들어왔을 때도 스트리밍 적용하지 않음
-      // (로딩 애니메이션이 이미 표시됨)
+      // 초기 로딩: 첫 데이터에도 스트리밍 적용
+      const curr = displayOverview.serviceCoreElements;
+
+      // 모든 변경된 영역을 큐에 추가
+      const changes: Array<{
+        type: "targetUsers" | "keyFeatures";
+        data: string;
+      }> = [];
+
+      if (curr?.targetUsers && curr.targetUsers.length > 0) {
+        changes.push({
+          type: "targetUsers" as const,
+          data: curr.targetUsers.map((user) => `• ${user}\n`).join(""),
+        });
+      }
+
+      if (curr?.keyFeatures && curr.keyFeatures.length > 0) {
+        changes.push({
+          type: "keyFeatures" as const,
+          data: curr.keyFeatures.map((feature) => `• ${feature}\n`).join(""),
+        });
+      }
+
+      // 큐에 추가된 항목들을 순차적으로 처리
+      if (changes.length > 0) {
+        streamingQueueRef.current = changes;
+        processStreamingQueue();
+      }
+
       prevOverviewRef.current = displayOverview;
       return;
     }
@@ -176,6 +243,12 @@ export function ProjectOverviewPanel({
     const prev = prevOverviewRef.current.serviceCoreElements;
     const curr = displayOverview.serviceCoreElements;
 
+    // 모든 변경된 영역을 큐에 추가하여 순차적으로 처리
+    const changes: Array<{
+      type: "targetUsers" | "keyFeatures";
+      data: string;
+    }> = [];
+
     // 타겟 고객이 변경되었는지 확인
     if (
       prev &&
@@ -183,70 +256,29 @@ export function ProjectOverviewPanel({
       JSON.stringify(prev.targetUsers) !== JSON.stringify(curr.targetUsers) &&
       curr.targetUsers
     ) {
-      // 전체 텍스트를 하나의 문자열로 합치기
-      const fullText = curr.targetUsers.map((user) => `• ${user}\n`).join("");
-      setStreamingData({
-        type: "targetUsers",
-        data: "",
+      changes.push({
+        type: "targetUsers" as const,
+        data: curr.targetUsers.map((user) => `• ${user}\n`).join(""),
       });
-
-      // 문자 단위로 타이핑 효과
-      let currentIndex = 0;
-      typingIntervalRef.current = setInterval(() => {
-        if (currentIndex < fullText.length) {
-          setStreamingData({
-            type: "targetUsers",
-            data: fullText.substring(0, currentIndex + 1),
-          });
-          currentIndex++;
-        } else {
-          if (typingIntervalRef.current) {
-            clearInterval(typingIntervalRef.current);
-            typingIntervalRef.current = null;
-          }
-          // 타이핑 완료 후 상태 초기화
-          setTimeout(() => {
-            setStreamingData({ type: null, data: null });
-          }, 500);
-        }
-      }, 30); // 30ms 간격 (1초에 약 33글자)
     }
+
     // 핵심 기능이 변경되었는지 확인
-    else if (
+    if (
       prev &&
       curr &&
       JSON.stringify(prev.keyFeatures) !== JSON.stringify(curr.keyFeatures) &&
       curr.keyFeatures
     ) {
-      // 전체 텍스트를 하나의 문자열로 합치기
-      const fullText = curr.keyFeatures
-        .map((feature) => `• ${feature}\n`)
-        .join("");
-      setStreamingData({
-        type: "keyFeatures",
-        data: "",
+      changes.push({
+        type: "keyFeatures" as const,
+        data: curr.keyFeatures.map((feature) => `• ${feature}\n`).join(""),
       });
+    }
 
-      // 문자 단위로 타이핑 효과
-      let currentIndex = 0;
-      typingIntervalRef.current = setInterval(() => {
-        if (currentIndex < fullText.length) {
-          setStreamingData({
-            type: "keyFeatures",
-            data: fullText.substring(0, currentIndex + 1),
-          });
-          currentIndex++;
-        } else {
-          if (typingIntervalRef.current) {
-            clearInterval(typingIntervalRef.current);
-            typingIntervalRef.current = null;
-          }
-          // 타이핑 완료 후 상태 초기화
-          setTimeout(() => {
-            setStreamingData({ type: null, data: null });
-          }, 500);
-        }
-      }, 30); // 30ms 간격 (1초에 약 33글자)
+    // 큐에 추가된 항목들을 순차적으로 처리
+    if (changes.length > 0) {
+      streamingQueueRef.current = changes;
+      processStreamingQueue();
     }
 
     prevOverviewRef.current = displayOverview;
@@ -258,7 +290,7 @@ export function ProjectOverviewPanel({
         typingIntervalRef.current = null;
       }
     };
-  }, [displayOverview]);
+  }, [displayOverview, processStreamingQueue]);
 
   const serviceTypeMap: Record<string, string> = {
     "food-delivery": "음식 배달 앱",
