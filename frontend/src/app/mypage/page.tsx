@@ -156,6 +156,23 @@ export default function MyPage() {
     );
   };
 
+  // 프로젝트 요구사항 수 계산 함수
+  const getRequirementCount = (project: Project): number => {
+    if (!project.requirements) return 0;
+    const extractedRequirements = project.requirements as ExtractedRequirements;
+    return extractedRequirements.totalCount || 0;
+  };
+
+  // 프로젝트 견적 금액 계산 함수
+  const getEstimateAmount = (project: Project): number => {
+    if (!project.requirements || project.status !== "completed") return 0;
+    
+    const extractedRequirements = project.requirements as ExtractedRequirements;
+    // 요구사항당 100만원으로 계산
+    const requirementCount = extractedRequirements.totalCount || 0;
+    return requirementCount * 1000000;
+  };
+
   const handleDownloadEstimate = async (project: Project) => {
     try {
       if (!project.requirements || !project.project_overview) {
@@ -268,7 +285,12 @@ export default function MyPage() {
     // 총 견적금액 (완료된 프로젝트만)
     const totalEstimated = projects
       .filter((p) => p.status === "completed")
-      .reduce((sum, p) => sum + 8000000, 0); // 임시로 8백만원씩 계산
+      .reduce((sum, p) => {
+        if (!p.requirements) return sum;
+        const extractedRequirements = p.requirements as ExtractedRequirements;
+        const requirementCount = extractedRequirements.totalCount || 0;
+        return sum + requirementCount * 1000000;
+      }, 0);
 
     // 승인 대기: draft 상태
     const pendingApproval = projects.filter((p) => p.status === "draft").length;
@@ -430,13 +452,15 @@ export default function MyPage() {
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-500">요구사항</span>
-                      <span className="font-medium text-gray-900">8개</span>
+                      <span className="font-medium text-gray-900">
+                        {getRequirementCount(project) || 0}개
+                      </span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-500">견적</span>
                       <span className="font-medium text-gray-900">
                         {project.status === "completed"
-                          ? "8,000,000원"
+                          ? `${getEstimateAmount(project).toLocaleString()}원`
                           : "미산출"}
                       </span>
                     </div>

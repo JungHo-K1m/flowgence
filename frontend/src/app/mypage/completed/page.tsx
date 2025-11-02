@@ -86,6 +86,23 @@ export default function CompletedProjects() {
     sortProjects();
   }, [projects, sortOrder]);
 
+  // 프로젝트 요구사항 수 계산 함수
+  const getRequirementCount = (project: Project): number => {
+    if (!project.requirements) return 0;
+    const extractedRequirements = project.requirements as ExtractedRequirements;
+    return extractedRequirements.totalCount || 0;
+  };
+
+  // 프로젝트 견적 금액 계산 함수
+  const getEstimateAmount = (project: Project): number => {
+    if (!project.requirements) return 0;
+    
+    const extractedRequirements = project.requirements as ExtractedRequirements;
+    // 요구사항당 100만원으로 계산
+    const requirementCount = extractedRequirements.totalCount || 0;
+    return requirementCount * 1000000;
+  };
+
   const handleDownloadEstimate = async (project: Project) => {
     try {
       if (!project.requirements || !project.project_overview) {
@@ -288,12 +305,14 @@ export default function CompletedProjects() {
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-500">요구사항</span>
-                      <span className="font-medium text-gray-900">8개</span>
+                      <span className="font-medium text-gray-900">
+                        {getRequirementCount(project) || 0}개
+                      </span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-500">견적</span>
                       <span className="font-medium text-gray-900">
-                        8,000,000원
+                        {getEstimateAmount(project).toLocaleString()}원
                       </span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
