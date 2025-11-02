@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import { useProjectOverview } from "@/hooks/useProjectOverview";
 import React from "react";
@@ -112,6 +112,13 @@ export function ProjectOverviewPanel({
   // 버튼 활성화를 위한 상태 (realtimeOverview가 있으면 즉시 활성화)
   const isButtonEnabled = realtimeOverview ? true : !!overview && !isLoading;
 
+  // 스트리밍 효과를 위한 상태
+  const prevOverviewRef = useRef<typeof displayOverview>(null);
+  const [streamingData, setStreamingData] = useState<{
+    type: "targetUsers" | "keyFeatures" | null;
+    data: string[] | null;
+  }>({ type: null, data: null });
+
   // 수동으로 프로젝트 개요 생성하는 함수 (useCallback으로 최적화)
   const handleGenerateOverview = useCallback(() => {
     if (
@@ -140,6 +147,50 @@ export function ProjectOverviewPanel({
       onGenerateOverview.current = handleGenerateOverview;
     }
   }, [onGenerateOverview, handleGenerateOverview]);
+
+  // overview 변경 감지 및 스트리밍 효과 적용
+  useEffect(() => {
+    // 초기 로딩 시에는 스트리밍하지 않음
+    if (!prevOverviewRef.current) {
+      prevOverviewRef.current = displayOverview;
+      return;
+    }
+
+    // overview가 변경되었는지 확인
+    if (!displayOverview || !prevOverviewRef.current) return;
+
+    const prev = prevOverviewRef.current.serviceCoreElements;
+    const curr = displayOverview.serviceCoreElements;
+
+    // 타겟 고객이 변경되었는지 확인
+    if (
+      prev &&
+      curr &&
+      JSON.stringify(prev.targetUsers) !== JSON.stringify(curr.targetUsers) &&
+      curr.targetUsers
+    ) {
+      setStreamingData({ type: "targetUsers", data: curr.targetUsers });
+      // 스트리밍 완료 후 상태 초기화
+      setTimeout(() => {
+        setStreamingData({ type: null, data: null });
+      }, curr.targetUsers.join("\n").length * 50 + 100); // 예상 완료 시간
+    }
+    // 핵심 기능이 변경되었는지 확인
+    else if (
+      prev &&
+      curr &&
+      JSON.stringify(prev.keyFeatures) !== JSON.stringify(curr.keyFeatures) &&
+      curr.keyFeatures
+    ) {
+      setStreamingData({ type: "keyFeatures", data: curr.keyFeatures });
+      // 스트리밍 완료 후 상태 초기화
+      setTimeout(() => {
+        setStreamingData({ type: null, data: null });
+      }, curr.keyFeatures.join("\n").length * 50 + 100); // 예상 완료 시간
+    }
+
+    prevOverviewRef.current = displayOverview;
+  }, [displayOverview]);
 
   const serviceTypeMap: Record<string, string> = {
     "food-delivery": "음식 배달 앱",
@@ -297,13 +348,19 @@ export function ProjectOverviewPanel({
                   <LoadingSkeleton />
                 ) : (
                   <div className="space-y-2">
-                    {displayOverview?.serviceCoreElements?.targetUsers?.map(
-                      (user: string, index: number) => (
-                        <p key={index} className="text-sm text-gray-600">
-                          • {user}
-                        </p>
-                      )
-                    ) || (
+                    {(streamingData.type === "targetUsers" && streamingData.data
+                      ? streamingData.data
+                      : displayOverview?.serviceCoreElements?.targetUsers
+                    )?.map((user: string, index: number) => (
+                      <p key={index} className="text-sm text-gray-600">
+                        •{" "}
+                        {streamingData.type === "targetUsers" &&
+                        streamingData.data
+                          ? user +
+                            (index === streamingData.data.length - 1 ? "|" : "")
+                          : user}
+                      </p>
+                    )) || (
                       <p className="text-sm text-gray-600">
                         {serviceType
                           ? serviceTypeMap[serviceType] || serviceType
@@ -359,13 +416,19 @@ export function ProjectOverviewPanel({
                   <LoadingSkeleton />
                 ) : (
                   <div className="space-y-2">
-                    {displayOverview?.serviceCoreElements?.keyFeatures?.map(
-                      (feature: string, index: number) => (
-                        <p key={index} className="text-sm text-gray-600">
-                          • {feature}
-                        </p>
-                      )
-                    ) || (
+                    {(streamingData.type === "keyFeatures" && streamingData.data
+                      ? streamingData.data
+                      : displayOverview?.serviceCoreElements?.keyFeatures
+                    )?.map((feature: string, index: number) => (
+                      <p key={index} className="text-sm text-gray-600">
+                        •{" "}
+                        {streamingData.type === "keyFeatures" &&
+                        streamingData.data
+                          ? feature +
+                            (index === streamingData.data.length - 1 ? "|" : "")
+                          : feature}
+                      </p>
+                    )) || (
                       <p className="text-sm text-gray-600">AI 기반 자동화</p>
                     )}
                   </div>
