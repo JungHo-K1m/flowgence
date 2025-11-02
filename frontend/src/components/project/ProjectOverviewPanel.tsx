@@ -161,24 +161,25 @@ export function ProjectOverviewPanel({
   // 텍스트 스트리밍 로딩 컴포넌트
   const LoadingSpinner = () => {
     const [currentMessage, setCurrentMessage] = useState(0);
-    
+
     const loadingMessages = [
       "프로젝트를 분석하고 있습니다",
       "핵심 요소를 추출하고 있습니다",
       "서비스 구조를 설계하고 있습니다",
-      "최종 검토를 진행하고 있습니다"
+      "최종 검토를 진행하고 있습니다",
     ];
-    
+
     useEffect(() => {
       if (!isLoading) return;
-      
+
       const interval = setInterval(() => {
         setCurrentMessage((prev) => (prev + 1) % loadingMessages.length);
       }, 2000); // 2초마다 메시지 변경
-      
+
       return () => clearInterval(interval);
-    }, [isLoading, loadingMessages.length]);
-    
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isLoading]); // loadingMessages는 컴포넌트 내부 상수이므로 의존성에서 제외
+
     return (
       <div className="flex flex-col items-center justify-center py-6">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-3"></div>
@@ -291,7 +292,8 @@ export function ProjectOverviewPanel({
                   />
                   <h3 className="font-semibold text-gray-900">타겟 고객</h3>
                 </div>
-                {isLoading ? (
+                {isLoading &&
+                !displayOverview?.serviceCoreElements?.targetUsers ? (
                   <LoadingSkeleton />
                 ) : (
                   <div className="space-y-2">
@@ -323,7 +325,8 @@ export function ProjectOverviewPanel({
                   />
                   <h3 className="font-semibold text-gray-900">핵심 문제</h3>
                 </div>
-                {isLoading ? (
+                {isLoading &&
+                !displayOverview?.serviceCoreElements?.description ? (
                   <LoadingSkeleton />
                 ) : (
                   <div className="space-y-2">
@@ -351,7 +354,8 @@ export function ProjectOverviewPanel({
                   />
                   <h3 className="font-semibold text-gray-900">핵심 기능</h3>
                 </div>
-                {isLoading ? (
+                {isLoading &&
+                !displayOverview?.serviceCoreElements?.keyFeatures ? (
                   <LoadingSkeleton />
                 ) : (
                   <div className="space-y-2">
@@ -379,7 +383,9 @@ export function ProjectOverviewPanel({
                   />
                   <h3 className="font-semibold text-gray-900">수익 모델</h3>
                 </div>
-                {isLoading ? (
+                {isLoading &&
+                !displayOverview?.serviceCoreElements?.businessModel
+                  ?.revenueStreams ? (
                   <LoadingSkeleton />
                 ) : (
                   <div className="space-y-2">
@@ -412,7 +418,8 @@ export function ProjectOverviewPanel({
                   </h4>
                 </div>
                 <div>
-                  {isLoading ? (
+                  {isLoading &&
+                  !displayOverview?.aiAnalysis?.insights?.length ? (
                     <div className="space-y-3">
                       <div className="flex items-start space-x-2">
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mt-1"></div>
@@ -436,7 +443,10 @@ export function ProjectOverviewPanel({
                       displayOverview.aiAnalysis.insights.length > 0 ? (
                         displayOverview.aiAnalysis.insights.map(
                           (insight, index) => (
-                            <div key={index} className="flex items-start space-x-2">
+                            <div
+                              key={index}
+                              className="flex items-start space-x-2"
+                            >
                               <span
                                 className={`text-lg ${
                                   insight.type === "strength"
@@ -473,7 +483,7 @@ export function ProjectOverviewPanel({
           </div>
         ) : (
           <div className="space-y-4">
-            {isLoading ? (
+            {isLoading && !displayOverview?.userJourney?.steps?.length ? (
               <LoadingSpinner />
             ) : displayOverview?.userJourney?.steps &&
               displayOverview.userJourney.steps.length > 0 ? (

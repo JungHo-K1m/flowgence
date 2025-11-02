@@ -342,16 +342,18 @@ export function RequirementsResultPanel({
       const element = document.getElementById(sectionId);
       if (element) {
         // 컨텐츠 영역 내에서 스크롤
-        const contentArea = element.closest('.flex-1.overflow-y-auto');
+        const contentArea = element.closest(".flex-1.overflow-y-auto");
         if (contentArea) {
           const rect = element.getBoundingClientRect();
           const absoluteElementTop = rect.top + window.pageYOffset;
-          const absoluteContentTop = (contentArea as HTMLElement).getBoundingClientRect().top + window.pageYOffset;
+          const absoluteContentTop =
+            (contentArea as HTMLElement).getBoundingClientRect().top +
+            window.pageYOffset;
           const relativeTop = absoluteElementTop - absoluteContentTop;
-          
+
           (contentArea as HTMLElement).scrollTo({
             top: relativeTop - 20,
-            behavior: "smooth"
+            behavior: "smooth",
           });
         }
       }
@@ -422,7 +424,7 @@ export function RequirementsResultPanel({
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col mb-4">
           {/* Header */}
           <div className="border-b border-gray-200 px-6 py-4">
             <div className="flex items-center justify-between">

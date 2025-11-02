@@ -281,18 +281,19 @@ export function getShareOptions(data: ShareData): ShareOption[] {
 
 // Notion에 수동으로 공유하는 방법
 export function shareToNotionManually(data: ShareData): void {
-  const shareText = `${data.title}\n\n${data.content}`;
+  // 마크다운 형식으로 복사 (Notion이 마크다운을 자동으로 렌더링함)
+  const shareText = `# ${data.title}\n\n${data.markdown}`;
   
   copyToClipboard(shareText).then((success) => {
     if (success) {
       alert(
-        `Notion에 공유하기 위해 내용이 클립보드에 복사되었습니다!\n\n` +
-        `다음 단계를 따라주세요:\n\n` +
+        `✨ 견적서 마크다운이 클립보드에 복사되었습니다!\n\n` +
+        `📋 다음 단계를 따라주세요:\n\n` +
         `1. notion.so 접속 (새 탭에서 열기)\n` +
         `2. 새 페이지 생성\n` +
-        `3. 제목 입력: "${data.title}"\n` +
-        `4. 내용에 붙여넣기 (Ctrl+V 또는 Cmd+V)\n` +
-        `5. 저장 후 공유 설정\n\n` +
+        `3. 내용 영역에 붙여넣기 (Ctrl+V 또는 Cmd+V)\n` +
+        `4. Notion이 자동으로 마크다운을 렌더링합니다!\n\n` +
+        `💡 팁: Notion은 마크다운 형식을 자동으로 예쁘게 보여줍니다.\n\n` +
         `Notion을 열어보시겠습니까?`
       );
       

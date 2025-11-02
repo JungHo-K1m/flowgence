@@ -65,7 +65,7 @@ export function Header() {
                 </span>
                 <Link
                   href="/mypage"
-                  className="bg-[#6366F1] text-white px-8 hover:bg-[#6366F1] transition-colors duration-200 font-medium m-2 rounded-lg h-[40px] flex items-center justify-center"
+                  className="bg-[#6366F1] text-white px-4 hover:bg-[#6366F1] transition-colors duration-200 font-medium m-2 rounded-lg  h-[40px] flex items-center justify-center"
                 >
                   마이페이지
                 </Link>
@@ -79,7 +79,7 @@ export function Header() {
                 )}
                 <Link
                   href="/contact"
-                  className="text-gray-700 hover:text-blue-600 transition-colors duration-200"
+                  className="bg-[#6366F1] text-white px-4 hover:bg-[#6366F1] transition-colors duration-200 font-medium m-2 rounded-lg h-[40px] flex items-center justify-center"
                 >
                   문의하기
                 </Link>
@@ -87,7 +87,7 @@ export function Header() {
                   onClick={handleSignOut}
                   variant="outline"
                   size="sm"
-                  className="text-gray-700 hover:text-blue-600"
+                  className="text-gray-700 hover:text-blue-600 bg-[#6366F1] px-4 hover:bg-[#6366F1] transition-colors duration-200 font-medium m-2 rounded-lg h-[40px] flex items-center justify-center"
                 >
                   로그아웃
                 </Button>

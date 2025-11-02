@@ -409,55 +409,34 @@ export function ConfirmationPanel({
       const notionSetup = checkNotionSetup();
 
       if (!notionSetup.isConfigured) {
-        // Notion 설정이 안 되어 있는 경우 대안 제공
-        const choice = prompt(
-          `Notion 공유를 위해서는 설정이 필요합니다.\n\n` +
-            `다음 중 선택하세요:\n\n` +
-            `1. Notion 사용 가이드 보기\n` +
-            `2. 수동으로 Notion에 공유 (클립보드 복사)\n` +
-            `3. 다른 방법으로 공유\n\n` +
-            `번호를 입력하세요 (1-3):`
+        // Notion 설정이 안 되어 있는 경우 - 수동 공유로 바로 진행
+        const { shareToNotionManually } = await import(
+          "@/lib/shareAlternatives"
         );
-
-        if (choice === "1") {
-          showNotionGuide();
-          return;
-        } else if (choice === "2") {
-          // 수동 Notion 공유
-          const { shareToNotionManually } = await import(
-            "@/lib/shareAlternatives"
-          );
-          const data = {
-            title: `${projectData.serviceType} - 프로젝트 견적서`,
-            content: `프로젝트: ${
-              projectData.serviceType
-            }\n총 견적: ${estimateData.finalEstimate.toLocaleString(
-              "ko-KR"
-            )}원\n\n${projectData.description}`,
-            markdown: generateEstimateMarkdown(
-              estimateData,
-              requirementsData,
-              projectData,
-              projectOverview,
-              extractedRequirements
-            ),
-            html: generateEstimateMarkdown(
-              estimateData,
-              requirementsData,
-              projectData,
-              projectOverview,
-              extractedRequirements
-            ).replace(/\n/g, "<br>"),
-          };
-          shareToNotionManually(data);
-          return;
-        } else if (choice === "3") {
-          // 대안 공유 방법 제공
-          handleAlternativeShare();
-          return;
-        } else {
-          return; // 취소
-        }
+        const data = {
+          title: `${projectData.serviceType} - 프로젝트 견적서`,
+          content: `프로젝트: ${
+            projectData.serviceType
+          }\n총 견적: ${estimateData.finalEstimate.toLocaleString(
+            "ko-KR"
+          )}원\n\n${projectData.description}`,
+          markdown: generateEstimateMarkdown(
+            estimateData,
+            requirementsData,
+            projectData,
+            projectOverview,
+            extractedRequirements
+          ),
+          html: generateEstimateMarkdown(
+            estimateData,
+            requirementsData,
+            projectData,
+            projectOverview,
+            extractedRequirements
+          ).replace(/\n/g, "<br>"),
+        };
+        shareToNotionManually(data);
+        return;
       }
 
       // 로딩 상태 표시
@@ -481,8 +460,28 @@ export function ConfirmationPanel({
 
       // 성공 메시지 표시
       alert(
-        `견적서가 Notion에 성공적으로 공유되었습니다!\n\n페이지 URL: ${notionUrl}\n\n브라우저에서 열어보시겠습니까?`
+        `✨ 견적서가 Notion에 성공적으로 공유되었습니다!\n\n페이지 URL: ${notionUrl}\n\n마크다운을 복사하여 다른 페이지에 붙여넣고 싶으신가요?`
       );
+
+      // 마크다운 복사 옵션 제공
+      if (confirm("마크다운을 클립보드에 복사하시겠습니까?")) {
+        const { copyToClipboard } = await import("@/lib/shareAlternatives");
+        const markdown = generateEstimateMarkdown(
+          estimateData,
+          requirementsData,
+          projectData,
+          projectOverview,
+          extractedRequirements
+        );
+        const fullMarkdown = `# ${projectData.serviceType} - 프로젝트 견적서\n\n${markdown}`;
+        
+        const success = await copyToClipboard(fullMarkdown);
+        if (success) {
+          alert("✅ 마크다운이 클립보드에 복사되었습니다!");
+        } else {
+          alert("⚠️ 클립보드 복사에 실패했습니다.");
+        }
+      }
 
       // 브라우저에서 열기
       if (confirm("브라우저에서 Notion 페이지를 열어보시겠습니까?")) {

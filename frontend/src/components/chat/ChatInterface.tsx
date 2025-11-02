@@ -84,7 +84,7 @@ export function ChatInterface({
   const [internalMessages, setInternalMessages] = useState<Message[]>(
     getInitialMessages()
   );
-  
+
   // 타이핑 효과를 위한 상태
   const [typingMessage, setTypingMessage] = useState<string>("");
   const [isTypingMessage, setIsTypingMessage] = useState<boolean>(false);
@@ -216,23 +216,23 @@ export function ChatInterface({
       // 타이핑 효과 시작
       setIsTypingMessage(true);
       setTypingMessage("");
-      
+
       let currentIndex = 0;
       const fullText = aiResponse;
-      
+
       // 한 글자씩 타이핑
       const typingInterval = setInterval(() => {
         if (currentIndex < fullText.length) {
           setTypingMessage(fullText.substring(0, currentIndex + 1));
           currentIndex++;
-          
+
           // 스크롤을 실시간으로 이동
           forceScrollToBottom();
         } else {
           // 타이핑 완료
           clearInterval(typingInterval);
           setIsTypingMessage(false);
-          
+
           // 완전한 메시지를 배열에 추가
           const aiMessage = {
             id: `ai-${Date.now()}`,
@@ -248,17 +248,17 @@ export function ChatInterface({
           } else {
             setInternalMessages(updatedMessages);
           }
-          
+
           // 타이핑 인디케이터 숨기기
           setIsTyping(false);
-          
+
           // 최종 스크롤
           setTimeout(() => {
             forceScrollToBottom();
           }, 100);
         }
       }, 30); // 30ms 간격 (1초에 약 33글자)
-      
+
       return () => clearInterval(typingInterval);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -346,7 +346,7 @@ export function ChatInterface({
   return (
     <div className="flex flex-col h-full bg-gray-50 max-h-[calc(100vh-120px)]">
       {/* Chat Messages - Scrollable Area */}
-      <div className="flex-1 overflow-y-auto p-4 pl-[90px] space-y-4 min-h-0">
+      <div className="flex-1 overflow-y-auto p-4 pl-[30px] space-y-4 min-h-0">
         {/* Step Header - Fixed */}
         <div className="bg-white border-1 border-[#E5E7EB] p-4 pl-[90px] rounded-[16px]">
           <div className="flex items-center space-x-3">
@@ -390,7 +390,7 @@ export function ChatInterface({
             onOptionSelect={handleOptionSelect}
           />
         ))}
-        
+
         {/* 타이핑 중인 메시지 표시 */}
         {isTypingMessage && typingMessage && (
           <MessageBubble
@@ -411,7 +411,7 @@ export function ChatInterface({
       </div>
 
       {/* Chat Input */}
-      <div className="bg-white border-t border-gray-200 p-4 pl-[90px]">
+      <div className="bg-white border-t border-gray-200 p-4 pl-[30px]">
         <ChatInput
           onSendMessage={handleSendMessage}
           currentStep={currentStep}
