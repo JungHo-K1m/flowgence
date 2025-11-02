@@ -116,9 +116,9 @@ export function ProjectOverviewPanel({
   const prevOverviewRef = useRef<typeof displayOverview>(null);
   const [streamingData, setStreamingData] = useState<{
     type: "targetUsers" | "keyFeatures" | null;
-    data: string[] | null;
-    currentIndex: number;
-  }>({ type: null, data: null, currentIndex: 0 });
+    data: string | null;
+  }>({ type: null, data: null });
+  const typingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // 수동으로 프로젝트 개요 생성하는 함수 (useCallback으로 최적화)
   const handleGenerateOverview = useCallback(() => {
@@ -151,6 +151,12 @@ export function ProjectOverviewPanel({
 
   // overview 변경 감지 및 스트리밍 효과 적용
   useEffect(() => {
+    // 이전 interval 정리
+    if (typingIntervalRef.current) {
+      clearInterval(typingIntervalRef.current);
+      typingIntervalRef.current = null;
+    }
+
     // 초기 로딩 시에는 스트리밍하지 않음
     if (!prevOverviewRef.current) {
       prevOverviewRef.current = displayOverview;
@@ -170,24 +176,33 @@ export function ProjectOverviewPanel({
       JSON.stringify(prev.targetUsers) !== JSON.stringify(curr.targetUsers) &&
       curr.targetUsers
     ) {
-      // 항목별로 하나씩 표시하는 스트리밍
+      // 전체 텍스트를 하나의 문자열로 합치기
+      const fullText = curr.targetUsers.map((user) => `• ${user}\n`).join("");
       setStreamingData({
         type: "targetUsers",
-        data: curr.targetUsers,
-        currentIndex: 0,
+        data: "",
       });
 
-      // 각 항목을 순차적으로 표시
-      curr.targetUsers.forEach((item, index) => {
-        setTimeout(() => {
-          setStreamingData((prev) => ({ ...prev, currentIndex: index }));
-        }, index * 500); // 500ms 간격으로 각 항목 표시
-      });
-
-      // 스트리밍 완료 후 상태 초기화
-      setTimeout(() => {
-        setStreamingData({ type: null, data: null, currentIndex: 0 });
-      }, curr.targetUsers.length * 500 + 100);
+      // 문자 단위로 타이핑 효과
+      let currentIndex = 0;
+      typingIntervalRef.current = setInterval(() => {
+        if (currentIndex < fullText.length) {
+          setStreamingData({
+            type: "targetUsers",
+            data: fullText.substring(0, currentIndex + 1),
+          });
+          currentIndex++;
+        } else {
+          if (typingIntervalRef.current) {
+            clearInterval(typingIntervalRef.current);
+            typingIntervalRef.current = null;
+          }
+          // 타이핑 완료 후 상태 초기화
+          setTimeout(() => {
+            setStreamingData({ type: null, data: null });
+          }, 500);
+        }
+      }, 30); // 30ms 간격 (1초에 약 33글자)
     }
     // 핵심 기능이 변경되었는지 확인
     else if (
@@ -196,27 +211,46 @@ export function ProjectOverviewPanel({
       JSON.stringify(prev.keyFeatures) !== JSON.stringify(curr.keyFeatures) &&
       curr.keyFeatures
     ) {
-      // 항목별로 하나씩 표시하는 스트리밍
+      // 전체 텍스트를 하나의 문자열로 합치기
+      const fullText = curr.keyFeatures
+        .map((feature) => `• ${feature}\n`)
+        .join("");
       setStreamingData({
         type: "keyFeatures",
-        data: curr.keyFeatures,
-        currentIndex: 0,
+        data: "",
       });
 
-      // 각 항목을 순차적으로 표시
-      curr.keyFeatures.forEach((item, index) => {
-        setTimeout(() => {
-          setStreamingData((prev) => ({ ...prev, currentIndex: index }));
-        }, index * 500); // 500ms 간격으로 각 항목 표시
-      });
-
-      // 스트리밍 완료 후 상태 초기화
-      setTimeout(() => {
-        setStreamingData({ type: null, data: null, currentIndex: 0 });
-      }, curr.keyFeatures.length * 500 + 100);
+      // 문자 단위로 타이핑 효과
+      let currentIndex = 0;
+      typingIntervalRef.current = setInterval(() => {
+        if (currentIndex < fullText.length) {
+          setStreamingData({
+            type: "keyFeatures",
+            data: fullText.substring(0, currentIndex + 1),
+          });
+          currentIndex++;
+        } else {
+          if (typingIntervalRef.current) {
+            clearInterval(typingIntervalRef.current);
+            typingIntervalRef.current = null;
+          }
+          // 타이핑 완료 후 상태 초기화
+          setTimeout(() => {
+            setStreamingData({ type: null, data: null });
+          }, 500);
+        }
+      }, 30); // 30ms 간격 (1초에 약 33글자)
     }
 
     prevOverviewRef.current = displayOverview;
+
+    // cleanup 함수로 interval 정리
+    return () => {
+      if (typingIntervalRef.current) {
+        clearInterval(typingIntervalRef.current);
+        typingIntervalRef.current = null;
+      }
+    };
   }, [displayOverview]);
 
   const serviceTypeMap: Record<string, string> = {
@@ -375,17 +409,23 @@ export function ProjectOverviewPanel({
                   <LoadingSkeleton />
                 ) : (
                   <div className="space-y-2">
-                    {(streamingData.type === "targetUsers" && streamingData.data
-                      ? streamingData.data.slice(
-                          0,
-                          streamingData.currentIndex + 1
+                    {streamingData.type === "targetUsers" &&
+                    streamingData.data ? (
+                      <div className="whitespace-pre-wrap">
+                        <p className="text-sm text-gray-600">
+                          {streamingData.data}
+                          <span className="animate-pulse">|</span>
+                        </p>
+                      </div>
+                    ) : displayOverview?.serviceCoreElements?.targetUsers ? (
+                      displayOverview.serviceCoreElements.targetUsers.map(
+                        (user: string, index: number) => (
+                          <p key={index} className="text-sm text-gray-600">
+                            • {user}
+                          </p>
                         )
-                      : displayOverview?.serviceCoreElements?.targetUsers
-                    )?.map((user: string, index: number) => (
-                      <p key={index} className="text-sm text-gray-600">
-                        • {user}
-                      </p>
-                    )) || (
+                      )
+                    ) : (
                       <p className="text-sm text-gray-600">
                         {serviceType
                           ? serviceTypeMap[serviceType] || serviceType
@@ -441,17 +481,23 @@ export function ProjectOverviewPanel({
                   <LoadingSkeleton />
                 ) : (
                   <div className="space-y-2">
-                    {(streamingData.type === "keyFeatures" && streamingData.data
-                      ? streamingData.data.slice(
-                          0,
-                          streamingData.currentIndex + 1
+                    {streamingData.type === "keyFeatures" &&
+                    streamingData.data ? (
+                      <div className="whitespace-pre-wrap">
+                        <p className="text-sm text-gray-600">
+                          {streamingData.data}
+                          <span className="animate-pulse">|</span>
+                        </p>
+                      </div>
+                    ) : displayOverview?.serviceCoreElements?.keyFeatures ? (
+                      displayOverview.serviceCoreElements.keyFeatures.map(
+                        (feature: string, index: number) => (
+                          <p key={index} className="text-sm text-gray-600">
+                            • {feature}
+                          </p>
                         )
-                      : displayOverview?.serviceCoreElements?.keyFeatures
-                    )?.map((feature: string, index: number) => (
-                      <p key={index} className="text-sm text-gray-600">
-                        • {feature}
-                      </p>
-                    )) || (
+                      )
+                    ) : (
                       <p className="text-sm text-gray-600">AI 기반 자동화</p>
                     )}
                   </div>
