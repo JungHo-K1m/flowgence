@@ -640,7 +640,7 @@ export function RequirementsResultPanel({
             </section>
 
             {/* Data Model Section */}
-            <section id="data-model" className="mb-8">
+            <section id="data-model" className="mb-24">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">
                 기술 스택 및 데이터 모델
               </h2>

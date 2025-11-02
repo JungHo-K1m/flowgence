@@ -5,6 +5,9 @@ import { useAuthContext } from "@/components/providers/AuthProvider";
 import { createClient } from "@/lib/supabase";
 import Link from "next/link";
 import { useProjectResume } from "@/hooks/useProjectResume";
+import { generateEstimateMarkdown } from "@/lib/estimateGenerator";
+import { downloadMarkdownAsPDF } from "@/lib/pdfGenerator";
+import { ExtractedRequirements } from "@/types/requirements";
 
 interface Project {
   id: string;
@@ -14,6 +17,9 @@ interface Project {
   status: string;
   createdAt: string;
   updatedAt: string;
+  project_overview?: any;
+  requirements?: any;
+  rawData?: any;
 }
 
 export default function CompletedProjects() {
@@ -51,6 +57,9 @@ export default function CompletedProjects() {
         status: project.status || "draft",
         createdAt: project.created_at,
         updatedAt: project.updated_at,
+        project_overview: project.project_overview,
+        requirements: project.requirements,
+        rawData: project,
       }));
 
       setProjects(formattedProjects);
@@ -76,6 +85,75 @@ export default function CompletedProjects() {
   useEffect(() => {
     sortProjects();
   }, [projects, sortOrder]);
+
+  const handleDownloadEstimate = async (project: Project) => {
+    try {
+      if (!project.requirements || !project.project_overview) {
+        alert("견적서를 생성할 데이터가 없습니다.");
+        return;
+      }
+
+      // 필요한 데이터 준비
+      const extractedRequirements = project.requirements as ExtractedRequirements;
+      const projectOverview = project.project_overview;
+      
+      // 기본 데이터
+      const estimateData = {
+        baseEstimate: 8000000,
+        discount: 0,
+        finalEstimate: 8000000,
+      };
+      
+      const requirementsData = {
+        total: extractedRequirements.totalCount || 0,
+        mandatory: extractedRequirements.categories?.reduce((acc, cat) =>
+          acc + (cat.subCategories?.reduce((subAcc, sub) =>
+            subAcc + (sub.requirements?.filter((r) => r.priority === "high").length || 0), 0
+          ) || 0), 0
+        ) || 0,
+        recommended: extractedRequirements.categories?.reduce((acc, cat) =>
+          acc + (cat.subCategories?.reduce((subAcc, sub) =>
+            subAcc + (sub.requirements?.filter((r) => r.priority === "medium").length || 0), 0
+          ) || 0), 0
+        ) || 0,
+        optional: extractedRequirements.categories?.reduce((acc, cat) =>
+          acc + (cat.subCategories?.reduce((subAcc, sub) =>
+            subAcc + (sub.requirements?.filter((r) => r.priority === "low").length || 0), 0
+          ) || 0), 0
+        ) || 0,
+        projectType: project.serviceType,
+        estimatedUsers: projectOverview?.serviceCoreElements?.targetUsers?.join(", ") || "미정",
+        duration: projectOverview?.serviceCoreElements?.estimatedDuration || "미정",
+      };
+      
+      const projectDataForEstimate = {
+        description: project.description,
+        serviceType: project.serviceType,
+        uploadedFiles: [],
+        chatMessages: [],
+      };
+
+      // 마크다운 생성
+      const markdown = generateEstimateMarkdown(
+        estimateData,
+        requirementsData,
+        projectDataForEstimate,
+        projectOverview,
+        extractedRequirements
+      );
+
+      // PDF 다운로드
+      await downloadMarkdownAsPDF(markdown, {
+        filename: `견적서_${project.serviceType}_${new Date().toISOString().split("T")[0]}.pdf`,
+        title: `${project.serviceType} 프로젝트 견적서`,
+        author: "Flowgence",
+        subject: "프로젝트 견적서",
+      });
+    } catch (error) {
+      console.error("견적서 다운로드 실패:", error);
+      alert("견적서 다운로드에 실패했습니다. 다시 시도해주세요.");
+    }
+  };
 
   const sortProjects = () => {
     const sorted = [...projects].sort((a, b) => {
@@ -204,7 +282,10 @@ export default function CompletedProjects() {
                   </div>
 
                   <div className="flex space-x-3">
-                    <button className="flex-1 px-4 py-2 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors duration-200 flex items-center justify-center truncate">
+                    <button 
+                      onClick={() => handleDownloadEstimate(project)}
+                      className="flex-1 px-4 py-2 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors duration-200 flex items-center justify-center truncate"
+                    >
                       <span className="mr-2 flex-shrink-0">📥</span>
                       <span className="truncate">견적서 다운로드</span>
                     </button>
