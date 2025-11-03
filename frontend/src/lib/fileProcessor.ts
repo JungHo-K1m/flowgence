@@ -40,10 +40,8 @@ async function loadPdfjs(): Promise<any> {
   pdfjsLoading = (async () => {
     try {
       // pdfjs-dist를 동적으로 import (클라이언트 사이드에서만)
-      // webpack 버전 사용 (브라우저용)
-      const pdfjsModule = await import(
-        /* webpackChunkName: "pdfjs" */ "pdfjs-dist/webpack"
-      );
+      // next.config.ts의 webpack 설정으로 브라우저 환경에 최적화됨
+      const pdfjsModule = await import("pdfjs-dist");
       
       // default export 또는 named export 확인
       const pdfjs = pdfjsModule.default || pdfjsModule;
