@@ -60,34 +60,34 @@ export function Header() {
               <div className="text-gray-500">로딩 중...</div>
             ) : user ? (
               <div className="flex items-center space-x-4">
-                <span className="text-gray-700">
+                <span className="text-gray-500">
                   안녕하세요, {user.user_metadata?.full_name || user.email}님!
                 </span>
-                <Link
-                  href="/mypage"
-                  className="bg-[#6366F1] text-white px-4 hover:bg-[#6366F1] transition-colors duration-200 font-medium m-2 rounded-lg  h-[40px] flex items-center justify-center"
-                >
-                  마이페이지
-                </Link>
                 {isAdmin && (
                   <Link
                     href="/admin"
-                    className="text-gray-700 hover:text-blue-600 transition-colors duration-200"
+                    className="text-gray-700 px-4 hover:text-blue-600 transition-colors duration-200 font-medium m-2 rounded-lg  h-[40px] flex items-center justify-center"
                   >
-                    관리자
+                    관리자 페이지
                   </Link>
                 )}
                 <Link
                   href="/contact"
-                  className="bg-[#6366F1] text-white px-4 hover:bg-[#6366F1] transition-colors duration-200 font-medium m-2 rounded-lg h-[40px] flex items-center justify-center"
+                  className="text-gray-700 px-4 hover:text-blue-600 transition-colors duration-200 font-medium m-2 rounded-lg h-[40px] flex items-center justify-center"
                 >
                   문의하기
+                </Link>
+                <Link
+                  href="/mypage"
+                  className="text-[#6366F1] px-4 hover:text-blue-600 transition-colors duration-200 font-medium m-2 rounded-lg  h-[40px] flex items-center justify-center"
+                >
+                  마이페이지
                 </Link>
                 <Button
                   onClick={handleSignOut}
                   variant="outline"
                   size="sm"
-                  className="text-gray-700 hover:text-blue-600 bg-[#6366F1] px-4 hover:bg-[#6366F1] transition-colors duration-200 font-medium m-2 rounded-lg h-[40px] flex items-center justify-center"
+                  className="text-gray-700 hover:text-blue-600  px-4 hover:text-blue-600 transition-colors duration-200 font-medium m-2 rounded-lg h-[40px] flex items-center justify-center"
                 >
                   로그아웃
                 </Button>
