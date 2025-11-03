@@ -22,11 +22,14 @@ import { ProgressBar } from "@/components/layout/ProgressBar";
 import { LoginRequiredModal } from "@/components/auth/LoginRequiredModal";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useStatePersistence } from "@/hooks/useStatePersistence";
+import { useSessionManager, SessionData } from "@/hooks/useSessionManager";
 import { SimpleRequirementModal } from "@/components/requirements/SimpleRequirementModal";
 import { CategoryDeleteConfirmModal } from "@/components/requirements/CategoryDeleteConfirmModal";
 import { useRequirementsExtraction } from "@/hooks/useRequirementsExtraction";
 import { useRequirementsUpdate } from "@/hooks/useRequirementsUpdate";
 import { useProjectStorage } from "@/hooks/useProjectStorage";
+import { useProjectResume } from "@/hooks/useProjectResume";
+import { supabase } from "@/lib/supabase";
 import {
   ExtractedRequirements,
   RequirementCategory,
@@ -34,6 +37,13 @@ import {
 } from "@/types/requirements";
 import { useProjectOverview } from "@/hooks/useProjectOverview";
 import { useProjectRestore } from "@/hooks/useProjectRestore";
+import {
+  extractContentFromFiles,
+  validateFileSize,
+  validateFileType,
+  SUPPORTED_FILE_TYPES,
+  MAX_FILE_SIZE_MB,
+} from "@/lib/fileProcessor";
 
 interface Message {
   id: string;
@@ -58,6 +68,26 @@ function HomePageContent() {
   const [isRequirementsLoading, setIsRequirementsLoading] = useState(false);
   const [chatMessages, setChatMessages] = useState<Message[]>([]);
   const hasResumedProject = useRef(false);
+  
+  // 파일 처리 관련 상태
+  const [isProcessingFiles, setIsProcessingFiles] = useState(false);
+  const [fileProcessingMessage, setFileProcessingMessage] = useState("");
+  const [fileProcessingError, setFileProcessingError] = useState("");
+  const [fileContents, setFileContents] = useState<string>(""); // 파일 내용 별도 저장 (API 요청용)
+  const [userComment, setUserComment] = useState<string>(""); // 사용자가 직접 입력한 코멘트
+  const [fileNamesDisplay, setFileNamesDisplay] = useState<string>(""); // 파일명 표시용 (UI만)
+
+  // 세션 관리
+  const {
+    saveSession,
+    restoreSession,
+    clearSession,
+    startAutoSave,
+    stopAutoSave,
+    isRestoring,
+  } = useSessionManager();
+  
+  const hasRestoredSession = useRef(false);
 
   // 페이지 로드 시 스크롤 위치 조정 제거 (전체 화면 레이아웃으로 변경)
   // useEffect(() => {
@@ -104,7 +134,76 @@ function HomePageContent() {
     updateExtractedRequirements,
   } = useRequirementsExtraction();
 
-  // 프로젝트 복구 로직 (이어서 작업하기)
+  // 세션 복원 로직 (페이지 로드 시 자동 실행)
+  useEffect(() => {
+    // DB에서 복원 중이거나 이미 복원했으면 건너뛰기
+    if (hasResumedProject.current || hasRestoredSession.current) {
+      return;
+    }
+
+    // URL 파라미터로 복원하는 경우도 건너뛰기
+    const resumeProjectId = searchParams.get("resume");
+    if (resumeProjectId) {
+      return;
+    }
+
+    // 세션 복원
+    const sessionData = restoreSession();
+    if (sessionData) {
+      hasRestoredSession.current = true;
+      isRestoring.current = true;
+
+      console.log("세션 복원 시작:", sessionData.sessionId);
+
+      // 상태 복원
+      setProjectDescription(sessionData.projectDescription);
+      setUserComment(sessionData.userComment);
+      setFileNamesDisplay(sessionData.fileNamesDisplay);
+      setSelectedServiceType(sessionData.selectedServiceType);
+      setCurrentStep(sessionData.currentStep);
+      setChatMessages(sessionData.chatMessages || []);
+      setEditableRequirements(sessionData.editableRequirements);
+      if (sessionData.extractedRequirements && updateExtractedRequirements) {
+        updateExtractedRequirements(sessionData.extractedRequirements);
+      }
+      setShowChatInterface(sessionData.showChatInterface);
+      setShowRequirements(sessionData.showRequirements);
+      setShowConfirmation(sessionData.showConfirmation);
+      setShowFinalResult(sessionData.showFinalResult);
+      setFileContents(sessionData.fileContents || "");
+
+      // 파일 메타데이터 복원 (실제 File 객체는 복원 불가, 사용자에게 재업로드 안내 필요)
+      if (sessionData.uploadedFiles && sessionData.uploadedFiles.length > 0) {
+        console.log(
+          "파일 정보 복원됨:",
+          sessionData.uploadedFiles.map((f) => f.name).join(", ")
+        );
+        // File 객체는 복원할 수 없으므로 fileNamesDisplay만 복원됨
+        // 필요시 파일 재업로드 안내 메시지 표시 가능
+      }
+
+      // 개요 복원
+      if (sessionData.overview && updateOverview) {
+        updateOverview(
+          {
+            description: sessionData.projectDescription,
+            serviceType: sessionData.selectedServiceType,
+            uploadedFiles: [],
+          },
+          sessionData.chatMessages || []
+        );
+      }
+
+      // 복원 완료
+      setTimeout(() => {
+        isRestoring.current = false;
+      }, 500);
+
+      console.log("세션 복원 완료");
+    }
+  }, [searchParams, restoreSession, updateOverview, updateExtractedRequirements]);
+
+  // 프로젝트 복구 로직 (이어서 작업하기 - DB 저장된 프로젝트)
   useEffect(() => {
     const resumeProjectId = searchParams.get("resume");
     const targetStep = searchParams.get("step");
@@ -309,9 +408,24 @@ function HomePageContent() {
 
       // 1. 프로젝트 개요 업데이트
       try {
+        // API 요청 시에는 사용자 코멘트 + 파일 내용을 포함 (UI에는 파일명만 표시되지만 API에는 전체 내용 전송)
+        const descriptionWithFileContents = (() => {
+          // data.description에서 파일명 부분 제거 (사용자 코멘트만 추출)
+          const fileSectionRegex = /\n\n\[업로드된 파일\]\n[\s\S]*$/;
+          const pureComment = data.description.replace(fileSectionRegex, "").trim();
+          
+          // 사용자 코멘트 + 파일 내용 결합
+          if (fileContents) {
+            return pureComment
+              ? `${pureComment}\n\n[업로드된 파일 내용]\n${fileContents}`
+              : `[업로드된 파일 내용]\n${fileContents}`;
+          }
+          return pureComment;
+        })();
+        
         await updateOverview(
           {
-            description: data.description,
+            description: descriptionWithFileContents,
             serviceType: data.serviceType,
             uploadedFiles: data.uploadedFiles,
           },
@@ -347,9 +461,24 @@ function HomePageContent() {
         });
 
         try {
+          // API 요청 시에는 사용자 코멘트 + 파일 내용을 포함
+          const descriptionWithFileContents = (() => {
+            // data.description에서 파일명 부분 제거 (사용자 코멘트만 추출)
+            const fileSectionRegex = /\n\n\[업로드된 파일\]\n[\s\S]*$/;
+            const pureComment = data.description.replace(fileSectionRegex, "").trim();
+            
+            // 사용자 코멘트 + 파일 내용 결합
+            if (fileContents) {
+              return pureComment
+                ? `${pureComment}\n\n[업로드된 파일 내용]\n${fileContents}`
+                : `[업로드된 파일 내용]\n${fileContents}`;
+            }
+            return pureComment;
+          })();
+          
           const updatedRequirements = await updateRequirementsFromChat(
             {
-              description: data.description,
+              description: descriptionWithFileContents,
               serviceType: data.serviceType,
               uploadedFiles: data.uploadedFiles,
               projectOverview: overview,
@@ -404,6 +533,7 @@ function HomePageContent() {
       overview,
       saveEditedRequirements,
       isEditingMode,
+      fileContents,
     ]
   );
 
@@ -941,6 +1071,78 @@ function HomePageContent() {
     hasTempState,
   } = useAuthGuard();
 
+  // 최근 작업 목록 (로그인 유저 전용)
+  const [recentProjects, setRecentProjects] = useState<Array<{
+    id: string;
+    title: string;
+    updatedAt: string;
+  }>>([]);
+  const [isLoadingRecent, setIsLoadingRecent] = useState(false);
+
+  const { resumeProject } = useProjectResume();
+
+  const formatRelativeTime = useCallback((iso: string) => {
+    const now = new Date();
+    const then = new Date(iso);
+    const diffMs = now.getTime() - then.getTime();
+    const minutes = Math.floor(diffMs / (60 * 1000));
+    if (minutes < 1) return "just now";
+    if (minutes < 60) return `${minutes} minute${minutes === 1 ? "" : "s"} ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+    const days = Math.floor(hours / 24);
+    return `${days} day${days === 1 ? "" : "s"} ago`;
+  }, []);
+
+  const hasLoadedRecent = useRef(false);
+  const isLoadingRecentRef = useRef(false);
+  const recentCooldownUntilRef = useRef<number>(0);
+  useEffect(() => {
+    const loadRecent = async () => {
+      // 인증 로딩 중에는 실행하지 않음
+      if (loading) return;
+
+      // 사용자 없으면 초기화 후 종료
+      if (!user) {
+        setRecentProjects([]);
+        hasLoadedRecent.current = false;
+        return;
+      }
+      // 쿨다운 중이면 실행하지 않음
+      if (recentCooldownUntilRef.current > Date.now()) return;
+      // 이미 로딩 중이거나 한 번 불러왔다면 재실행 방지
+      if (isLoadingRecentRef.current || hasLoadedRecent.current) return;
+      try {
+        setIsLoadingRecent(true);
+        isLoadingRecentRef.current = true;
+        const { data, error } = await supabase
+          .from("projects")
+          .select("id, title, updated_at")
+          .eq("user_id", user.id)
+          .order("updated_at", { ascending: false })
+          .limit(5);
+        if (error) throw error;
+        const items = (data || []).map((p: any) => ({
+          id: p.id,
+          title: p.title || "제목 없음",
+          updatedAt: p.updated_at,
+        }));
+        setRecentProjects(items);
+        hasLoadedRecent.current = true;
+      } catch (e) {
+        console.error("최근 작업 불러오기 실패:", e);
+        setRecentProjects([]);
+        hasLoadedRecent.current = false;
+        // 60초 쿨다운 설정 (연속 실패 방지)
+        recentCooldownUntilRef.current = Date.now() + 60_000;
+      } finally {
+        setIsLoadingRecent(false);
+        isLoadingRecentRef.current = false;
+      }
+    };
+    loadRecent();
+  }, [user?.id, loading]);
+
   // 로그아웃 시 상태 초기화
   const previousUser = useRef(user);
   useEffect(() => {
@@ -964,6 +1166,11 @@ function HomePageContent() {
         setUploadedFiles([]);
         setChatMessages([]);
         setEditableRequirements(null);
+        setUserComment("");
+        setFileNamesDisplay("");
+        setFileContents("");
+        // 세션도 삭제
+        clearSession();
       }
     }
     previousUser.current = user;
@@ -1015,10 +1222,41 @@ function HomePageContent() {
               // 2. UI 상태 복원
               const { projectData, targetStep: savedTargetStep } = tempState;
 
-              setProjectDescription(projectData.description || "");
+              const restoredDescription = projectData.description || "";
+              
+              // 복원된 설명에서 파일명 부분 분리
+              const fileSectionRegex = /\n\n\[업로드된 파일\]\n([\s\S]*)$/;
+              const fileSectionMatch = restoredDescription.match(fileSectionRegex);
+              
+              if (fileSectionMatch) {
+                // 파일명 부분이 있는 경우
+                let fileNames = fileSectionMatch[1].trim();
+                // 이모지(📄) 제거하여 순수 파일명만 저장
+                fileNames = fileNames
+                  .split("\n")
+                  .map((name) => name.replace(/^📄\s*/, "").trim())
+                  .filter((name) => name)
+                  .join("\n");
+                
+                const pureComment = restoredDescription.replace(fileSectionRegex, "").trim();
+                
+                setUserComment(pureComment);
+                setFileNamesDisplay(fileNames);
+                // 복원 시에는 저장된 형식 그대로 사용 (이모지 포함)
+                setProjectDescription(restoredDescription);
+              } else {
+                // 파일명 부분이 없는 경우 (사용자 코멘트만)
+                setUserComment(restoredDescription);
+                setFileNamesDisplay("");
+                setProjectDescription(restoredDescription);
+              }
+              
               setSelectedServiceType(projectData.serviceType || "");
               setUploadedFiles(projectData.uploadedFiles || []);
               setChatMessages(projectData.chatMessages || []);
+              
+              // 파일 내용은 복원하지 않음 (파일이 다시 업로드되어야 함)
+              setFileContents("");
 
               // 요구사항 데이터 복원
               if (result.existingProjectData?.requirements) {
@@ -1162,6 +1400,63 @@ function HomePageContent() {
     editableRequirements,
   ]);
 
+  // 자동 세션 저장 설정
+  useEffect(() => {
+    // 복원 중이면 저장하지 않음
+    if (isRestoring.current) {
+      return;
+    }
+
+    // 자동 저장 시작
+    startAutoSave(() => {
+      // 현재 상태를 세션 데이터로 변환
+      return {
+        currentStep,
+        projectDescription,
+        userComment,
+        fileNamesDisplay,
+        selectedServiceType,
+        uploadedFiles: uploadedFiles.map((file) => ({
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          lastModified: file.lastModified,
+        })),
+        chatMessages,
+        editableRequirements,
+        extractedRequirements,
+        overview,
+        showChatInterface,
+        showRequirements,
+        showConfirmation,
+        showFinalResult,
+        fileContents,
+      };
+    });
+
+    return () => {
+      stopAutoSave();
+    };
+  }, [
+    currentStep,
+    projectDescription,
+    userComment,
+    fileNamesDisplay,
+    selectedServiceType,
+    uploadedFiles,
+    chatMessages,
+    editableRequirements,
+    extractedRequirements,
+    overview,
+    showChatInterface,
+    showRequirements,
+    showConfirmation,
+    showFinalResult,
+    fileContents,
+    startAutoSave,
+    stopAutoSave,
+  ]);
+
   // 요구사항 추출을 위한 별도 useEffect
   const hasExtractedRequirements = useRef(false);
 
@@ -1189,9 +1484,24 @@ function HomePageContent() {
         setIsRequirementsLoading(true);
 
         try {
+          // API 요청 시에는 사용자 코멘트 + 파일 내용을 포함 (UI에는 파일명만 표시되지만 API에는 전체 내용 전송)
+          const descriptionWithFileContents = (() => {
+            // projectDescription에서 파일명 부분 제거 (사용자 코멘트만 추출)
+            const fileSectionRegex = /\n\n\[업로드된 파일\]\n[\s\S]*$/;
+            const pureComment = projectDescription.replace(fileSectionRegex, "").trim();
+            
+            // 사용자 코멘트 + 파일 내용 결합
+            if (fileContents) {
+              return pureComment
+                ? `${pureComment}\n\n[업로드된 파일 내용]\n${fileContents}`
+                : `[업로드된 파일 내용]\n${fileContents}`;
+            }
+            return pureComment;
+          })();
+          
           const requirements = await extractRequirements(
             {
-              description: projectDescription,
+              description: descriptionWithFileContents,
               serviceType: selectedServiceType,
               uploadedFiles,
               projectOverview: overview,
@@ -1256,6 +1566,7 @@ function HomePageContent() {
     chatMessages,
     user,
     hasTempState,
+    fileContents,
   ]);
 
   const steps = [
@@ -1369,9 +1680,83 @@ function HomePageContent() {
     }
   }, [searchParams, handleStart]);
 
-  const handleFileSelect = (files: File[]) => {
+  const handleFileSelect = async (files: File[]) => {
+    // 에러 상태 초기화
+    setFileProcessingError("");
+    setFileProcessingMessage("");
+    
+    // 파일 검증
+    const invalidFiles = files.filter(
+      (file) => !validateFileType(file, SUPPORTED_FILE_TYPES)
+    );
+    
+    if (invalidFiles.length > 0) {
+      const invalidTypes = invalidFiles.map((f) => f.name).join(", ");
+      setFileProcessingError(
+        `지원하지 않는 파일 형식입니다: ${invalidTypes}\n지원 형식: PDF, 이미지 (PNG, JPEG, GIF), 텍스트 파일`
+      );
+      return;
+    }
+    
+    // 파일 크기 검증
+    const oversizedFiles = files.filter(
+      (file) => !validateFileSize(file, MAX_FILE_SIZE_MB)
+    );
+    
+    if (oversizedFiles.length > 0) {
+      const oversizedNames = oversizedFiles.map((f) => f.name).join(", ");
+      setFileProcessingError(
+        `파일 크기가 너무 큽니다 (최대 ${MAX_FILE_SIZE_MB}MB): ${oversizedNames}`
+      );
+      return;
+    }
+    
+    // 파일 처리 시작
+    setIsProcessingFiles(true);
     setUploadedFiles(files);
-    console.log("Selected files:", files);
+    setFileProcessingMessage(
+      `파일 처리 중... (${files.length}개 파일)`
+    );
+    
+    try {
+      // 파일 내용 추출
+      const extractedContent = await extractContentFromFiles(files);
+      
+      // 파일 내용은 별도로 저장 (API 요청용)
+      setFileContents(extractedContent);
+      
+      // 파일명만 저장 (UI 표시용) - 이모지 없이 순수 파일명만 저장
+      const fileNames = files.map((file) => file.name).join("\n");
+      setFileNamesDisplay(fileNames);
+      
+      // 프로젝트 설명 업데이트: 사용자 코멘트 + 파일명
+      updateProjectDescriptionDisplay(userComment || "", fileNames);
+      
+      setFileProcessingMessage(
+        `파일 처리 완료! (${files.length}개 파일)`
+      );
+      
+      // 2초 후 메시지 자동 제거
+      setTimeout(() => {
+        setFileProcessingMessage("");
+      }, 2000);
+      
+      console.log("파일 처리 완료:", {
+        fileCount: files.length,
+        extractedLength: extractedContent.length,
+      });
+    } catch (error) {
+      console.error("파일 처리 실패:", error);
+      setFileProcessingError(
+        error instanceof Error
+          ? error.message
+          : "파일 처리 중 오류가 발생했습니다"
+      );
+      
+      // 파일 목록은 유지 (사용자가 다시 시도할 수 있도록)
+    } finally {
+      setIsProcessingFiles(false);
+    }
   };
 
   // 서비스 타입 ID -> 한국어 이름 매핑
@@ -1382,6 +1767,78 @@ function HomePageContent() {
     "online-education": "온라인 교육",
     "shopping-mall": "쇼핑몰",
   };
+
+  // 프로젝트 설명 표시 업데이트 함수 (사용자 코멘트 + 파일명 조합)
+  const updateProjectDescriptionDisplay = useCallback(
+    (comment: string, fileNames: string) => {
+      if (fileNames) {
+        // 파일명에 이모지 추가하여 표시
+        const fileNamesWithIcon = fileNames
+          .split("\n")
+          .filter((name) => name.trim())
+          .map((name) => `📄 ${name}`)
+          .join("\n");
+        
+        if (comment.trim()) {
+          // 사용자 코멘트와 파일명 모두 있는 경우
+          setProjectDescription(`${comment}\n\n[업로드된 파일]\n${fileNamesWithIcon}`);
+        } else {
+          // 파일명만 있는 경우
+          setProjectDescription(`[업로드된 파일]\n${fileNamesWithIcon}`);
+        }
+      } else {
+        // 파일명이 없는 경우 (사용자 코멘트만)
+        setProjectDescription(comment);
+      }
+    },
+    []
+  );
+
+  // 텍스트 입력 핸들러 (파일명과 분리하여 사용자 코멘트만 처리)
+  const handleDescriptionChange = useCallback(
+    (value: string) => {
+      // 입력창에는 사용자 코멘트만 표시하므로 value를 그대로 사용
+      setUserComment(value);
+      updateProjectDescriptionDisplay(value, fileNamesDisplay);
+    },
+    [fileNamesDisplay, updateProjectDescriptionDisplay]
+  );
+
+  // 파일 삭제 핸들러
+  const handleFileRemove = useCallback(
+    (fileName: string) => {
+      // uploadedFiles에서 해당 파일 제거
+      const updatedFiles = uploadedFiles.filter((file) => file.name !== fileName);
+      setUploadedFiles(updatedFiles);
+
+      // fileNamesDisplay에서 해당 파일명 제거 (정확한 파일명 매칭)
+      const fileNamesArray = fileNamesDisplay
+        .split("\n")
+        .filter((name) => name.trim() && name.trim() !== fileName.trim());
+      
+      const updatedFileNames = fileNamesArray.join("\n");
+      setFileNamesDisplay(updatedFileNames);
+
+      // 프로젝트 설명 업데이트
+      updateProjectDescriptionDisplay(userComment, updatedFileNames);
+
+      // 파일이 모두 삭제되면 파일 내용도 초기화
+      if (updatedFiles.length === 0) {
+        setFileContents("");
+      } else {
+        // 남은 파일들의 내용만 추출하여 업데이트
+        extractContentFromFiles(updatedFiles)
+          .then((content) => {
+            setFileContents(content);
+          })
+          .catch((error) => {
+            console.error("파일 내용 추출 실패:", error);
+            // 에러가 발생해도 파일 삭제는 성공으로 처리
+          });
+      }
+    },
+    [uploadedFiles, fileNamesDisplay, userComment, updateProjectDescriptionDisplay]
+  );
 
   // 받침 유무에 따라 적절한 조사 반환 (을/를)
   const getParticle = (word: string): string => {
@@ -1413,7 +1870,8 @@ function HomePageContent() {
 
       // 입력란에 텍스트 자동 삽입
       const text = `${serviceName}${particle} 만들고 싶어요.`;
-      setProjectDescription(text);
+      setUserComment(text);
+      updateProjectDescriptionDisplay(text, fileNamesDisplay);
     }
   };
 
@@ -1437,9 +1895,24 @@ function HomePageContent() {
         console.log("1단계 → 2단계 전환: 요구사항 추출 시작");
 
         // 2. 요구사항 추출 (로그인 없이도 가능)
+        // API 요청 시에는 사용자 코멘트 + 파일 내용을 포함 (UI에는 파일명만 표시되지만 API에는 전체 내용 전송)
+        const descriptionWithFileContents = (() => {
+          // projectDescription에서 파일명 부분 제거 (사용자 코멘트만 추출)
+          const fileSectionRegex = /\n\n\[업로드된 파일\]\n[\s\S]*$/;
+          const pureComment = projectDescription.replace(fileSectionRegex, "").trim();
+          
+          // 사용자 코멘트 + 파일 내용 결합
+          if (fileContents) {
+            return pureComment
+              ? `${pureComment}\n\n[업로드된 파일 내용]\n${fileContents}`
+              : `[업로드된 파일 내용]\n${fileContents}`;
+          }
+          return pureComment;
+        })();
+        
         const requirements = await extractRequirements(
           {
-            description: projectDescription,
+            description: descriptionWithFileContents,
             serviceType: selectedServiceType,
             uploadedFiles,
             projectOverview: overview, // 프로젝트 개요 정보 추가
@@ -1571,6 +2044,9 @@ function HomePageContent() {
         console.error("프로젝트 상태 업데이트 실패:", error);
       }
     }
+
+    // 프로젝트 완료 시 세션 삭제
+    clearSession();
   };
 
   const handlePrevStep = () => {
@@ -1609,9 +2085,10 @@ function HomePageContent() {
         !showRequirements &&
         !showConfirmation &&
         !showFinalResult && (
-          <div className="flex-1 flex flex-col items-center justify-center min-h-0">
-            <div className="max-w-4xl mx-auto px-4 py-8 w-full">
-              <div className="text-center">
+          <div className="flex-1 flex flex-col min-h-0 overflow-y-auto">
+            <div className="flex flex-col items-center justify-start w-full py-8">
+              <div className="max-w-4xl mx-auto px-4 w-full">
+                <div className="text-center">
                 {/* Main Title */}
                 <h1 className="text-[48px] font-bold text-black mb-4">
                   당신이 만들고 싶은 서비스를 말하거나
@@ -1638,8 +2115,8 @@ function HomePageContent() {
                     >
                       <input
                         type="text"
-                        value={projectDescription}
-                        onChange={(e) => setProjectDescription(e.target.value)}
+                        value={userComment}
+                        onChange={(e) => handleDescriptionChange(e.target.value)}
                         placeholder="예: 음식 배달 앱을 만들고 싶어요"
                         className="flex-1 px-6 py-4 bg-transparent border-0 focus:outline-none text-gray-700 placeholder-gray-500"
                       />
@@ -1650,6 +2127,56 @@ function HomePageContent() {
                         시작하기
                       </button>
                     </div>
+                    
+                    {/* Uploaded Files List - Show below input */}
+                    {uploadedFiles.length > 0 && (
+                      <div className="mt-3 max-w-[760px] w-full mx-auto px-4 sm:px-0">
+                        <div className="flex flex-wrap gap-2">
+                          {uploadedFiles.map((file, index) => (
+                            <div
+                              key={`${file.name}-${index}`}
+                              className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-sm"
+                            >
+                              <svg
+                                className="w-4 h-4 text-blue-600 flex-shrink-0"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+                                />
+                              </svg>
+                              <span className="text-gray-700 truncate max-w-[200px]">
+                                {file.name}
+                              </span>
+                              <button
+                                onClick={() => handleFileRemove(file.name)}
+                                className="text-gray-400 hover:text-red-600 transition-colors flex-shrink-0 ml-1"
+                                aria-label={`${file.name} 삭제`}
+                              >
+                                <svg
+                                  className="w-4 h-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M6 18L18 6M6 6l12 12"
+                                  />
+                                </svg>
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Service Type Buttons */}
@@ -1657,6 +2184,7 @@ function HomePageContent() {
                     onSelect={handleServiceTypeSelect}
                     selectedType={selectedServiceType}
                   />
+                </div>
                 </div>
 
                 {/* Separator */}
@@ -1667,6 +2195,120 @@ function HomePageContent() {
                 {/* File Upload Section */}
                 <div className="max-w-2xl mx-auto">
                   <FileUpload onFileSelect={handleFileSelect} />
+                  
+                  {/* Recent Projects (Logged-in users only) */}
+                  {user && (
+                    <div className="mt-6">
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="text-sm font-semibold text-gray-700">최근 작업</h3>
+                        {isLoadingRecent && (
+                          <span className="text-xs text-gray-400">불러오는 중...</span>
+                        )}
+                      </div>
+                      {recentProjects.length === 0 && !isLoadingRecent ? (
+                        <p className="text-sm text-gray-500">최근 작업이 없습니다.</p>
+                      ) : (
+                        <ul className="space-y-2">
+                          {recentProjects.map((p) => (
+                            <li key={p.id}>
+                              <button
+                                className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg text-left"
+                                onClick={() => resumeProject(p.id)}
+                              >
+                                <span className="text-gray-800 truncate mr-3">{p.title}</span>
+                                <span className="text-xs text-gray-500 flex-shrink-0">
+                                  {formatRelativeTime(p.updatedAt)}
+                                </span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
+
+                  {/* File Processing Status */}
+                  {isProcessingFiles && (
+                    <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="flex items-center">
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mr-3"></div>
+                        <span className="text-blue-700 font-medium">
+                          {fileProcessingMessage}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* File Processing Success */}
+                  {!isProcessingFiles && fileProcessingMessage && (
+                    <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                      <div className="flex items-center">
+                        <svg
+                          className="w-5 h-5 text-green-600 mr-3"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
+                        <span className="text-green-700 font-medium">
+                          {fileProcessingMessage}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* File Processing Error */}
+                  {fileProcessingError && (
+                    <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                      <div className="flex items-start">
+                        <svg
+                          className="w-5 h-5 text-red-600 mr-3 mt-0.5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
+                        <div className="flex-1">
+                          <span className="text-red-700 font-medium">
+                            파일 처리 오류
+                          </span>
+                          <p className="text-red-600 text-sm mt-1 whitespace-pre-line">
+                            {fileProcessingError}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => setFileProcessingError("")}
+                          className="text-red-600 hover:text-red-800 ml-2"
+                        >
+                          <svg
+                            className="w-5 h-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M6 18L18 6M6 6l12 12"
+                            />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
