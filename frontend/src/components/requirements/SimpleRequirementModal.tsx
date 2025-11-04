@@ -242,6 +242,9 @@ export function SimpleRequirementModal({
                 onRequirementStatusChange={onRequirementStatusChange}
                 isSaving={isSaving}
                 saveError={saveError}
+                onDropRequirement={async (newRequirement) => {
+                  await handleAddRequirement(newRequirement);
+                }}
               />
             </div>
           </div>

@@ -190,7 +190,21 @@ export function AIRecommendationsPanel({
       category: recommendation.category,
       priority: recommendation.priority || "medium",
     });
+    // 추가된 요구사항을 리스트에서 제거
+    setRecommendations((prev) => 
+      prev.filter((rec) => rec.id !== recommendation.id)
+    );
   };
+
+  // 추가된 요구사항과 중복되는 추천 필터링
+  useEffect(() => {
+    if (requirements.length > 0) {
+      const existingTitles = new Set(requirements.map(r => r.title.toLowerCase().trim()));
+      setRecommendations((prev) => 
+        prev.filter((rec) => !existingTitles.has(rec.title.toLowerCase().trim()))
+      );
+    }
+  }, [requirements]);
 
   // 새로고침 버튼 클릭 시
   const handleRefresh = () => {

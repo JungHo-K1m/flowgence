@@ -29,6 +29,7 @@ interface RequirementManagementPanelProps {
   ) => Promise<void>;
   isSaving?: boolean;
   saveError?: string | null;
+  onDropRequirement?: (requirement: Omit<Requirement, "id">) => Promise<void>;
 }
 
 export function RequirementManagementPanel({
@@ -41,7 +42,9 @@ export function RequirementManagementPanel({
   onRequirementStatusChange,
   isSaving = false,
   saveError = null,
+  onDropRequirement,
 }: RequirementManagementPanelProps) {
+  const [isDragOver, setIsDragOver] = useState(false);
   const [savingStates, setSavingStates] = useState<Record<string, boolean>>({});
   const [errorStates, setErrorStates] = useState<Record<string, string | null>>(
     {}
@@ -207,10 +210,57 @@ export function RequirementManagementPanel({
       </div>
 
       {/* Requirements List */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-3">
+      <div 
+        className={`flex-1 overflow-y-auto p-3 space-y-3 transition-colors ${
+          isDragOver ? 'bg-blue-50 border-2 border-blue-300 border-dashed rounded-lg' : ''
+        }`}
+        onDragOver={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsDragOver(true);
+        }}
+        onDragLeave={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          // 드래그가 영역을 벗어났는지 확인
+          const rect = e.currentTarget.getBoundingClientRect();
+          const x = e.clientX;
+          const y = e.clientY;
+          if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+            setIsDragOver(false);
+          }
+        }}
+        onDrop={async (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsDragOver(false);
+
+          if (!onDropRequirement) return;
+
+          try {
+            const data = e.dataTransfer.getData("text/plain");
+            if (data) {
+              const recommendation = JSON.parse(data);
+              await onDropRequirement({
+                title: recommendation.title,
+                description: recommendation.description,
+                category: recommendation.category || categoryTitle.toLowerCase(),
+                priority: recommendation.priority || "medium",
+                status: "draft",
+              });
+            }
+          } catch (error) {
+            console.error("드롭 처리 실패:", error);
+          }
+        }}
+      >
         {localRequirements.length === 0 ? (
-          <div className="text-center text-gray-500 py-8">
-            <p className="mb-4">아직 추가된 요구사항이 없습니다.</p>
+          <div className={`text-center text-gray-500 py-8 ${isDragOver ? 'text-blue-600' : ''}`}>
+            <p className="mb-4">
+              {isDragOver 
+                ? '여기에 드롭하여 추가하세요' 
+                : '아직 추가된 요구사항이 없습니다.'}
+            </p>
             <p className="text-sm">
               왼쪽에서 추천 기능을 추가하거나 새 카드를 만들어보세요.
             </p>
