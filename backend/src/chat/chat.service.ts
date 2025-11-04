@@ -6,6 +6,7 @@ import { ChatMessage } from '../entities/chat-message.entity';
 import { CreateChatMessageDto } from './dto/create-chat-message.dto';
 import { ExtractRequirementsDto } from './dto/extract-requirements.dto';
 import { UpdateRequirementsDto } from './dto/update-requirements.dto';
+import { RecommendationsDto } from './dto/recommendations.dto';
 
 @Injectable()
 export class ChatService {
@@ -606,6 +607,208 @@ ${conversationText}
     } catch (error) {
       console.error('요구사항 업데이트 오류:', error);
       throw new Error(`요구사항 업데이트 실패: ${error.message}`);
+    }
+  }
+
+  async getRecommendations(recommendationsDto: RecommendationsDto, res: any) {
+    const apiKey = this.configService.get<string>('ANTHROPIC_API_KEY');
+    
+    if (!apiKey) {
+      throw new Error('ANTHROPIC_API_KEY is not configured');
+    }
+
+    const { categoryTitle, existingRequirements = [], projectData = {} } = recommendationsDto;
+
+    // 기존 요구사항 목록 생성
+    const existingRequirementsText = existingRequirements.length > 0
+      ? existingRequirements.map((req, idx) => `${idx + 1}. ${req.title}: ${req.description}`).join('\n')
+      : '없음';
+
+    const systemPrompt = `당신은 SI 프로젝트 요구사항 분석 전문가입니다.
+특정 카테고리에 대한 새로운 요구사항을 추천해주세요.
+
+프로젝트 정보:
+- 설명: ${projectData.description || '없음'}
+- 서비스 타입: ${projectData.serviceType || '없음'}
+
+카테고리: ${categoryTitle}
+
+기존 요구사항:
+${existingRequirementsText}
+
+중요 지침:
+1. 기존 요구사항과 중복되지 않는 새로운 요구사항을 추천하세요.
+2. 각 요구사항은 구체적이고 실현 가능해야 합니다.
+3. 카테고리와 관련된 실용적인 기능이나 요구사항을 제안하세요.
+4. 각 요구사항마다 제목(title), 설명(description), 우선순위(priority)를 포함하세요.
+5. 우선순위는 high, medium, low 중 하나여야 합니다.
+6. 응답은 여러 개의 요구사항을 추천할 수 있지만, 각각을 별도로 스트리밍하세요.
+
+응답 형식:
+각 요구사항은 다음 형식으로 스트리밍하세요:
+- title: 요구사항 제목
+- description: 상세 설명
+- priority: high|medium|low`;
+
+    try {
+      // SSE 헤더 설정
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 4000,
+          stream: true, // 스트리밍 활성화
+          system: systemPrompt,
+          messages: [
+            {
+              role: 'user',
+              content: `${categoryTitle} 카테고리에 대한 새로운 요구사항을 3-5개 추천해주세요. 각 요구사항은 제목, 설명, 우선순위를 포함해야 합니다.`
+            }
+          ]
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        res.write(`data: ${JSON.stringify({ type: 'error', message: `API Error: ${response.status}` })}\n\n`);
+        res.end();
+        return;
+      }
+
+      // 현재 추천 항목 추적
+      let currentRecommendation: { title?: string; description?: string; priority?: string } = {};
+      let currentField: 'title' | 'description' | 'priority' | null = null;
+      let accumulatedText = '';
+      let recommendationIndex = 0;
+      let buffer = '';
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (!reader) {
+        res.write(`data: ${JSON.stringify({ type: 'error', message: 'No reader available' })}\n\n`);
+        res.end();
+        return;
+      }
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            if (data === '[DONE]') {
+              // 마지막 추천 항목 처리
+              if (currentRecommendation.title && currentRecommendation.description) {
+                if (!currentRecommendation.priority) {
+                  currentRecommendation.priority = 'medium';
+                }
+                res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'priority', value: currentRecommendation.priority })}\n\n`);
+              }
+              res.write('data: [DONE]\n\n');
+              res.end();
+              return;
+            }
+
+            try {
+              const json = JSON.parse(data);
+              
+              if (json.type === 'content_block_delta' && json.delta?.type === 'text') {
+                const text = json.delta.text;
+                accumulatedText += text;
+                
+                // 텍스트를 파싱하여 제목, 설명, 우선순위 추출
+                // 패턴: "1. 제목: ...", "설명: ...", "우선순위: ..."
+                
+                // 새 추천 항목 시작 (숫자 + 점 패턴)
+                const newItemMatch = accumulatedText.match(/(\d+)\.\s*(.+?)(?:\n|$)/);
+                if (newItemMatch && !currentRecommendation.title) {
+                  // 이전 추천이 완료되었으면 초기화
+                  if (currentRecommendation.title && currentRecommendation.description) {
+                    currentRecommendation = {};
+                    currentField = null;
+                  }
+                  recommendationIndex++;
+                }
+                
+                // 제목 추출
+                const titleMatch = accumulatedText.match(/(?:^|\n)(?:제목|Title|^\d+\.\s*)[:：]?\s*(.+?)(?:\n|설명|Description|$)/i);
+                if (titleMatch && titleMatch[1] && !currentRecommendation.title) {
+                  const title = titleMatch[1].trim().replace(/^[-*]\s*/, '');
+                  if (title && title.length > 0) {
+                    currentRecommendation.title = title;
+                    currentField = 'title';
+                    res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'title', value: currentRecommendation.title })}\n\n`);
+                  }
+                }
+                
+                // 설명 추출
+                if (currentRecommendation.title && !currentRecommendation.description) {
+                  const descMatch = accumulatedText.match(/(?:설명|Description)[:：]\s*(.+?)(?:\n|우선순위|Priority|^\d+\.|$)/is);
+                  if (descMatch && descMatch[1]) {
+                    const description = descMatch[1].trim().replace(/^[-*]\s*/, '');
+                    if (description && description.length > 0) {
+                      currentRecommendation.description = description;
+                      currentField = 'description';
+                      res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'description', value: currentRecommendation.description })}\n\n`);
+                    }
+                  }
+                }
+                
+                // 우선순위 추출
+                if (currentRecommendation.title && currentRecommendation.description && !currentRecommendation.priority) {
+                  const priorityMatch = accumulatedText.match(/(?:우선순위|Priority)[:：]\s*(high|medium|low)/i);
+                  if (priorityMatch && priorityMatch[1]) {
+                    currentRecommendation.priority = priorityMatch[1].toLowerCase();
+                    currentField = 'priority';
+                    res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'priority', value: currentRecommendation.priority })}\n\n`);
+                    
+                    // 완성된 추천 항목 - 다음 추천을 위해 초기화
+                    currentRecommendation = {};
+                    currentField = null;
+                    accumulatedText = '';
+                  }
+                }
+                
+                // 실시간 텍스트 업데이트 (설명 필드가 활성화된 경우)
+                if (currentField === 'description' && currentRecommendation.title && text.trim()) {
+                  res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'description', value: text })}\n\n`);
+                }
+              }
+            } catch (e) {
+              // JSON 파싱 실패 무시 (스트리밍 중일 수 있음)
+            }
+          }
+        }
+      }
+
+      // 스트리밍 완료
+      if (currentRecommendation.title && currentRecommendation.description) {
+        if (!currentRecommendation.priority) {
+          currentRecommendation.priority = 'medium';
+        }
+        res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'priority', value: currentRecommendation.priority })}\n\n`);
+      }
+      res.write('data: [DONE]\n\n');
+      res.end();
+    } catch (error) {
+      console.error('추천 요청 오류:', error);
+      res.write(`data: ${JSON.stringify({ type: 'error', message: error.message })}\n\n`);
+      res.end();
     }
   }
 }

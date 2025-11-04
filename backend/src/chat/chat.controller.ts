@@ -1,8 +1,10 @@
-import { Controller, Post, Body, Get, Param } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, Res } from '@nestjs/common';
+import { Response } from 'express';
 import { ChatService } from './chat.service';
 import { CreateChatMessageDto } from './dto/create-chat-message.dto';
 import { ExtractRequirementsDto } from './dto/extract-requirements.dto';
 import { UpdateRequirementsDto } from './dto/update-requirements.dto';
+import { RecommendationsDto } from './dto/recommendations.dto';
 
 @Controller('chat')
 export class ChatController {
@@ -26,5 +28,13 @@ export class ChatController {
   @Get('messages/:projectId')
   async getMessages(@Param('projectId') projectId: string) {
     return this.chatService.getMessagesByProject(projectId);
+  }
+
+  @Post('requirements/recommendations')
+  async getRecommendations(
+    @Body() recommendationsDto: RecommendationsDto,
+    @Res() res: Response,
+  ) {
+    return this.chatService.getRecommendations(recommendationsDto, res);
   }
 }
