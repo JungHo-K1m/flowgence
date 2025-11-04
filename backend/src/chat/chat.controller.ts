@@ -1,5 +1,5 @@
 import { Controller, Post, Body, Get, Param, Res } from '@nestjs/common';
-import { Response } from 'express';
+import type { Response } from 'express';
 import { ChatService } from './chat.service';
 import { CreateChatMessageDto } from './dto/create-chat-message.dto';
 import { ExtractRequirementsDto } from './dto/extract-requirements.dto';
