@@ -337,6 +337,82 @@ function HomePageContent() {
     }
   }, [extractedRequirements, editableRequirements]);
 
+  // 인증 가드 및 상태 유지 (loadRecentProjects를 위해 먼저 선언)
+  const {
+    user,
+    loading,
+    showLoginModal,
+    requireAuth,
+    closeLoginModal,
+    processLoginState,
+    isProcessingLogin,
+    tempState,
+    hasTempState,
+  } = useAuthGuard();
+
+  // 최근 작업 목록 (로그인 유저 전용)
+  const [recentProjects, setRecentProjects] = useState<Array<{
+    id: string;
+    title: string;
+    updatedAt: string;
+  }>>([]);
+  const [isLoadingRecent, setIsLoadingRecent] = useState(false);
+
+  const hasLoadedRecent = useRef(false);
+  const isLoadingRecentRef = useRef(false);
+  const recentCooldownUntilRef = useRef<number>(0);
+  
+  // 최근 작업 목록 불러오기 함수 (재사용 가능하도록 분리)
+  const loadRecentProjects = useCallback(async (force = false) => {
+    // 인증 로딩 중에는 실행하지 않음
+    if (loading) return;
+
+    // 사용자 없으면 초기화 후 종료
+    if (!user) {
+      setRecentProjects([]);
+      hasLoadedRecent.current = false;
+      return;
+    }
+    
+    // 쿨다운 중이면 실행하지 않음
+    if (recentCooldownUntilRef.current > Date.now()) return;
+    
+    // 이미 로딩 중이면 실행하지 않음
+    if (isLoadingRecentRef.current) return;
+    
+    // force가 false이고 이미 불러왔다면 재실행 방지
+    if (!force && hasLoadedRecent.current) return;
+    
+    try {
+      setIsLoadingRecent(true);
+      isLoadingRecentRef.current = true;
+      const { data, error } = await supabase
+        .from("projects")
+        .select("id, title, updated_at, status")
+        .eq("user_id", user.id)
+        .neq("status", "completed") // 완료된 프로젝트 제외
+        .order("updated_at", { ascending: false })
+        .limit(5);
+      if (error) throw error;
+      const items = (data || []).map((p: any) => ({
+        id: p.id,
+        title: p.title || "제목 없음",
+        updatedAt: p.updated_at,
+      }));
+      setRecentProjects(items);
+      hasLoadedRecent.current = true;
+    } catch (e) {
+      console.error("최근 작업 불러오기 실패:", e);
+      setRecentProjects([]);
+      hasLoadedRecent.current = false;
+      // 60초 쿨다운 설정 (연속 실패 방지)
+      recentCooldownUntilRef.current = Date.now() + 60_000;
+    } finally {
+      setIsLoadingRecent(false);
+      isLoadingRecentRef.current = false;
+    }
+  }, [user, loading]);
+
   // 편집된 요구사항을 DB에 저장
   const saveEditedRequirements = useCallback(
     async (updatedRequirements: ExtractedRequirements) => {
@@ -367,6 +443,8 @@ function HomePageContent() {
             message: result.message,
           });
           // 성공 토스트 표시 (추후 구현)
+          // 최근 작업 목록 갱신 (프로젝트 updated_at이 업데이트되었으므로)
+          loadRecentProjects(true);
         } else {
           console.error("편집된 요구사항 DB 저장 실패:", {
             status: result.status,
@@ -386,7 +464,7 @@ function HomePageContent() {
         throw error;
       }
     },
-    [savedProjectId, saveRequirements]
+    [savedProjectId, saveRequirements, loadRecentProjects]
   );
 
   // onProjectUpdate 콜백을 useCallback으로 감싸서 불필요한 리렌더링 방지
@@ -1061,27 +1139,6 @@ function HomePageContent() {
     }
   }, []);
 
-  // 인증 가드 및 상태 유지
-  const {
-    user,
-    loading,
-    showLoginModal,
-    requireAuth,
-    closeLoginModal,
-    processLoginState,
-    isProcessingLogin,
-    tempState,
-    hasTempState,
-  } = useAuthGuard();
-
-  // 최근 작업 목록 (로그인 유저 전용)
-  const [recentProjects, setRecentProjects] = useState<Array<{
-    id: string;
-    title: string;
-    updatedAt: string;
-  }>>([]);
-  const [isLoadingRecent, setIsLoadingRecent] = useState(false);
-
   const { resumeProject } = useProjectResume();
 
   const formatRelativeTime = useCallback((iso: string) => {
@@ -1096,56 +1153,6 @@ function HomePageContent() {
     const days = Math.floor(hours / 24);
     return `${days} day${days === 1 ? "" : "s"} ago`;
   }, []);
-
-  const hasLoadedRecent = useRef(false);
-  const isLoadingRecentRef = useRef(false);
-  const recentCooldownUntilRef = useRef<number>(0);
-  useEffect(() => {
-    const loadRecent = async () => {
-      // 인증 로딩 중에는 실행하지 않음
-      if (loading) return;
-
-      // 사용자 없으면 초기화 후 종료
-      if (!user) {
-        setRecentProjects([]);
-        hasLoadedRecent.current = false;
-        return;
-      }
-      // 쿨다운 중이면 실행하지 않음
-      if (recentCooldownUntilRef.current > Date.now()) return;
-      // 이미 로딩 중이거나 한 번 불러왔다면 재실행 방지
-      if (isLoadingRecentRef.current || hasLoadedRecent.current) return;
-      try {
-        setIsLoadingRecent(true);
-        isLoadingRecentRef.current = true;
-        const { data, error } = await supabase
-          .from("projects")
-          .select("id, title, updated_at, status")
-          .eq("user_id", user.id)
-          .neq("status", "completed") // 완료된 프로젝트 제외
-          .order("updated_at", { ascending: false })
-          .limit(5);
-        if (error) throw error;
-        const items = (data || []).map((p: any) => ({
-          id: p.id,
-          title: p.title || "제목 없음",
-          updatedAt: p.updated_at,
-        }));
-        setRecentProjects(items);
-        hasLoadedRecent.current = true;
-      } catch (e) {
-        console.error("최근 작업 불러오기 실패:", e);
-        setRecentProjects([]);
-        hasLoadedRecent.current = false;
-        // 60초 쿨다운 설정 (연속 실패 방지)
-        recentCooldownUntilRef.current = Date.now() + 60_000;
-      } finally {
-        setIsLoadingRecent(false);
-        isLoadingRecentRef.current = false;
-      }
-    };
-    loadRecent();
-  }, [user?.id, loading]);
 
   // 로그아웃 시 상태 초기화
   const previousUser = useRef(user);
@@ -2443,6 +2450,8 @@ function HomePageContent() {
         onClose={() => {
           setShowEditModal(false);
           setIsEditingMode(false); // UI 편집 모드 종료
+          // 모달 닫힐 때 최근 작업 목록 갱신
+          loadRecentProjects(true);
         }}
         requirements={getModalRequirementsForCategory(editingCategory)}
         onRequirementsChange={async (newRequirements) => {
