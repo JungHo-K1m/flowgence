@@ -1,5 +1,5 @@
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 import { useProjectRestore } from "./useProjectRestore";
 
 /**
@@ -15,7 +15,6 @@ export function useProjectResume() {
    */
   const resumeProject = async (projectId: string) => {
     try {
-      const supabase = createClient();
 
       // 프로젝트 데이터 조회
       const { data: project, error: projectError } = await supabase
@@ -59,7 +58,7 @@ export function useProjectResume() {
         description: project.description,
         serviceType: project.service_type,
         status: project.status,
-        overview: project.overview || {},
+        overview: project.project_overview || project.overview || {}, // DB 컬럼명 확인
         requirements: project.requirements || {},
         chatMessages: formattedMessages, // 변환된 메시지 사용
         extractedRequirements: requirements || [],

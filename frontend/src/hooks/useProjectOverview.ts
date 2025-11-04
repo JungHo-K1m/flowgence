@@ -238,12 +238,18 @@ export const useProjectOverview = () => {
     await generateOverview(input, messages);
   }, [generateOverview]);
 
+  // overview를 직접 설정하는 함수 (복원 시 사용)
+  const setOverviewDirectly = useCallback((overviewData: ProjectOverview | null) => {
+    setOverview(overviewData);
+  }, []);
+
   return {
     overview,
     isLoading,
     error,
     generateOverview,
     updateOverview,
+    setOverviewDirectly,
     aiMessage
   };
 };

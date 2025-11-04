@@ -119,6 +119,7 @@ function HomePageContent() {
   const {
     overview,
     updateOverview,
+    setOverviewDirectly,
     isLoading: isOverviewLoading,
     aiMessage,
   } = useProjectOverview();
@@ -230,6 +231,7 @@ function HomePageContent() {
             setShowConfirmation,
             setShowFinalResult,
             updateOverview,
+            setOverviewDirectly,
             updateExtractedRequirements,
             setEditableRequirements,
           });
@@ -246,6 +248,7 @@ function HomePageContent() {
     searchParams,
     restoreProjectState,
     updateOverview,
+    setOverviewDirectly,
     updateExtractedRequirements,
   ]);
 
@@ -1195,17 +1198,10 @@ function HomePageContent() {
 
   useEffect(() => {
     const handleLoginStateRestore = async () => {
-      // 이미 복원했으면 중복 실행 방지 (단, tempState가 새로 나타난 경우는 예외)
-      // if (hasRestoredState.current && !hasTempState) {
-      //   console.log("이미 상태 복원 완료 - 중복 실행 방지");
-      //   return;
-      // }
-      // console.log("로그인 상태 복원 체크:", {
-      //   user: !!user,
-      //   hasTempState,
-      //   tempState: !!tempState?.projectData,
-      //   loading,
-      // });
+      // 이미 복원했으면 중복 실행 방지
+      if (hasRestoredState.current) {
+        return;
+      }
 
       if (user && !loading) {
         // 로그인 유도 후 로그인한 사용자만 복구 (tempState가 있는 경우)
@@ -1396,8 +1392,6 @@ function HomePageContent() {
     tempState,
     processLoginState,
     targetStep,
-    extractedRequirements,
-    editableRequirements,
   ]);
 
   // 자동 세션 저장 설정

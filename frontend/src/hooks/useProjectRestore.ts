@@ -27,9 +27,10 @@ export function useProjectRestore() {
         setShowRequirements: (show: boolean) => void;
         setShowConfirmation: (show: boolean) => void;
         setShowFinalResult: (show: boolean) => void;
-        updateOverview?: (input: any, messages: any[]) => void;
-        updateExtractedRequirements?: (requirements: any) => void;
-        setEditableRequirements?: (requirements: any) => void;
+      updateOverview?: (input: any, messages: any[]) => void;
+      setOverviewDirectly?: (overview: any) => void;
+      updateExtractedRequirements?: (requirements: any) => void;
+      setEditableRequirements?: (requirements: any) => void;
       }
     ) => {
       console.log("프로젝트 상태 복원 시작:", { step, hasData: !!projectData });
@@ -42,16 +43,22 @@ export function useProjectRestore() {
         setState.setSelectedServiceType(projectData.serviceType);
       }
 
-      // 2. 프로젝트 개요 복원
-      if (projectData.overview && setState.updateOverview) {
-        setState.updateOverview(
-          {
-            description: projectData.description || "",
-            serviceType: projectData.serviceType || "",
-            uploadedFiles: [],
-          },
-          []
-        );
+      // 2. 프로젝트 개요 복원 (API 호출 없이 직접 설정)
+      if (projectData.overview) {
+        if (setState.setOverviewDirectly) {
+          // 복원 시에는 API를 호출하지 않고 직접 설정
+          setState.setOverviewDirectly(projectData.overview);
+        } else if (setState.updateOverview) {
+          // setOverviewDirectly가 없으면 updateOverview 사용 (API 호출됨)
+          setState.updateOverview(
+            {
+              description: projectData.description || "",
+              serviceType: projectData.serviceType || "",
+              uploadedFiles: [],
+            },
+            []
+          );
+        }
       }
 
       // 3. 채팅 메시지 복원
