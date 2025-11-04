@@ -32,6 +32,10 @@ interface SimpleRequirementModalProps {
   ) => Promise<void>;
   isSaving?: boolean;
   saveError?: string | null;
+  projectData?: {
+    description?: string;
+    serviceType?: string;
+  };
 }
 
 export function SimpleRequirementModal({
@@ -44,6 +48,7 @@ export function SimpleRequirementModal({
   onRequirementStatusChange,
   isSaving = false,
   saveError = null,
+  projectData,
 }: SimpleRequirementModalProps) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -212,7 +217,12 @@ export function SimpleRequirementModal({
                 overflow: "hidden",
               }}
             >
-              <AIRecommendationsPanel onAddRequirement={handleAddRequirement} />
+              <AIRecommendationsPanel 
+                onAddRequirement={handleAddRequirement}
+                requirements={requirements}
+                categoryTitle={categoryTitle}
+                projectData={projectData}
+              />
             </div>
 
             {/* Right Panel - Requirement Management */}

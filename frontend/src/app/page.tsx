@@ -2467,6 +2467,10 @@ function HomePageContent() {
         onRequirementStatusChange={handleRequirementStatusChange}
         isSaving={isSaving}
         saveError={saveError}
+        projectData={{
+          description: projectDescription,
+          serviceType: selectedServiceType,
+        }}
       />
 
       {/* 최종 확인 모달 */}

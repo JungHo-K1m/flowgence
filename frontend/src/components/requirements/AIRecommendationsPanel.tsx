@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 
 interface AIRecommendation {
@@ -8,49 +8,194 @@ interface AIRecommendation {
   title: string;
   description: string;
   category: string;
+  priority?: "high" | "medium" | "low";
+}
+
+interface Requirement {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  priority: "high" | "medium" | "low";
 }
 
 interface AIRecommendationsPanelProps {
-  onAddRequirement: (requirement: Omit<any, "id">) => void;
+  onAddRequirement: (requirement: Omit<Requirement, "id">) => void;
+  requirements?: Requirement[];
+  categoryTitle?: string;
+  projectData?: {
+    description?: string;
+    serviceType?: string;
+  };
 }
 
 export function AIRecommendationsPanel({
   onAddRequirement,
+  requirements = [],
+  categoryTitle = "",
+  projectData,
 }: AIRecommendationsPanelProps) {
-  const [recommendations] = useState<AIRecommendation[]>([
-    {
-      id: "1",
-      title: "가격 & 할인 설정",
-      description: "기본가·할인가·할인 기간을 관리",
-      category: "product",
-    },
-    {
-      id: "2",
-      title: "검색/필터 태그 설정",
-      description: "상품 검색·필터에 필요한 태그 키워드 등록",
-      category: "product",
-    },
-    {
-      id: "3",
-      title: "상품 옵션 관리",
-      description: "옵션(사이즈·맛 등) 추가/수정 및 가격·재고 관리",
-      category: "product",
-    },
-    {
-      id: "4",
-      title: "재고 알림 설정",
-      description: "재고가 부족할 때 자동 알림",
-      category: "product",
-    },
-  ]);
+  const [recommendations, setRecommendations] = useState<AIRecommendation[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamingText, setStreamingText] = useState("");
+  const [currentRecommendation, setCurrentRecommendation] = useState<Partial<AIRecommendation>>({});
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const hasLoadedRef = useRef(false);
+
+  // 모달이 열릴 때마다 추천 요청
+  useEffect(() => {
+    if (categoryTitle) {
+      hasLoadedRef.current = false;
+      fetchRecommendations();
+      hasLoadedRef.current = true;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categoryTitle]);
+
+  const fetchRecommendations = async () => {
+    if (isLoading || isStreaming) return;
+
+    setIsLoading(true);
+    setStreamingText("");
+    setCurrentRecommendation({});
+    setRecommendations([]);
+
+    // 이전 요청 취소
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+
+    try {
+      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+      const response = await fetch(`${backendUrl}/chat/requirements/recommendations`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          categoryTitle,
+          existingRequirements: requirements.map(r => ({
+            title: r.title,
+            description: r.description,
+          })),
+          projectData: {
+            description: projectData?.description || '',
+            serviceType: projectData?.serviceType || '',
+          },
+        }),
+        signal: abortControllerRef.current.signal,
+      });
+
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`);
+      }
+
+      setIsLoading(false);
+      setIsStreaming(true);
+
+      // 스트리밍 처리
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let recommendationsList: AIRecommendation[] = [];
+      let currentRec: Partial<AIRecommendation> = {};
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+              if (data === '[DONE]') {
+                setIsStreaming(false);
+                if (currentRec.title && currentRec.description) {
+                  recommendationsList.push({
+                    ...currentRec,
+                    id: Date.now().toString() + Math.random().toString(36).substring(7),
+                    category: categoryTitle.toLowerCase(),
+                    priority: currentRec.priority || 'medium',
+                  } as AIRecommendation);
+                }
+                setRecommendations(recommendationsList);
+                setCurrentRecommendation({});
+                setStreamingText("");
+                return;
+              }
+
+              try {
+                const json = JSON.parse(data);
+                if (json.type === 'recommendation') {
+                  if (json.field === 'title') {
+                    if (currentRec.title && currentRec.description) {
+                      // 이전 추천 완료, 새 추천 시작
+                      recommendationsList.push({
+                        ...currentRec,
+                        id: Date.now().toString() + Math.random().toString(36).substring(7),
+                        category: categoryTitle.toLowerCase(),
+                        priority: currentRec.priority || 'medium',
+                      } as AIRecommendation);
+                      setRecommendations([...recommendationsList]);
+                    }
+                    currentRec = { title: json.value };
+                  } else if (json.field === 'description') {
+                    currentRec.description = json.value;
+                  } else if (json.field === 'priority') {
+                    currentRec.priority = json.value;
+                  }
+                  setCurrentRecommendation({ ...currentRec });
+                  setStreamingText(json.value || '');
+                }
+              } catch (e) {
+                // JSON 파싱 실패 무시 (스트리밍 중일 수 있음)
+              }
+            }
+          }
+        }
+      }
+
+      setIsStreaming(false);
+      if (currentRec.title && currentRec.description) {
+        recommendationsList.push({
+          ...currentRec,
+          id: Date.now().toString() + Math.random().toString(36).substring(7),
+          category: categoryTitle.toLowerCase(),
+          priority: currentRec.priority || 'medium',
+        } as AIRecommendation);
+      }
+      setRecommendations(recommendationsList);
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.log('요청이 취소되었습니다.');
+      } else {
+        console.error('추천 요청 실패:', error);
+        setIsLoading(false);
+        setIsStreaming(false);
+        // 에러 시 빈 배열 유지
+      }
+    }
+  };
 
   const handleAddRecommendation = (recommendation: AIRecommendation) => {
     onAddRequirement({
       title: recommendation.title,
       description: recommendation.description,
       category: recommendation.category,
-      priority: "medium" as const,
+      priority: recommendation.priority || "medium",
     });
+  };
+
+  // 새로고침 버튼 클릭 시
+  const handleRefresh = () => {
+    hasLoadedRef.current = false;
+    fetchRecommendations();
   };
 
   return (
@@ -63,10 +208,8 @@ export function AIRecommendationsPanel({
             variant="outline"
             size="sm"
             className="p-2"
-            onClick={() => {
-              // 새로고침 로직
-              console.log("새로고침");
-            }}
+            onClick={handleRefresh}
+            disabled={isLoading || isStreaming}
           >
             🔄
           </Button>
@@ -78,6 +221,41 @@ export function AIRecommendationsPanel({
 
       {/* Recommendations List */}
       <div className="flex-1 overflow-y-auto p-3 space-y-3">
+        {isLoading && (
+          <div className="flex items-center justify-center py-8">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+              <p className="text-sm text-gray-600">AI가 추천 기능을 생성 중입니다...</p>
+            </div>
+          </div>
+        )}
+
+        {isStreaming && currentRecommendation.title && (
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-start space-x-3">
+              <div className="flex flex-col space-y-1 mt-1">
+                <div className="w-1 h-1 bg-blue-400 rounded-full"></div>
+                <div className="w-1 h-1 bg-blue-400 rounded-full"></div>
+                <div className="w-1 h-1 bg-blue-400 rounded-full"></div>
+                <div className="w-1 h-1 bg-blue-400 rounded-full"></div>
+                <div className="w-1 h-1 bg-blue-400 rounded-full"></div>
+                <div className="w-1 h-1 bg-blue-400 rounded-full"></div>
+              </div>
+
+              <div className="flex-1">
+                <h4 className="font-medium text-gray-900 mb-1">
+                  {currentRecommendation.title}
+                  <span className="ml-2 text-xs text-blue-600 animate-pulse">생성 중...</span>
+                </h4>
+                <p className="text-sm text-gray-600">
+                  {currentRecommendation.description || streamingText}
+                  {isStreaming && <span className="animate-pulse">▋</span>}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {recommendations.map((recommendation) => (
           <div
             key={recommendation.id}
@@ -122,6 +300,12 @@ export function AIRecommendationsPanel({
             </div>
           </div>
         ))}
+
+        {!isLoading && !isStreaming && recommendations.length === 0 && (
+          <div className="text-center py-8 text-gray-500 text-sm">
+            추천 기능이 없습니다.
+          </div>
+        )}
       </div>
 
       {/* Footer */}
