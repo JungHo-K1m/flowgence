@@ -99,7 +99,7 @@ export function AIRecommendationsPanel({
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
-      let recommendationsList: AIRecommendation[] = [];
+      const recommendationsList: AIRecommendation[] = [];
       let currentRec: Partial<AIRecommendation> = {};
 
       if (reader) {
