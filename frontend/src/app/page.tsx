@@ -2198,7 +2198,7 @@ function HomePageContent() {
                   
                   {/* Recent Projects (Logged-in users only) */}
                   {user && (
-                    <div className="mt-6">
+                    <div className="mt-10">
                       <div className="flex items-center justify-between mb-2">
                         <h3 className="text-sm font-semibold text-gray-700">최근 작업</h3>
                         {isLoadingRecent && (

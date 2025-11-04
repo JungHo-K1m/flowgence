@@ -2,11 +2,13 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAuthContext } from "@/components/providers/AuthProvider";
 import { useRole } from "@/hooks/useRole";
 import { Button } from "@/components/ui/button";
 
 export function Header() {
+  const router = useRouter();
   const { user, loading, signOut } = useAuthContext();
   const { isAdmin } = useRole();
 
@@ -15,10 +17,11 @@ export function Header() {
 
     // 로그아웃 시 모든 저장된 상태 초기화
     localStorage.removeItem("flowgence_temp_state");
+    localStorage.removeItem("flowgence_active_session");
     sessionStorage.removeItem("flowgence_resume_project");
 
     // 메인 페이지로 리다이렉트
-    window.location.href = "/";
+    router.push("/");
   };
 
   const handleLogoClick = (e: React.MouseEvent) => {
@@ -26,10 +29,11 @@ export function Header() {
 
     // 모든 저장된 상태 초기화
     localStorage.removeItem("flowgence_temp_state");
+    localStorage.removeItem("flowgence_active_session");
     sessionStorage.removeItem("flowgence_resume_project");
 
-    // 메인 페이지로 리다이렉트
-    window.location.href = "/";
+    // 메인 페이지로 이동
+    router.push("/");
   };
 
   return (
