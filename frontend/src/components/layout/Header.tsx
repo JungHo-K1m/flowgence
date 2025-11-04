@@ -26,14 +26,17 @@ export function Header() {
 
   const handleLogoClick = (e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation();
 
     // 모든 저장된 상태 초기화
     localStorage.removeItem("flowgence_temp_state");
     localStorage.removeItem("flowgence_active_session");
     sessionStorage.removeItem("flowgence_resume_project");
 
-    // 메인 페이지로 이동
-    router.push("/");
+    // 메인 페이지로 이동 (강제 리로드)
+    // 확인 페이지 등 특정 페이지에서 router.push가 작동하지 않을 수 있으므로
+    // window.location을 사용하여 확실하게 이동
+    window.location.href = "/";
   };
 
   return (
