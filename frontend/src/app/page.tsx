@@ -1120,8 +1120,9 @@ function HomePageContent() {
         isLoadingRecentRef.current = true;
         const { data, error } = await supabase
           .from("projects")
-          .select("id, title, updated_at")
+          .select("id, title, updated_at, status")
           .eq("user_id", user.id)
+          .neq("status", "completed") // 완료된 프로젝트 제외
           .order("updated_at", { ascending: false })
           .limit(5);
         if (error) throw error;
