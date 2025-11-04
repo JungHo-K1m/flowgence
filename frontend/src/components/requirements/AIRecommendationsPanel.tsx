@@ -179,7 +179,13 @@ export function AIRecommendationsPanel({
         setIsLoading(false);
         setIsStreaming(false);
         // 에러 시 빈 배열 유지
+        setRecommendations([]);
+        setCurrentRecommendation({});
+        setStreamingText("");
       }
+    } finally {
+      setIsLoading(false);
+      setIsStreaming(false);
     }
   };
 

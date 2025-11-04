@@ -31,10 +31,16 @@ export class ChatController {
   }
 
   @Post('requirements/recommendations')
-  async getRecommendations(
+  getRecommendations(
     @Body() recommendationsDto: RecommendationsDto,
     @Res() res: Response,
   ) {
-    return this.chatService.getRecommendations(recommendationsDto, res);
+    // @Res() 데코레이터를 사용할 때는 return하지 않음 (응답을 직접 처리)
+    this.chatService.getRecommendations(recommendationsDto, res).catch((error) => {
+      console.error('추천 요청 처리 중 오류:', error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: error.message || 'Internal server error' });
+      }
+    });
   }
 }

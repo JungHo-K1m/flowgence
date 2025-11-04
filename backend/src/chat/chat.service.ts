@@ -610,6 +610,67 @@ ${conversationText}
     }
   }
 
+  private parseRecommendationsFromText(text: string): Array<{ title: string; description: string; priority: string }> {
+    const recommendations: Array<{ title: string; description: string; priority: string }> = [];
+    
+    // 추천 항목을 라인별로 분리
+    const lines = text.split('\n');
+    let currentRec: { title?: string; description?: string; priority?: string } = {};
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      
+      // 제목 추출
+      if (line.match(/^(?:제목|Title)[:：]\s*(.+)/i)) {
+        const match = line.match(/^(?:제목|Title)[:：]\s*(.+)/i);
+        if (match && match[1]) {
+          // 이전 추천이 완성되었으면 저장
+          if (currentRec.title && currentRec.description) {
+            recommendations.push({
+              title: currentRec.title,
+              description: currentRec.description,
+              priority: currentRec.priority || 'medium'
+            });
+          }
+          currentRec = { title: match[1].trim() };
+        }
+      }
+      // 설명 추출
+      else if (line.match(/^(?:설명|Description)[:：]\s*(.+)/i)) {
+        const match = line.match(/^(?:설명|Description)[:：]\s*(.+)/i);
+        if (match && match[1] && currentRec.title) {
+          currentRec.description = match[1].trim();
+        }
+      }
+      // 우선순위 추출
+      else if (line.match(/^(?:우선순위|Priority)[:：]\s*(high|medium|low)/i)) {
+        const match = line.match(/^(?:우선순위|Priority)[:：]\s*(high|medium|low)/i);
+        if (match && match[1] && currentRec.title) {
+          currentRec.priority = match[1].toLowerCase();
+        }
+      }
+      // 설명이 여러 줄일 수 있으므로 제목이 있고 설명이 없으면 설명으로 간주
+      else if (currentRec.title && !currentRec.description && line.length > 0 && !line.match(/[:：]/)) {
+        currentRec.description = line;
+      }
+      // 설명이 있고 다음 줄이 있으면 설명에 추가
+      else if (currentRec.title && currentRec.description && line.length > 0 && !line.match(/^(?:제목|Title|설명|Description|우선순위|Priority)[:：]/i)) {
+        currentRec.description += ' ' + line;
+      }
+    }
+    
+    // 마지막 추천 항목 저장
+    if (currentRec.title && currentRec.description) {
+      recommendations.push({
+        title: currentRec.title,
+        description: currentRec.description,
+        priority: currentRec.priority || 'medium'
+      });
+    }
+    
+    return recommendations;
+  }
+
   async getRecommendations(recommendationsDto: RecommendationsDto, res: any) {
     const apiKey = this.configService.get<string>('ANTHROPIC_API_KEY');
     
@@ -637,18 +698,14 @@ ${conversationText}
 ${existingRequirementsText}
 
 중요 지침:
-1. 기존 요구사항과 중복되지 않는 새로운 요구사항을 추천하세요.
+1. 기존 요구사항과 중복되지 않는 새로운 요구사항을 3-5개 추천하세요.
 2. 각 요구사항은 구체적이고 실현 가능해야 합니다.
 3. 카테고리와 관련된 실용적인 기능이나 요구사항을 제안하세요.
-4. 각 요구사항마다 제목(title), 설명(description), 우선순위(priority)를 포함하세요.
-5. 우선순위는 high, medium, low 중 하나여야 합니다.
-6. 응답은 여러 개의 요구사항을 추천할 수 있지만, 각각을 별도로 스트리밍하세요.
-
-응답 형식:
-각 요구사항은 다음 형식으로 스트리밍하세요:
-- title: 요구사항 제목
-- description: 상세 설명
-- priority: high|medium|low`;
+4. 각 요구사항은 다음 형식으로 작성하세요:
+   제목: [요구사항 제목]
+   설명: [상세 설명]
+   우선순위: [high|medium|low]
+5. 여러 요구사항을 추천할 때는 각각을 명확히 구분하세요.`;
 
     try {
       // SSE 헤더 설정
@@ -686,9 +743,7 @@ ${existingRequirementsText}
 
       // 현재 추천 항목 추적
       let currentRecommendation: { title?: string; description?: string; priority?: string } = {};
-      let currentField: 'title' | 'description' | 'priority' | null = null;
       let accumulatedText = '';
-      let recommendationIndex = 0;
       let buffer = '';
 
       const reader = response.body?.getReader();
@@ -700,9 +755,14 @@ ${existingRequirementsText}
         return;
       }
 
+      console.log('스트리밍 시작');
+
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
+        if (done) {
+          console.log('스트리밍 완료 (done=true)');
+          break;
+        }
 
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
@@ -712,6 +772,7 @@ ${existingRequirementsText}
           if (line.startsWith('data: ')) {
             const data = line.slice(6);
             if (data === '[DONE]') {
+              console.log('Claude API 스트리밍 완료');
               // 마지막 추천 항목 처리
               if (currentRecommendation.title && currentRecommendation.description) {
                 if (!currentRecommendation.priority) {
@@ -727,84 +788,86 @@ ${existingRequirementsText}
             try {
               const json = JSON.parse(data);
               
+              // Claude API 스트리밍 이벤트 타입 확인
               if (json.type === 'content_block_delta' && json.delta?.type === 'text') {
                 const text = json.delta.text;
                 accumulatedText += text;
                 
-                // 텍스트를 파싱하여 제목, 설명, 우선순위 추출
-                // 패턴: "1. 제목: ...", "설명: ...", "우선순위: ..."
+                // 실시간으로 텍스트 스트리밍 (프론트엔드에서 실시간 표시용)
+                res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'description', value: text })}\n\n`);
                 
-                // 새 추천 항목 시작 (숫자 + 점 패턴)
-                const newItemMatch = accumulatedText.match(/(\d+)\.\s*(.+?)(?:\n|$)/);
-                if (newItemMatch && !currentRecommendation.title) {
-                  // 이전 추천이 완료되었으면 초기화
-                  if (currentRecommendation.title && currentRecommendation.description) {
-                    currentRecommendation = {};
-                    currentField = null;
-                  }
-                  recommendationIndex++;
-                }
+                // 누적 텍스트에서 완성된 추천 항목 파싱
+                const recommendations = this.parseRecommendationsFromText(accumulatedText);
                 
-                // 제목 추출
-                const titleMatch = accumulatedText.match(/(?:^|\n)(?:제목|Title|^\d+\.\s*)[:：]?\s*(.+?)(?:\n|설명|Description|$)/i);
-                if (titleMatch && titleMatch[1] && !currentRecommendation.title) {
-                  const title = titleMatch[1].trim().replace(/^[-*]\s*/, '');
-                  if (title && title.length > 0) {
-                    currentRecommendation.title = title;
-                    currentField = 'title';
-                    res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'title', value: currentRecommendation.title })}\n\n`);
-                  }
-                }
-                
-                // 설명 추출
-                if (currentRecommendation.title && !currentRecommendation.description) {
-                  const descMatch = accumulatedText.match(/(?:설명|Description)[:：]\s*(.+?)(?:\n|우선순위|Priority|^\d+\.|$)/is);
-                  if (descMatch && descMatch[1]) {
-                    const description = descMatch[1].trim().replace(/^[-*]\s*/, '');
-                    if (description && description.length > 0) {
-                      currentRecommendation.description = description;
-                      currentField = 'description';
-                      res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'description', value: currentRecommendation.description })}\n\n`);
-                    }
-                  }
-                }
-                
-                // 우선순위 추출
-                if (currentRecommendation.title && currentRecommendation.description && !currentRecommendation.priority) {
-                  const priorityMatch = accumulatedText.match(/(?:우선순위|Priority)[:：]\s*(high|medium|low)/i);
-                  if (priorityMatch && priorityMatch[1]) {
-                    currentRecommendation.priority = priorityMatch[1].toLowerCase();
-                    currentField = 'priority';
-                    res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'priority', value: currentRecommendation.priority })}\n\n`);
+                // 완성된 추천 항목이 있고 이전에 전송하지 않은 것만 전송
+                if (recommendations.length > 0) {
+                  const lastRec = recommendations[recommendations.length - 1];
+                  
+                  // 새 추천 항목이 완성되었는지 확인
+                  if (lastRec.title && lastRec.description && 
+                      (!currentRecommendation.title || currentRecommendation.title !== lastRec.title)) {
+                    console.log('새 추천 항목 발견:', lastRec);
+                    currentRecommendation = lastRec;
                     
-                    // 완성된 추천 항목 - 다음 추천을 위해 초기화
-                    currentRecommendation = {};
-                    currentField = null;
-                    accumulatedText = '';
+                    // 완성된 추천 항목을 프론트엔드에 전송
+                    res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'title', value: lastRec.title })}\n\n`);
+                    res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'description', value: lastRec.description })}\n\n`);
+                    res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'priority', value: lastRec.priority || 'medium' })}\n\n`);
                   }
                 }
-                
-                // 실시간 텍스트 업데이트 (설명 필드가 활성화된 경우)
-                if (currentField === 'description' && currentRecommendation.title && text.trim()) {
-                  res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'description', value: text })}\n\n`);
-                }
+              } else if (json.type === 'message_start' || json.type === 'content_block_start') {
+                // 메시지 시작 이벤트는 무시
+                console.log('Claude API 이벤트:', json.type);
+              } else if (json.type === 'message_delta' || json.type === 'content_block_stop') {
+                // 메시지 델타나 블록 종료 이벤트는 무시
+                console.log('Claude API 이벤트:', json.type);
+              } else {
+                // 기타 이벤트 로그
+                console.log('알 수 없는 Claude API 이벤트:', json.type, json);
               }
             } catch (e) {
               // JSON 파싱 실패 무시 (스트리밍 중일 수 있음)
+              console.log('JSON 파싱 실패 (무시):', data.substring(0, 100));
             }
           }
         }
       }
 
-      // 스트리밍 완료
-      if (currentRecommendation.title && currentRecommendation.description) {
-        if (!currentRecommendation.priority) {
-          currentRecommendation.priority = 'medium';
+      // 스트리밍 완료 시 최종 파싱
+      console.log('누적 텍스트:', accumulatedText.substring(0, 500));
+      const finalRecommendations = this.parseRecommendationsFromText(accumulatedText);
+      console.log('파싱된 추천 항목 수:', finalRecommendations.length);
+      
+      if (finalRecommendations.length > 0) {
+        // 모든 완성된 추천 항목 전송
+        for (const rec of finalRecommendations) {
+          if (rec.title && rec.description) {
+            // 이전에 전송하지 않은 항목만 전송
+            if (!currentRecommendation.title || currentRecommendation.title !== rec.title) {
+              console.log('최종 추천 항목 전송:', rec);
+              res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'title', value: rec.title })}\n\n`);
+              res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'description', value: rec.description })}\n\n`);
+              res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'priority', value: rec.priority || 'medium' })}\n\n`);
+            }
+          }
         }
-        res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'priority', value: currentRecommendation.priority })}\n\n`);
+      } else {
+        // 파싱 실패 시 원본 텍스트를 설명으로 사용
+        console.log('파싱 실패 - 원본 텍스트 사용');
+        if (accumulatedText.trim().length > 0) {
+          const lines = accumulatedText.trim().split('\n').filter(l => l.trim().length > 0);
+          if (lines.length > 0) {
+            const firstLine = lines[0].trim();
+            res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'title', value: firstLine.substring(0, 100) })}\n\n`);
+            res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'description', value: accumulatedText.trim() })}\n\n`);
+            res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'priority', value: 'medium' })}\n\n`);
+          }
+        }
       }
+
       res.write('data: [DONE]\n\n');
       res.end();
+      console.log('스트리밍 응답 전송 완료');
     } catch (error) {
       console.error('추천 요청 오류:', error);
       res.write(`data: ${JSON.stringify({ type: 'error', message: error.message })}\n\n`);
@@ -812,3 +875,4 @@ ${existingRequirementsText}
     }
   }
 }
+
