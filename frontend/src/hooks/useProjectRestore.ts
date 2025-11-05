@@ -54,10 +54,20 @@ export function useProjectRestore() {
         estimatedDuration: projectData.overview?.serviceCoreElements?.estimatedDuration,
       });
 
-      if (projectData.overview && projectData.overview !== null && Object.keys(projectData.overview).length > 0) {
+      // overview가 객체인지 확인 (null, undefined, 빈 객체 체크)
+      const hasValidOverview = projectData.overview && 
+                                projectData.overview !== null && 
+                                typeof projectData.overview === 'object' &&
+                                Object.keys(projectData.overview).length > 0;
+
+      if (hasValidOverview) {
         if (setState.setOverviewDirectly) {
           // 복원 시에는 API를 호출하지 않고 직접 설정
-          console.log("프로젝트 개요 직접 설정:", projectData.overview);
+          console.log("프로젝트 개요 직접 설정:", {
+            overview: projectData.overview,
+            targetUsers: projectData.overview?.serviceCoreElements?.targetUsers,
+            estimatedDuration: projectData.overview?.serviceCoreElements?.estimatedDuration,
+          });
           setState.setOverviewDirectly(projectData.overview);
         } else if (setState.updateOverview) {
           // setOverviewDirectly가 없으면 updateOverview 사용 (API 호출됨)
@@ -72,7 +82,13 @@ export function useProjectRestore() {
           );
         }
       } else {
-        console.warn("프로젝트 개요 데이터가 없거나 비어있습니다:", projectData.overview);
+        console.warn("프로젝트 개요 데이터가 없거나 비어있습니다:", {
+          overview: projectData.overview,
+          type: typeof projectData.overview,
+          isNull: projectData.overview === null,
+          isUndefined: projectData.overview === undefined,
+          keys: projectData.overview ? Object.keys(projectData.overview) : [],
+        });
       }
 
       // 3. 채팅 메시지 복원

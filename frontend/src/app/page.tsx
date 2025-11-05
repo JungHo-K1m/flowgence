@@ -469,19 +469,49 @@ function HomePageContent() {
             message: result.message,
           });
 
-          // 2. 프로젝트 개요도 함께 저장 (현재 overview state가 있으면)
-          if (overview) {
+          // 2. 프로젝트 개요도 함께 저장
+          // 현재 overview state가 있으면 사용하고, 없으면 DB에서 조회
+          let overviewToSave = overview;
+          if (!overviewToSave && savedProjectId) {
+            try {
+              console.log("overview state가 없어서 DB에서 조회:", savedProjectId);
+              const projectData = await getProjectData(savedProjectId);
+              if (projectData?.project?.project_overview) {
+                overviewToSave = projectData.project.project_overview;
+                console.log("DB에서 overview 조회 성공:", {
+                  hasOverview: !!overviewToSave,
+                  targetUsers: overviewToSave?.serviceCoreElements?.targetUsers,
+                  estimatedDuration: overviewToSave?.serviceCoreElements?.estimatedDuration,
+                });
+                // 조회한 overview를 state에도 설정
+                if (setOverviewDirectly) {
+                  setOverviewDirectly(overviewToSave);
+                }
+              }
+            } catch (fetchError) {
+              console.error("DB에서 overview 조회 실패:", fetchError);
+            }
+          }
+
+          if (overviewToSave) {
             try {
               console.log("프로젝트 개요도 함께 저장:", {
                 savedProjectId,
-                hasOverview: !!overview,
+                hasOverview: !!overviewToSave,
+                targetUsers: overviewToSave?.serviceCoreElements?.targetUsers,
+                estimatedDuration: overviewToSave?.serviceCoreElements?.estimatedDuration,
               });
-              await updateProjectOverview(savedProjectId, overview);
+              await updateProjectOverview(savedProjectId, overviewToSave);
               console.log("프로젝트 개요 저장 성공");
             } catch (overviewError) {
               console.error("프로젝트 개요 저장 실패:", overviewError);
               // 개요 저장 실패해도 요구사항은 저장되었으므로 계속 진행
             }
+          } else {
+            console.warn("프로젝트 개요가 없어서 저장하지 않습니다:", {
+              hasOverviewState: !!overview,
+              savedProjectId,
+            });
           }
 
           // 성공 토스트 표시 (추후 구현)
@@ -506,7 +536,7 @@ function HomePageContent() {
         throw error;
       }
     },
-    [savedProjectId, saveRequirements, updateProjectOverview, overview, loadRecentProjects]
+    [savedProjectId, saveRequirements, updateProjectOverview, overview, loadRecentProjects, getProjectData, setOverviewDirectly]
   );
 
   // onProjectUpdate 콜백을 useCallback으로 감싸서 불필요한 리렌더링 방지
