@@ -288,6 +288,14 @@ export const useProjectStorage = () => {
     });
   }, []);
 
+  const setSavedProjectId = useCallback((projectId: string | null) => {
+    setState(prev => ({
+      ...prev,
+      savedProjectId: projectId,
+      isSaved: !!projectId,
+    }));
+  }, []);
+
   return {
     ...state,
     saveProjectWithMessages,
@@ -295,5 +303,6 @@ export const useProjectStorage = () => {
     updateProjectStatus,
     getProjectData,
     clearState,
+    setSavedProjectId,
   };
 };

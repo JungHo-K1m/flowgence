@@ -220,6 +220,12 @@ function HomePageContent() {
 
           const step = parseInt(targetStep);
 
+          // 프로젝트 ID 설정 (요구사항 편집 시 저장을 위해 필수)
+          if (projectData.projectId) {
+            setSavedProjectId(projectData.projectId);
+            console.log("프로젝트 ID 설정됨:", projectData.projectId);
+          }
+
           // 공통 복원 로직 사용
           restoreProjectState(projectData, step, {
             setProjectDescription,
@@ -244,6 +250,7 @@ function HomePageContent() {
         }
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     searchParams,
     restoreProjectState,
@@ -269,6 +276,7 @@ function HomePageContent() {
     error: saveError,
     savedProjectId,
     getProjectData,
+    setSavedProjectId,
   } = useProjectStorage();
 
   // 요구사항 편집 모달 상태

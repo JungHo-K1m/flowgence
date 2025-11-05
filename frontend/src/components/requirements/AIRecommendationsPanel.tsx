@@ -263,7 +263,7 @@ export function AIRecommendationsPanel({
   // 설명 단순화 함수 (최대 150자로 제한)
   const simplifyDescription = (description: string): string => {
     // 마크다운 제거
-    let simplified = description
+    const simplified = description
       .replace(/\*\*/g, '') // 볼드 제거
       .replace(/^#+\s*/gm, '') // 헤더 제거
       .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1') // 링크 제거
