@@ -613,59 +613,86 @@ ${conversationText}
   private parseRecommendationsFromText(text: string): Array<{ title: string; description: string; priority: string }> {
     const recommendations: Array<{ title: string; description: string; priority: string }> = [];
     
-    // 추천 항목을 라인별로 분리
-    const lines = text.split('\n');
-    let currentRec: { title?: string; description?: string; priority?: string } = {};
+    // 여러 추천 항목을 구분하기 위해 번호나 항목 구분자로 분리
+    // 패턴 1: "1. 제목: ...", "2. 제목: ..." 형식
+    // 패턴 2: "제목: ...", "설명: ...", "우선순위: ..." 형식 (반복)
     
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
+    // 번호로 시작하는 패턴으로 항목 분리
+    const items = text.split(/(?=\d+\.\s*(?:제목|Title|요구사항|Feature))/i);
+    
+    for (const item of items) {
+      if (!item.trim()) continue;
       
-      // 제목 추출
-      if (line.match(/^(?:제목|Title)[:：]\s*(.+)/i)) {
-        const match = line.match(/^(?:제목|Title)[:：]\s*(.+)/i);
+      let title = '';
+      let description = '';
+      let priority = 'medium';
+      
+      // 제목 추출 (여러 패턴 시도)
+      const titlePatterns = [
+        /(?:제목|Title)[:：]\s*(.+?)(?:\n|$)/i,
+        /^\d+\.\s*(.+?)(?:\n|$)/,
+        /^[-*]\s*(.+?)(?:\n|$)/,
+      ];
+      
+      for (const pattern of titlePatterns) {
+        const match = item.match(pattern);
         if (match && match[1]) {
-          // 이전 추천이 완성되었으면 저장
-          if (currentRec.title && currentRec.description) {
-            recommendations.push({
-              title: currentRec.title,
-              description: currentRec.description,
-              priority: currentRec.priority || 'medium'
-            });
-          }
-          currentRec = { title: match[1].trim() };
+          title = match[1].trim();
+          break;
         }
       }
+      
       // 설명 추출
-      else if (line.match(/^(?:설명|Description)[:：]\s*(.+)/i)) {
-        const match = line.match(/^(?:설명|Description)[:：]\s*(.+)/i);
-        if (match && match[1] && currentRec.title) {
-          currentRec.description = match[1].trim();
+      const descPatterns = [
+        /(?:설명|Description)[:：]\s*(.+?)(?:\n(?:우선순위|Priority)|$)/is,
+        /(?:제목|Title)[:：].*?\n(.+?)(?:\n(?:우선순위|Priority)|$)/is,
+      ];
+      
+      for (const pattern of descPatterns) {
+        const match = item.match(pattern);
+        if (match && match[1]) {
+          description = match[1].trim();
+          break;
         }
       }
+      
+      // 설명이 없으면 제목 다음 줄을 설명으로 사용
+      if (!description && title) {
+        const lines = item.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          if (lines[i].includes(title)) {
+            if (i + 1 < lines.length && lines[i + 1].trim() && !lines[i + 1].match(/(?:우선순위|Priority)[:：]/i)) {
+              description = lines[i + 1].trim();
+            }
+            break;
+          }
+        }
+      }
+      
       // 우선순위 추출
-      else if (line.match(/^(?:우선순위|Priority)[:：]\s*(high|medium|low)/i)) {
-        const match = line.match(/^(?:우선순위|Priority)[:：]\s*(high|medium|low)/i);
-        if (match && match[1] && currentRec.title) {
-          currentRec.priority = match[1].toLowerCase();
-        }
+      const priorityMatch = item.match(/(?:우선순위|Priority)[:：]\s*(high|medium|low)/i);
+      if (priorityMatch && priorityMatch[1]) {
+        priority = priorityMatch[1].toLowerCase();
       }
-      // 설명이 여러 줄일 수 있으므로 제목이 있고 설명이 없으면 설명으로 간주
-      else if (currentRec.title && !currentRec.description && line.length > 0 && !line.match(/[:：]/)) {
-        currentRec.description = line;
-      }
-      // 설명이 있고 다음 줄이 있으면 설명에 추가
-      else if (currentRec.title && currentRec.description && line.length > 0 && !line.match(/^(?:제목|Title|설명|Description|우선순위|Priority)[:：]/i)) {
-        currentRec.description += ' ' + line;
+      
+      // 제목과 설명이 모두 있으면 추가
+      if (title && description) {
+        recommendations.push({ title, description, priority });
       }
     }
     
-    // 마지막 추천 항목 저장
-    if (currentRec.title && currentRec.description) {
-      recommendations.push({
-        title: currentRec.title,
-        description: currentRec.description,
-        priority: currentRec.priority || 'medium'
-      });
+    // 번호 패턴이 없으면 전체 텍스트를 하나의 추천으로 처리
+    if (recommendations.length === 0 && text.trim().length > 0) {
+      const lines = text.trim().split('\n').filter(l => l.trim());
+      if (lines.length > 0) {
+        const firstLine = lines[0].trim();
+        const rest = lines.slice(1).join(' ').trim();
+        recommendations.push({
+          title: firstLine.substring(0, 100),
+          description: rest || firstLine,
+          priority: 'medium'
+        });
+      }
     }
     
     return recommendations;
@@ -745,6 +772,7 @@ ${existingRequirementsText}
       let currentRecommendation: { title?: string; description?: string; priority?: string } = {};
       let accumulatedText = '';
       let buffer = '';
+      const sentRecommendations = new Set<string>(); // 전송한 추천 항목 추적 (title 기준)
 
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
@@ -793,26 +821,32 @@ ${existingRequirementsText}
                 const text = json.delta.text;
                 accumulatedText += text;
                 
-                // 실시간으로 텍스트 스트리밍 (프론트엔드에서 실시간 표시용)
-                res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'description', value: text })}\n\n`);
-                
                 // 누적 텍스트에서 완성된 추천 항목 파싱
                 const recommendations = this.parseRecommendationsFromText(accumulatedText);
                 
                 // 완성된 추천 항목이 있고 이전에 전송하지 않은 것만 전송
                 if (recommendations.length > 0) {
-                  const lastRec = recommendations[recommendations.length - 1];
-                  
-                  // 새 추천 항목이 완성되었는지 확인
-                  if (lastRec.title && lastRec.description && 
-                      (!currentRecommendation.title || currentRecommendation.title !== lastRec.title)) {
-                    console.log('새 추천 항목 발견:', lastRec);
-                    currentRecommendation = lastRec;
-                    
-                    // 완성된 추천 항목을 프론트엔드에 전송
-                    res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'title', value: lastRec.title })}\n\n`);
-                    res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'description', value: lastRec.description })}\n\n`);
-                    res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'priority', value: lastRec.priority || 'medium' })}\n\n`);
+                  // 모든 완성된 추천 항목 전송 (이전에 전송하지 않은 것만)
+                  for (const rec of recommendations) {
+                    if (rec.title && rec.description) {
+                      // 이미 전송한 항목인지 확인
+                      if (!sentRecommendations.has(rec.title)) {
+                        console.log('새 추천 항목 발견 및 전송:', rec);
+                        sentRecommendations.add(rec.title);
+                        currentRecommendation = { ...rec };
+                        
+                        // 완성된 추천 항목을 프론트엔드에 전송
+                        res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'title', value: rec.title })}\n\n`);
+                        res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'description', value: rec.description })}\n\n`);
+                        res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'priority', value: rec.priority || 'medium' })}\n\n`);
+                      }
+                    }
+                  }
+                } else {
+                  // 아직 파싱되지 않은 텍스트는 스트리밍 중인 것으로 간주하여 전송
+                  if (accumulatedText.trim().length > 20) {
+                    // 최소한의 텍스트가 누적되었을 때만 전송 (너무 작은 청크는 무시)
+                    res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'description', value: accumulatedText })}\n\n`);
                   }
                 }
               } else if (json.type === 'message_start' || json.type === 'content_block_start') {
@@ -839,16 +873,14 @@ ${existingRequirementsText}
       console.log('파싱된 추천 항목 수:', finalRecommendations.length);
       
       if (finalRecommendations.length > 0) {
-        // 모든 완성된 추천 항목 전송
+        // 모든 완성된 추천 항목 전송 (이전에 전송하지 않은 것만)
         for (const rec of finalRecommendations) {
-          if (rec.title && rec.description) {
-            // 이전에 전송하지 않은 항목만 전송
-            if (!currentRecommendation.title || currentRecommendation.title !== rec.title) {
-              console.log('최종 추천 항목 전송:', rec);
-              res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'title', value: rec.title })}\n\n`);
-              res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'description', value: rec.description })}\n\n`);
-              res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'priority', value: rec.priority || 'medium' })}\n\n`);
-            }
+          if (rec.title && rec.description && !sentRecommendations.has(rec.title)) {
+            console.log('최종 추천 항목 전송:', rec);
+            sentRecommendations.add(rec.title);
+            res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'title', value: rec.title })}\n\n`);
+            res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'description', value: rec.description })}\n\n`);
+            res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'priority', value: rec.priority || 'medium' })}\n\n`);
           }
         }
       } else {

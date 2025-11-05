@@ -103,11 +103,17 @@ export function AIRecommendationsPanel({
       let currentRec: Partial<AIRecommendation> = {};
 
       if (reader) {
+        console.log('스트리밍 시작 - reader 생성됨');
         while (true) {
           const { done, value } = await reader.read();
-          if (done) break;
+          if (done) {
+            console.log('스트리밍 완료 (done=true)');
+            break;
+          }
 
-          buffer += decoder.decode(value, { stream: true });
+          const chunk = decoder.decode(value, { stream: true });
+          console.log('스트리밍 청크 수신:', chunk.substring(0, 100));
+          buffer += chunk;
           const lines = buffer.split('\n');
           buffer = lines.pop() || '';
 
@@ -132,10 +138,11 @@ export function AIRecommendationsPanel({
 
               try {
                 const json = JSON.parse(data);
+                console.log('수신된 SSE 이벤트:', json);
                 if (json.type === 'recommendation') {
                   if (json.field === 'title') {
+                    // 이전 추천이 완성되었으면 저장
                     if (currentRec.title && currentRec.description) {
-                      // 이전 추천 완료, 새 추천 시작
                       recommendationsList.push({
                         ...currentRec,
                         id: Date.now().toString() + Math.random().toString(36).substring(7),
@@ -144,17 +151,58 @@ export function AIRecommendationsPanel({
                       } as AIRecommendation);
                       setRecommendations([...recommendationsList]);
                     }
+                    // 새 추천 시작
                     currentRec = { title: json.value };
+                    setCurrentRecommendation({ ...currentRec });
                   } else if (json.field === 'description') {
+                    // description은 완성된 값으로 받음 (백엔드에서 완성된 항목만 전송)
                     currentRec.description = json.value;
+                    setCurrentRecommendation({ ...currentRec });
+                    setStreamingText(json.value || '');
+                    
+                    // title과 description이 모두 있으면 목록에 추가 (중복 방지)
+                    if (currentRec.title && currentRec.description && 
+                        !recommendationsList.find(r => r.title === currentRec.title)) {
+                      const newRec = {
+                        ...currentRec,
+                        id: Date.now().toString() + Math.random().toString(36).substring(7),
+                        category: categoryTitle.toLowerCase(),
+                        priority: currentRec.priority || 'medium',
+                      } as AIRecommendation;
+                      recommendationsList.push(newRec);
+                      setRecommendations([...recommendationsList]);
+                      console.log('추천 항목 추가됨:', newRec);
+                    }
                   } else if (json.field === 'priority') {
                     currentRec.priority = json.value;
+                    setCurrentRecommendation({ ...currentRec });
+                    
+                    // priority가 설정되면 완성된 것으로 간주하고 목록 업데이트
+                    if (currentRec.title && currentRec.description) {
+                      const existingIndex = recommendationsList.findIndex(r => r.title === currentRec.title);
+                      if (existingIndex >= 0) {
+                        recommendationsList[existingIndex].priority = json.value;
+                        setRecommendations([...recommendationsList]);
+                      } else {
+                        recommendationsList.push({
+                          ...currentRec,
+                          id: Date.now().toString() + Math.random().toString(36).substring(7),
+                          category: categoryTitle.toLowerCase(),
+                          priority: json.value,
+                        } as AIRecommendation);
+                        setRecommendations([...recommendationsList]);
+                      }
+                    }
                   }
-                  setCurrentRecommendation({ ...currentRec });
-                  setStreamingText(json.value || '');
+                } else if (json.type === 'error') {
+                  console.error('추천 API 에러:', json.message);
+                  setIsLoading(false);
+                  setIsStreaming(false);
+                  setRecommendations([]);
                 }
               } catch (e) {
                 // JSON 파싱 실패 무시 (스트리밍 중일 수 있음)
+                console.log('JSON 파싱 실패:', e, data.substring(0, 100));
               }
             }
           }
