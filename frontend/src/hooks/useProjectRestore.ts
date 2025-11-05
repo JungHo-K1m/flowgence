@@ -44,12 +44,24 @@ export function useProjectRestore() {
       }
 
       // 2. 프로젝트 개요 복원 (API 호출 없이 직접 설정)
-      if (projectData.overview) {
+      console.log("프로젝트 상태 복원 - 개요 데이터:", {
+        hasOverview: !!projectData.overview,
+        overviewType: typeof projectData.overview,
+        overviewKeys: projectData.overview ? Object.keys(projectData.overview) : [],
+        hasSetOverviewDirectly: !!setState.setOverviewDirectly,
+        hasUpdateOverview: !!setState.updateOverview,
+        targetUsers: projectData.overview?.serviceCoreElements?.targetUsers,
+        estimatedDuration: projectData.overview?.serviceCoreElements?.estimatedDuration,
+      });
+
+      if (projectData.overview && projectData.overview !== null && Object.keys(projectData.overview).length > 0) {
         if (setState.setOverviewDirectly) {
           // 복원 시에는 API를 호출하지 않고 직접 설정
+          console.log("프로젝트 개요 직접 설정:", projectData.overview);
           setState.setOverviewDirectly(projectData.overview);
         } else if (setState.updateOverview) {
           // setOverviewDirectly가 없으면 updateOverview 사용 (API 호출됨)
+          console.log("프로젝트 개요 API 호출로 업데이트");
           setState.updateOverview(
             {
               description: projectData.description || "",
@@ -59,6 +71,8 @@ export function useProjectRestore() {
             []
           );
         }
+      } else {
+        console.warn("프로젝트 개요 데이터가 없거나 비어있습니다:", projectData.overview);
       }
 
       // 3. 채팅 메시지 복원

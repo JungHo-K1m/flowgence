@@ -2445,6 +2445,19 @@ function HomePageContent() {
       {/* Confirmation Panel - Full Screen */}
       {showConfirmation && (
         <div className="flex-1">
+          {(() => {
+            // 디버깅 로그 (개발 환경)
+            if (process.env.NODE_ENV === 'development') {
+              console.log('ConfirmationPanel 렌더링:', {
+                hasOverview: !!overview,
+                overviewType: typeof overview,
+                overviewKeys: overview ? Object.keys(overview) : [],
+                targetUsers: overview?.serviceCoreElements?.targetUsers,
+                estimatedDuration: overview?.serviceCoreElements?.estimatedDuration,
+              });
+            }
+            return null;
+          })()}
           <ConfirmationPanel
             onNextStep={handleNextStep}
             onPrevStep={handlePrevStep}

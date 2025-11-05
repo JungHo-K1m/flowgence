@@ -51,6 +51,16 @@ export function useProjectResume() {
 
       if (requirementsError) throw requirementsError;
 
+      // 프로젝트 개요 확인 및 로깅
+      const projectOverview = project.project_overview || project.overview || null;
+      console.log("프로젝트 복구 - 개요 데이터:", {
+        hasProjectOverview: !!projectOverview,
+        projectOverviewType: typeof projectOverview,
+        projectOverviewKeys: projectOverview ? Object.keys(projectOverview) : [],
+        targetUsers: projectOverview?.serviceCoreElements?.targetUsers,
+        estimatedDuration: projectOverview?.serviceCoreElements?.estimatedDuration,
+      });
+
       // 프로젝트 데이터를 sessionStorage에 저장
       const projectData = {
         projectId: project.id,
@@ -58,7 +68,7 @@ export function useProjectResume() {
         description: project.description,
         serviceType: project.service_type,
         status: project.status,
-        overview: project.project_overview || project.overview || {}, // DB 컬럼명 확인
+        overview: projectOverview, // null 또는 실제 데이터
         requirements: project.requirements || {},
         chatMessages: formattedMessages, // 변환된 메시지 사용
         extractedRequirements: requirements || [],
