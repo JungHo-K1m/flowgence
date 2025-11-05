@@ -46,19 +46,35 @@ const callBackendAPI = async (endpoint: string, requestBody: any) => {
 
     if (!response.ok) {
       let errorText;
+      let errorJson;
       try {
         errorText = await response.text();
         console.error('백엔드 에러 응답 (텍스트):', errorText);
         
         // JSON 파싱 시도
         try {
-          const errorJson = JSON.parse(errorText);
+          errorJson = JSON.parse(errorText);
           console.error('백엔드 에러 응답 (JSON):', errorJson);
-          throw new Error(`Backend API error: ${response.status} - ${JSON.stringify(errorJson)}`);
         } catch (parseError) {
-          throw new Error(`Backend API error: ${response.status} - ${errorText}`);
+          // JSON 파싱 실패 시 텍스트로 처리
         }
-      } catch (textError) {
+        
+        // 529 (Overloaded) 또는 503 에러 처리
+        if (response.status === 503 || response.status === 529 || 
+            (errorJson && errorJson.type === 'overloaded_error') ||
+            (errorText && (errorText.includes('529') || errorText.includes('Overloaded') || errorText.includes('사용량이 많아')))) {
+          const overloadError: any = new Error('현재 사용량이 많아 서비스가 일시적으로 지연되고 있습니다. 잠시 후 다시 시도해주세요.');
+          overloadError.type = 'overloaded_error';
+          overloadError.status = response.status;
+          throw overloadError;
+        }
+        
+        throw new Error(`Backend API error: ${response.status} - ${errorJson ? JSON.stringify(errorJson) : errorText}`);
+      } catch (textError: any) {
+        // 이미 처리된 에러는 다시 던지기
+        if (textError.type === 'overloaded_error') {
+          throw textError;
+        }
         console.error('에러 응답 읽기 실패:', textError);
         throw new Error(`Backend API error: ${response.status} - Failed to read error response`);
       }

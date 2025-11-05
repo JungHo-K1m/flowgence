@@ -225,6 +225,12 @@ export function AIRecommendationsPanel({
                   setIsLoading(false);
                   setIsStreaming(false);
                   setRecommendations([]);
+                  
+                  // 529 (Overloaded) 에러 처리
+                  if (json.code === 529 || json.errorType === 'overloaded_error' ||
+                      (json.message && (json.message.includes('529') || json.message.includes('Overloaded') || json.message.includes('사용량이 많아')))) {
+                    alert('현재 사용량이 많아 서비스가 일시적으로 지연되고 있습니다. 잠시 후 다시 시도해주세요.');
+                  }
                 }
               } catch (e) {
                 // JSON 파싱 실패 무시 (스트리밍 중일 수 있음)
@@ -274,6 +280,12 @@ export function AIRecommendationsPanel({
         setRecommendations([]);
         setCurrentRecommendation({});
         setStreamingText("");
+        
+        // 529 (Overloaded) 에러 처리
+        if (error.status === 503 || error.status === 529 || error.type === 'overloaded_error' ||
+            (error.message && (error.message.includes('529') || error.message.includes('Overloaded') || error.message.includes('사용량이 많아')))) {
+          alert('현재 사용량이 많아 서비스가 일시적으로 지연되고 있습니다. 잠시 후 다시 시도해주세요.');
+        }
       }
     } finally {
       setIsLoading(false);

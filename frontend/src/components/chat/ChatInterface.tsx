@@ -317,14 +317,21 @@ export function ChatInterface({
           setInternalMessages(finalMessages);
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("AI 응답 오류:", error);
 
-      // 오류 시 기본 응답
+      // 529 (Overloaded) 또는 503 에러 처리
+      const errorContent = 
+        (error.message && (error.message.includes('529') || error.message.includes('Overloaded') || error.message.includes('overloaded'))) ||
+        (error.status === 503 || error.status === 529) ||
+        (error.type === 'overloaded_error')
+          ? "현재 사용량이 많아 서비스가 일시적으로 지연되고 있습니다. 잠시 후 다시 시도해주세요."
+          : "죄송합니다. 일시적인 오류가 발생했습니다. 다시 시도해주세요.";
+
       const errorMessage = {
         id: `ai-${Date.now()}`,
         type: "ai" as const,
-        content: "죄송합니다. 일시적인 오류가 발생했습니다. 다시 시도해주세요.",
+        content: errorContent,
         icon: "🤖",
       };
 

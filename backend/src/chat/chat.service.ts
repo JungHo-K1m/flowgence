@@ -304,10 +304,18 @@ export class ChatService {
                 },
                 projectOverview: null
               };
+            } else {
+              // 재시도도 실패한 경우 529 에러를 명확히 표시
+              console.error('Claude API 529 (Overloaded) 에러 - 재시도 실패');
+              const overloadError: any = new Error('Claude API is currently overloaded. Please try again later.');
+              overloadError.status = 529;
+              overloadError.type = 'overloaded_error';
+              throw overloadError;
             }
           }
         }
         
+        // 529가 아닌 다른 에러의 경우
         throw new Error(`Claude API error: ${response.status} - ${errorText}`);
       }
 
@@ -440,11 +448,11 @@ export class ChatService {
           error: errorText
         });
         
-        // 500 에러의 경우 재시도 로직 추가
-        if (response.status === 500) {
-          console.log('Claude API 500 에러 - 재시도 시도');
+        // 529 (Overloaded) 또는 500 에러의 경우 재시도 로직 추가
+        if (response.status === 529 || response.status === 500) {
+          console.log(`Claude API ${response.status} 에러 - 재시도 시도`);
           // 짧은 지연 후 재시도
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          await new Promise(resolve => setTimeout(resolve, response.status === 529 ? 2000 : 1000));
           
           const retryResponse = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
@@ -470,7 +478,22 @@ export class ChatService {
             console.log('재시도 성공');
             const retryData = await retryResponse.json();
             return this.parseRequirementsResponse(retryData);
+          } else if (retryResponse.status === 529) {
+            // 재시도도 실패한 경우 529 에러를 명확히 표시
+            console.error('Claude API 529 (Overloaded) 에러 - 재시도 실패');
+            const overloadError: any = new Error('Claude API is currently overloaded. Please try again later.');
+            overloadError.status = 529;
+            overloadError.type = 'overloaded_error';
+            throw overloadError;
           }
+        }
+        
+        // 529 에러인 경우 명확히 표시
+        if (response.status === 529) {
+          const overloadError: any = new Error('Claude API is currently overloaded. Please try again later.');
+          overloadError.status = 529;
+          overloadError.type = 'overloaded_error';
+          throw overloadError;
         }
         
         throw new Error(`Claude API error: ${response.status} - ${errorText}`);
@@ -478,8 +501,12 @@ export class ChatService {
 
       const data = await response.json();
       return this.parseRequirementsResponse(data);
-    } catch (error) {
+    } catch (error: any) {
       console.error('요구사항 추출 오류:', error);
+      // 529 에러는 그대로 전달
+      if (error.status === 529 || error.type === 'overloaded_error') {
+        throw error;
+      }
       throw new Error(`요구사항 추출 실패: ${error.message}`);
     }
   }
@@ -763,7 +790,17 @@ ${existingRequirementsText}
 
       if (!response.ok) {
         const errorText = await response.text();
-        res.write(`data: ${JSON.stringify({ type: 'error', message: `API Error: ${response.status}` })}\n\n`);
+        // 529 (Overloaded) 에러 처리
+        if (response.status === 529) {
+          res.write(`data: ${JSON.stringify({ 
+            type: 'error', 
+            message: '현재 사용량이 많아 서비스가 일시적으로 지연되고 있습니다. 잠시 후 다시 시도해주세요.',
+            code: 529,
+            errorType: 'overloaded_error'
+          })}\n\n`);
+        } else {
+          res.write(`data: ${JSON.stringify({ type: 'error', message: `API Error: ${response.status}` })}\n\n`);
+        }
         res.end();
         return;
       }

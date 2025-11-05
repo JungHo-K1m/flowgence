@@ -76,8 +76,24 @@ export const useRequirementsExtraction = () => {
       console.log('요구사항 추출 API 응답 상태:', response.status);
       
       if (!response.ok) {
-        const errorData = await response.json();
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch {
+          errorData = { error: 'Unknown error' };
+        }
         console.error('요구사항 추출 API 오류 응답:', errorData);
+        
+        // 529 (Overloaded) 또는 503 에러 처리
+        if (response.status === 503 || response.status === 529 || 
+            errorData.type === 'overloaded_error' ||
+            (errorData.error && (errorData.error.includes('529') || errorData.error.includes('Overloaded') || errorData.error.includes('사용량이 많아')))) {
+          const overloadError: any = new Error('현재 사용량이 많아 서비스가 일시적으로 지연되고 있습니다. 잠시 후 다시 시도해주세요.');
+          overloadError.type = 'overloaded_error';
+          overloadError.status = response.status;
+          throw overloadError;
+        }
+        
         throw new Error(`API Error: ${response.status} - ${errorData.error || 'Unknown error'}`);
       }
       
@@ -93,13 +109,25 @@ export const useRequirementsExtraction = () => {
       }));
 
       return data;
-    } catch (err) {
+    } catch (err: any) {
       console.error('요구사항 추출 오류:', err);
-      setState(prev => ({
-        ...prev,
-        error: err instanceof Error ? err.message : 'Unknown error',
-        isLoading: false,
-      }));
+      
+      // 529 (Overloaded) 에러 처리
+      if (err.type === 'overloaded_error' || 
+          (err instanceof Error && (err.message.includes('529') || err.message.includes('Overloaded') || err.message.includes('사용량이 많아')))) {
+        alert('현재 사용량이 많아 서비스가 일시적으로 지연되고 있습니다. 잠시 후 다시 시도해주세요.');
+        setState(prev => ({
+          ...prev,
+          error: '현재 사용량이 많아 서비스가 일시적으로 지연되고 있습니다. 잠시 후 다시 시도해주세요.',
+          isLoading: false,
+        }));
+      } else {
+        setState(prev => ({
+          ...prev,
+          error: err instanceof Error ? err.message : 'Unknown error',
+          isLoading: false,
+        }));
+      }
       throw err;
     }
   }, [state.isLoading]);
