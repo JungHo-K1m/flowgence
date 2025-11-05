@@ -304,14 +304,14 @@ export class ChatService {
                 },
                 projectOverview: null
               };
-            } else {
-              // 재시도도 실패한 경우 529 에러를 명확히 표시
-              console.error('Claude API 529 (Overloaded) 에러 - 재시도 실패');
-              const overloadError: any = new Error('Claude API is currently overloaded. Please try again later.');
-              overloadError.status = 529;
-              overloadError.type = 'overloaded_error';
-              throw overloadError;
             }
+          } else if (retryResponse.status === 529) {
+            // 재시도도 실패한 경우 529 에러를 명확히 표시
+            console.error('Claude API 529 (Overloaded) 에러 - 재시도 실패');
+            const overloadError: any = new Error('Claude API is currently overloaded. Please try again later.');
+            overloadError.status = 529;
+            overloadError.type = 'overloaded_error';
+            throw overloadError;
           }
         }
         
