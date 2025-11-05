@@ -824,34 +824,8 @@ ${existingRequirementsText}
                 const text = json.delta.text;
                 accumulatedText += text;
                 
-                // 누적 텍스트에서 완성된 추천 항목 파싱
-                const recommendations = this.parseRecommendationsFromText(accumulatedText);
-                
-                // 완성된 추천 항목이 있고 이전에 전송하지 않은 것만 전송
-                if (recommendations.length > 0) {
-                  // 모든 완성된 추천 항목 전송 (이전에 전송하지 않은 것만)
-                  for (const rec of recommendations) {
-                    if (rec.title && rec.description) {
-                      // 이미 전송한 항목인지 확인
-                      if (!sentRecommendations.has(rec.title)) {
-                        console.log('새 추천 항목 발견 및 전송:', rec);
-                        sentRecommendations.add(rec.title);
-                        currentRecommendation = { ...rec };
-                        
-                        // 완성된 추천 항목을 프론트엔드에 전송
-                        res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'title', value: rec.title })}\n\n`);
-                        res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'description', value: rec.description })}\n\n`);
-                        res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'priority', value: rec.priority || 'medium' })}\n\n`);
-                      }
-                    }
-                  }
-                } else {
-                  // 아직 파싱되지 않은 텍스트는 스트리밍 중인 것으로 간주하여 전송
-                  if (accumulatedText.trim().length > 20) {
-                    // 최소한의 텍스트가 누적되었을 때만 전송 (너무 작은 청크는 무시)
-                    res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'description', value: accumulatedText })}\n\n`);
-                  }
-                }
+                // 스트리밍 중에는 파싱하지 않고 텍스트만 누적
+                // 최종 파싱은 스트리밍 완료 후에만 수행
               } else if (json.type === 'message_start' || json.type === 'content_block_start') {
                 // 메시지 시작 이벤트는 무시 (로그 제거)
               } else if (json.type === 'message_delta' || json.type === 'content_block_stop') {
@@ -868,19 +842,42 @@ ${existingRequirementsText}
       }
 
       // 스트리밍 완료 시 최종 파싱
-      console.log('누적 텍스트:', accumulatedText.substring(0, 500));
+      console.log('누적 텍스트 (전체):', accumulatedText);
+      console.log('누적 텍스트 (처음 500자):', accumulatedText.substring(0, 500));
       const finalRecommendations = this.parseRecommendationsFromText(accumulatedText);
       console.log('파싱된 추천 항목 수:', finalRecommendations.length);
+      console.log('파싱된 추천 항목:', finalRecommendations);
       
       if (finalRecommendations.length > 0) {
-        // 모든 완성된 추천 항목 전송 (이전에 전송하지 않은 것만)
+        // 모든 완성된 추천 항목 전송 (중복 제거)
         for (const rec of finalRecommendations) {
-          if (rec.title && rec.description && !sentRecommendations.has(rec.title)) {
-            console.log('최종 추천 항목 전송:', rec);
-            sentRecommendations.add(rec.title);
-            res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'title', value: rec.title })}\n\n`);
-            res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'description', value: rec.description })}\n\n`);
-            res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'priority', value: rec.priority || 'medium' })}\n\n`);
+          if (rec.title && rec.description) {
+            // 제목 정리 (마크다운 제거, 앞뒤 공백 제거)
+            const cleanTitle = rec.title.trim().replace(/^\*\*\s*/, '').replace(/\*\*$/, '').trim();
+            
+            if (!sentRecommendations.has(cleanTitle)) {
+              console.log('최종 추천 항목 전송:', rec);
+              sentRecommendations.add(cleanTitle);
+              
+              // 설명 정리 (마크다운 제거)
+              let cleanDescription = rec.description.trim();
+              // 마크다운 헤더 제거 (##, ### 등)
+              cleanDescription = cleanDescription.replace(/^#+\s*/gm, '');
+              // 볼드 제거 (**)
+              cleanDescription = cleanDescription.replace(/\*\*/g, '');
+              // 제목 라인 제거 (제목: 형식)
+              cleanDescription = cleanDescription.replace(/^제목[:：]\s*.+$/gmi, '');
+              // 설명 라인 제거 (설명: 형식)
+              cleanDescription = cleanDescription.replace(/^설명[:：]\s*/gmi, '');
+              // 우선순위 라인 제거
+              cleanDescription = cleanDescription.replace(/^우선순위[:：]\s*.+$/gmi, '');
+              // 빈 줄 정리
+              cleanDescription = cleanDescription.replace(/\n\s*\n/g, '\n').trim();
+              
+              res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'title', value: cleanTitle })}\n\n`);
+              res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'description', value: cleanDescription })}\n\n`);
+              res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'priority', value: rec.priority || 'medium' })}\n\n`);
+            }
           }
         }
       } else {
@@ -889,9 +886,10 @@ ${existingRequirementsText}
         if (accumulatedText.trim().length > 0) {
           const lines = accumulatedText.trim().split('\n').filter(l => l.trim().length > 0);
           if (lines.length > 0) {
-            const firstLine = lines[0].trim();
+            const firstLine = lines[0].trim().replace(/^#+\s*/, '').replace(/\*\*/g, '').trim();
+            const cleanText = accumulatedText.trim().replace(/^#+\s*/gm, '').replace(/\*\*/g, '');
             res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'title', value: firstLine.substring(0, 100) })}\n\n`);
-            res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'description', value: accumulatedText.trim() })}\n\n`);
+            res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'description', value: cleanText })}\n\n`);
             res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'priority', value: 'medium' })}\n\n`);
           }
         }

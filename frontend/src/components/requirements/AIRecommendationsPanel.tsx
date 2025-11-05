@@ -142,14 +142,18 @@ export function AIRecommendationsPanel({
                 if (json.type === 'recommendation') {
                   if (json.field === 'title') {
                     // 이전 추천이 완성되었으면 저장
-                    if (currentRec.title && currentRec.description) {
-                      recommendationsList.push({
-                        ...currentRec,
-                        id: Date.now().toString() + Math.random().toString(36).substring(7),
-                        category: categoryTitle.toLowerCase(),
-                        priority: currentRec.priority || 'medium',
-                      } as AIRecommendation);
-                      setRecommendations([...recommendationsList]);
+                    if (currentRec.title && currentRec.description && currentRec.description.length > 10) {
+                      // 설명이 너무 짧으면 제외 (불완전한 항목)
+                      const existingIndex = recommendationsList.findIndex(r => r.title === currentRec.title);
+                      if (existingIndex < 0) {
+                        recommendationsList.push({
+                          ...currentRec,
+                          id: Date.now().toString() + Math.random().toString(36).substring(7),
+                          category: categoryTitle.toLowerCase(),
+                          priority: currentRec.priority || 'medium',
+                        } as AIRecommendation);
+                        setRecommendations([...recommendationsList]);
+                      }
                     }
                     // 새 추천 시작
                     currentRec = { title: json.value };
@@ -160,8 +164,10 @@ export function AIRecommendationsPanel({
                     setCurrentRecommendation({ ...currentRec });
                     setStreamingText(json.value || '');
                     
-                    // title과 description이 모두 있으면 목록에 추가 (중복 방지)
-                    if (currentRec.title && currentRec.description && 
+                    // title과 description이 모두 있고, 설명이 충분히 길면 목록에 추가 (중복 방지)
+                    if (currentRec.title && 
+                        currentRec.description && 
+                        currentRec.description.length > 10 && // 최소 길이 체크
                         !recommendationsList.find(r => r.title === currentRec.title)) {
                       const newRec = {
                         ...currentRec,
@@ -178,7 +184,7 @@ export function AIRecommendationsPanel({
                     setCurrentRecommendation({ ...currentRec });
                     
                     // priority가 설정되면 완성된 것으로 간주하고 목록 업데이트
-                    if (currentRec.title && currentRec.description) {
+                    if (currentRec.title && currentRec.description && currentRec.description.length > 10) {
                       const existingIndex = recommendationsList.findIndex(r => r.title === currentRec.title);
                       if (existingIndex >= 0) {
                         recommendationsList[existingIndex].priority = json.value;
