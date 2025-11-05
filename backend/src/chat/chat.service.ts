@@ -817,7 +817,10 @@ ${existingRequirementsText}
               const json = JSON.parse(data);
               
               // Claude API 스트리밍 이벤트 타입 확인
-              if (json.type === 'content_block_delta' && json.delta?.type === 'text') {
+              // Claude API는 delta.type이 'text' 또는 'text_delta'일 수 있음
+              if (json.type === 'content_block_delta' && 
+                  (json.delta?.type === 'text' || json.delta?.type === 'text_delta') && 
+                  json.delta?.text) {
                 const text = json.delta.text;
                 accumulatedText += text;
                 
@@ -850,14 +853,11 @@ ${existingRequirementsText}
                   }
                 }
               } else if (json.type === 'message_start' || json.type === 'content_block_start') {
-                // 메시지 시작 이벤트는 무시
-                console.log('Claude API 이벤트:', json.type);
+                // 메시지 시작 이벤트는 무시 (로그 제거)
               } else if (json.type === 'message_delta' || json.type === 'content_block_stop') {
-                // 메시지 델타나 블록 종료 이벤트는 무시
-                console.log('Claude API 이벤트:', json.type);
-              } else {
-                // 기타 이벤트 로그
-                console.log('알 수 없는 Claude API 이벤트:', json.type, json);
+                // 메시지 델타나 블록 종료 이벤트는 무시 (로그 제거)
+              } else if (json.type === 'content_block_delta') {
+                // text_delta 타입이 아닌 다른 delta 타입은 무시 (로그 제거)
               }
             } catch (e) {
               // JSON 파싱 실패 무시 (스트리밍 중일 수 있음)
