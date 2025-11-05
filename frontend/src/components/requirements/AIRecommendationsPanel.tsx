@@ -42,11 +42,14 @@ export function AIRecommendationsPanel({
   const [currentRecommendation, setCurrentRecommendation] = useState<Partial<AIRecommendation>>({});
   const abortControllerRef = useRef<AbortController | null>(null);
   const hasLoadedRef = useRef(false);
+  const addedRecommendationsRef = useRef<Set<string>>(new Set()); // 추가된 추천 항목 추적
 
   // 모달이 열릴 때마다 추천 요청
   useEffect(() => {
     if (categoryTitle) {
       hasLoadedRef.current = false;
+      addedRecommendationsRef.current.clear(); // 카테고리 변경 시 추가된 항목 초기화
+      setRecommendations([]); // 추천 목록 초기화
       fetchRecommendations();
       hasLoadedRef.current = true;
     }
@@ -138,20 +141,23 @@ export function AIRecommendationsPanel({
 
               try {
                 const json = JSON.parse(data);
-                console.log('수신된 SSE 이벤트:', json);
                 if (json.type === 'recommendation') {
                   if (json.field === 'title') {
                     // 이전 추천이 완성되었으면 저장
                     if (currentRec.title && currentRec.description && currentRec.description.length > 10) {
-                      // 설명이 너무 짧으면 제외 (불완전한 항목)
-                      const existingIndex = recommendationsList.findIndex(r => r.title === currentRec.title);
-                      if (existingIndex < 0) {
-                        recommendationsList.push({
+                      const titleKey = currentRec.title.trim().toLowerCase();
+                      // 중복 체크: 이미 추가된 항목이 아니고, 목록에도 없어야 함
+                      if (!addedRecommendationsRef.current.has(titleKey) && 
+                          !recommendationsList.find(r => r.title.trim().toLowerCase() === titleKey)) {
+                        const newRec = {
                           ...currentRec,
                           id: Date.now().toString() + Math.random().toString(36).substring(7),
                           category: categoryTitle.toLowerCase(),
                           priority: currentRec.priority || 'medium',
-                        } as AIRecommendation);
+                          description: simplifyDescription(currentRec.description), // 설명 단순화
+                        } as AIRecommendation;
+                        recommendationsList.push(newRec);
+                        addedRecommendationsRef.current.add(titleKey);
                         setRecommendations([...recommendationsList]);
                       }
                     }
@@ -167,17 +173,23 @@ export function AIRecommendationsPanel({
                     // title과 description이 모두 있고, 설명이 충분히 길면 목록에 추가 (중복 방지)
                     if (currentRec.title && 
                         currentRec.description && 
-                        currentRec.description.length > 10 && // 최소 길이 체크
-                        !recommendationsList.find(r => r.title === currentRec.title)) {
-                      const newRec = {
-                        ...currentRec,
-                        id: Date.now().toString() + Math.random().toString(36).substring(7),
-                        category: categoryTitle.toLowerCase(),
-                        priority: currentRec.priority || 'medium',
-                      } as AIRecommendation;
-                      recommendationsList.push(newRec);
-                      setRecommendations([...recommendationsList]);
-                      console.log('추천 항목 추가됨:', newRec);
+                        currentRec.description.length > 10) {
+                      const titleKey = currentRec.title.trim().toLowerCase();
+                      
+                      // 중복 체크: 이미 추가된 항목이 아니고, 목록에도 없어야 함
+                      if (!addedRecommendationsRef.current.has(titleKey) && 
+                          !recommendationsList.find(r => r.title.trim().toLowerCase() === titleKey)) {
+                        const newRec = {
+                          ...currentRec,
+                          id: Date.now().toString() + Math.random().toString(36).substring(7),
+                          category: categoryTitle.toLowerCase(),
+                          priority: currentRec.priority || 'medium',
+                          description: simplifyDescription(currentRec.description), // 설명 단순화
+                        } as AIRecommendation;
+                        recommendationsList.push(newRec);
+                        addedRecommendationsRef.current.add(titleKey);
+                        setRecommendations([...recommendationsList]);
+                      }
                     }
                   } else if (json.field === 'priority') {
                     currentRec.priority = json.value;
@@ -185,17 +197,22 @@ export function AIRecommendationsPanel({
                     
                     // priority가 설정되면 완성된 것으로 간주하고 목록 업데이트
                     if (currentRec.title && currentRec.description && currentRec.description.length > 10) {
-                      const existingIndex = recommendationsList.findIndex(r => r.title === currentRec.title);
+                      const titleKey = currentRec.title.trim().toLowerCase();
+                      const existingIndex = recommendationsList.findIndex(r => r.title.trim().toLowerCase() === titleKey);
+                      
                       if (existingIndex >= 0) {
                         recommendationsList[existingIndex].priority = json.value;
                         setRecommendations([...recommendationsList]);
-                      } else {
-                        recommendationsList.push({
+                      } else if (!addedRecommendationsRef.current.has(titleKey)) {
+                        const newRec = {
                           ...currentRec,
                           id: Date.now().toString() + Math.random().toString(36).substring(7),
                           category: categoryTitle.toLowerCase(),
                           priority: json.value,
-                        } as AIRecommendation);
+                          description: simplifyDescription(currentRec.description), // 설명 단순화
+                        } as AIRecommendation;
+                        recommendationsList.push(newRec);
+                        addedRecommendationsRef.current.add(titleKey);
                         setRecommendations([...recommendationsList]);
                       }
                     }
@@ -243,6 +260,25 @@ export function AIRecommendationsPanel({
     }
   };
 
+  // 설명 단순화 함수 (최대 150자로 제한)
+  const simplifyDescription = (description: string): string => {
+    // 마크다운 제거
+    let simplified = description
+      .replace(/\*\*/g, '') // 볼드 제거
+      .replace(/^#+\s*/gm, '') // 헤더 제거
+      .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1') // 링크 제거
+      .trim();
+    
+    // 첫 문장 또는 최대 150자로 제한
+    const firstSentence = simplified.split(/[.。]\s+/)[0];
+    if (firstSentence.length <= 150) {
+      return firstSentence;
+    }
+    
+    // 150자로 자르고 말줄임표 추가
+    return simplified.substring(0, 150).replace(/\s+\S*$/, '') + '...';
+  };
+
   const handleAddRecommendation = (recommendation: AIRecommendation) => {
     onAddRequirement({
       title: recommendation.title,
@@ -251,6 +287,8 @@ export function AIRecommendationsPanel({
       priority: recommendation.priority || "medium",
     });
     // 추가된 요구사항을 리스트에서 제거
+    const titleKey = recommendation.title.trim().toLowerCase();
+    addedRecommendationsRef.current.add(titleKey);
     setRecommendations((prev) => 
       prev.filter((rec) => rec.id !== recommendation.id)
     );
@@ -355,9 +393,9 @@ export function AIRecommendationsPanel({
 
               <div className="flex-1">
                 <h4 className="font-medium text-gray-900 mb-1">
-                  {recommendation.title}
+                  {recommendation.title.replace(/^\*\*\s*/, '').replace(/\*\*$/, '').trim()}
                 </h4>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-gray-600 line-clamp-2">
                   {recommendation.description}
                 </p>
               </div>
