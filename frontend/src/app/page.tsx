@@ -390,15 +390,24 @@ function HomePageContent() {
         .from("projects")
         .select("id, title, updated_at, status")
         .eq("user_id", user.id)
-        .neq("status", "completed") // 완료된 프로젝트 제외
+        .in("status", [
+          "requirements_review",
+          "requirements_extraction",
+          "estimation",
+          "contract",
+          "in_progress",
+          "draft", // 초기 상태도 포함
+        ]) // 진행중인 프로젝트만 포함 (마이페이지와 동일한 조건)
         .order("updated_at", { ascending: false })
         .limit(5);
       if (error) throw error;
+      console.log("최근 작업 조회 결과:", data);
       const items = (data || []).map((p: any) => ({
         id: p.id,
         title: p.title || "제목 없음",
         updatedAt: p.updated_at,
       }));
+      console.log("최근 작업 목록:", items);
       setRecentProjects(items);
       hasLoadedRecent.current = true;
     } catch (e) {
@@ -412,6 +421,13 @@ function HomePageContent() {
       isLoadingRecentRef.current = false;
     }
   }, [user, loading]);
+
+  // 최근 작업 목록 불러오기 (로그인 시)
+  useEffect(() => {
+    if (!loading && user?.id) {
+      loadRecentProjects(false);
+    }
+  }, [user?.id, loading, loadRecentProjects]);
 
   // 편집된 요구사항을 DB에 저장
   const saveEditedRequirements = useCallback(
