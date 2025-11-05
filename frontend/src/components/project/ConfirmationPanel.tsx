@@ -164,6 +164,31 @@ export function ConfirmationPanel({
       0
     );
 
+    // 예상 사용자 값 추출 (빈 배열 체크 포함)
+    const targetUsers = projectOverview?.serviceCoreElements?.targetUsers;
+    const estimatedUsersValue = 
+      targetUsers && Array.isArray(targetUsers) && targetUsers.length > 0
+        ? targetUsers.join(", ")
+        : "미정";
+
+    // 프로젝트 기간 값 추출
+    const estimatedDuration = projectOverview?.serviceCoreElements?.estimatedDuration;
+    const timelineDevelopment = projectOverview?.estimation?.timeline?.development;
+    const durationValue = 
+      estimatedDuration || timelineDevelopment || "미정";
+
+    // 디버깅 로그 (개발 환경에서만)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('ConfirmationPanel - 프로젝트 개요 데이터:', {
+        hasProjectOverview: !!projectOverview,
+        targetUsers,
+        estimatedDuration,
+        timelineDevelopment,
+        estimatedUsersValue,
+        durationValue,
+      });
+    }
+
     return {
       total: totalCount,
       mandatory,
@@ -173,12 +198,8 @@ export function ConfirmationPanel({
         projectOverview?.serviceCoreElements?.title ||
         projectData.serviceType ||
         "프로젝트",
-      estimatedUsers:
-        projectOverview?.serviceCoreElements?.targetUsers?.join(", ") || "미정",
-      duration:
-        projectOverview?.serviceCoreElements?.estimatedDuration ||
-        projectOverview?.estimation?.timeline?.development ||
-        "미정",
+      estimatedUsers: estimatedUsersValue,
+      duration: durationValue,
     };
   }, [extractedRequirements, projectData.serviceType, projectOverview]);
 
