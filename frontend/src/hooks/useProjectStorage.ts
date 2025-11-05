@@ -197,6 +197,54 @@ export const useProjectStorage = () => {
     }
   }, []);
 
+  const updateProjectOverview = useCallback(async (
+    projectId: string,
+    overview: any
+  ) => {
+    setState(prev => ({
+      ...prev,
+      isLoading: true,
+      error: null,
+    }));
+
+    try {
+      console.log('프로젝트 개요 업데이트:', { projectId, hasOverview: !!overview });
+
+      const { data, error } = await supabase
+        .from('projects')
+        .update({ project_overview: overview })
+        .eq('id', projectId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('프로젝트 개요 업데이트 오류:', error);
+        throw new Error(`Database error: ${error.message}`);
+      }
+
+      console.log('프로젝트 개요 업데이트 성공:', data);
+
+      setState(prev => ({
+        ...prev,
+        isLoading: false,
+        error: null,
+      }));
+
+      return data;
+    } catch (err) {
+      console.error('프로젝트 개요 업데이트 실패:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      
+      setState(prev => ({
+        ...prev,
+        isLoading: false,
+        error: errorMessage,
+      }));
+
+      throw err;
+    }
+  }, []);
+
   const getProjectData = useCallback(async (projectId: string) => {
     setState(prev => ({
       ...prev,
@@ -301,6 +349,7 @@ export const useProjectStorage = () => {
     saveProjectWithMessages,
     saveRequirements,
     updateProjectStatus,
+    updateProjectOverview,
     getProjectData,
     clearState,
     setSavedProjectId,

@@ -272,6 +272,7 @@ function HomePageContent() {
     saveProjectWithMessages,
     saveRequirements,
     updateProjectStatus,
+    updateProjectOverview,
     isLoading: isSaving,
     error: saveError,
     savedProjectId,
@@ -456,6 +457,7 @@ function HomePageContent() {
           requirementsData: updatedRequirements,
         });
 
+        // 1. 요구사항 저장
         const result = await saveRequirements(
           savedProjectId,
           updatedRequirements
@@ -466,6 +468,22 @@ function HomePageContent() {
             status: result.status,
             message: result.message,
           });
+
+          // 2. 프로젝트 개요도 함께 저장 (현재 overview state가 있으면)
+          if (overview) {
+            try {
+              console.log("프로젝트 개요도 함께 저장:", {
+                savedProjectId,
+                hasOverview: !!overview,
+              });
+              await updateProjectOverview(savedProjectId, overview);
+              console.log("프로젝트 개요 저장 성공");
+            } catch (overviewError) {
+              console.error("프로젝트 개요 저장 실패:", overviewError);
+              // 개요 저장 실패해도 요구사항은 저장되었으므로 계속 진행
+            }
+          }
+
           // 성공 토스트 표시 (추후 구현)
           // 최근 작업 목록 갱신 (프로젝트 updated_at이 업데이트되었으므로)
           loadRecentProjects(true);
@@ -488,7 +506,7 @@ function HomePageContent() {
         throw error;
       }
     },
-    [savedProjectId, saveRequirements, loadRecentProjects]
+    [savedProjectId, saveRequirements, updateProjectOverview, overview, loadRecentProjects]
   );
 
   // onProjectUpdate 콜백을 useCallback으로 감싸서 불필요한 리렌더링 방지
