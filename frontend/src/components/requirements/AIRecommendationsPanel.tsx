@@ -102,7 +102,7 @@ export function AIRecommendationsPanel({
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
-      const recommendationsList: AIRecommendation[] = [];
+      const completedRecommendations = new Map<string, AIRecommendation>(); // 완성된 추천 항목 (title 기준)
       let currentRec: Partial<AIRecommendation> = {};
 
       if (reader) {
@@ -115,7 +115,6 @@ export function AIRecommendationsPanel({
           }
 
           const chunk = decoder.decode(value, { stream: true });
-          console.log('스트리밍 청크 수신:', chunk.substring(0, 100));
           buffer += chunk;
           const lines = buffer.split('\n');
           buffer = lines.pop() || '';
@@ -125,15 +124,33 @@ export function AIRecommendationsPanel({
               const data = line.slice(6);
               if (data === '[DONE]') {
                 setIsStreaming(false);
-                if (currentRec.title && currentRec.description) {
-                  recommendationsList.push({
-                    ...currentRec,
-                    id: Date.now().toString() + Math.random().toString(36).substring(7),
-                    category: categoryTitle.toLowerCase(),
-                    priority: currentRec.priority || 'medium',
-                  } as AIRecommendation);
+                // 마지막 추천 항목 처리
+                if (currentRec.title && currentRec.description && currentRec.description.length > 10) {
+                  const titleKey = currentRec.title.trim().toLowerCase().replace(/^[:\s]+/, '').replace(/[:\s]+$/, '');
+                  if (!completedRecommendations.has(titleKey) && !addedRecommendationsRef.current.has(titleKey)) {
+                    completedRecommendations.set(titleKey, {
+                      ...currentRec,
+                      id: Date.now().toString() + Math.random().toString(36).substring(7),
+                      category: categoryTitle.toLowerCase(),
+                      priority: currentRec.priority || 'medium',
+                      description: simplifyDescription(currentRec.description),
+                    } as AIRecommendation);
+                  }
                 }
-                setRecommendations(recommendationsList);
+                // 완성된 추천 항목들을 state에 추가 (중복 제거)
+                const newRecommendations = Array.from(completedRecommendations.values());
+                setRecommendations((prev) => {
+                  const existingTitles = new Set(prev.map(r => r.title.trim().toLowerCase().replace(/^[:\s]+/, '').replace(/[:\s]+$/, '')));
+                  const uniqueNew = newRecommendations.filter(r => {
+                    const cleanTitle = r.title.trim().toLowerCase().replace(/^[:\s]+/, '').replace(/[:\s]+$/, '');
+                    return !existingTitles.has(cleanTitle) && !addedRecommendationsRef.current.has(cleanTitle);
+                  });
+                  uniqueNew.forEach(r => {
+                    const cleanTitle = r.title.trim().toLowerCase().replace(/^[:\s]+/, '').replace(/[:\s]+$/, '');
+                    addedRecommendationsRef.current.add(cleanTitle);
+                  });
+                  return [...prev, ...uniqueNew];
+                });
                 setCurrentRecommendation({});
                 setStreamingText("");
                 return;
@@ -145,75 +162,61 @@ export function AIRecommendationsPanel({
                   if (json.field === 'title') {
                     // 이전 추천이 완성되었으면 저장
                     if (currentRec.title && currentRec.description && currentRec.description.length > 10) {
-                      const titleKey = currentRec.title.trim().toLowerCase();
-                      // 중복 체크: 이미 추가된 항목이 아니고, 목록에도 없어야 함
-                      if (!addedRecommendationsRef.current.has(titleKey) && 
-                          !recommendationsList.find(r => r.title.trim().toLowerCase() === titleKey)) {
-                        const newRec = {
+                      const titleKey = currentRec.title.trim().toLowerCase().replace(/^[:\s]+/, '').replace(/[:\s]+$/, '');
+                      if (!completedRecommendations.has(titleKey) && !addedRecommendationsRef.current.has(titleKey)) {
+                        completedRecommendations.set(titleKey, {
                           ...currentRec,
                           id: Date.now().toString() + Math.random().toString(36).substring(7),
                           category: categoryTitle.toLowerCase(),
                           priority: currentRec.priority || 'medium',
-                          description: simplifyDescription(currentRec.description), // 설명 단순화
-                        } as AIRecommendation;
-                        recommendationsList.push(newRec);
-                        addedRecommendationsRef.current.add(titleKey);
-                        setRecommendations([...recommendationsList]);
+                          description: simplifyDescription(currentRec.description),
+                        } as AIRecommendation);
                       }
                     }
                     // 새 추천 시작
                     currentRec = { title: json.value };
                     setCurrentRecommendation({ ...currentRec });
                   } else if (json.field === 'description') {
-                    // description은 완성된 값으로 받음 (백엔드에서 완성된 항목만 전송)
+                    // description은 완성된 값으로 받음
                     currentRec.description = json.value;
                     setCurrentRecommendation({ ...currentRec });
                     setStreamingText(json.value || '');
                     
-                    // title과 description이 모두 있고, 설명이 충분히 길면 목록에 추가 (중복 방지)
+                    // 완성된 항목을 Map에 저장 (중복 방지) - 스트리밍 중에는 Map에만 저장, state 업데이트는 하지 않음
                     if (currentRec.title && 
                         currentRec.description && 
                         currentRec.description.length > 10) {
-                      const titleKey = currentRec.title.trim().toLowerCase();
-                      
-                      // 중복 체크: 이미 추가된 항목이 아니고, 목록에도 없어야 함
-                      if (!addedRecommendationsRef.current.has(titleKey) && 
-                          !recommendationsList.find(r => r.title.trim().toLowerCase() === titleKey)) {
-                        const newRec = {
+                      const titleKey = currentRec.title.trim().toLowerCase().replace(/^[:\s]+/, '').replace(/[:\s]+$/, '');
+                      if (!completedRecommendations.has(titleKey) && !addedRecommendationsRef.current.has(titleKey)) {
+                        completedRecommendations.set(titleKey, {
                           ...currentRec,
                           id: Date.now().toString() + Math.random().toString(36).substring(7),
                           category: categoryTitle.toLowerCase(),
                           priority: currentRec.priority || 'medium',
-                          description: simplifyDescription(currentRec.description), // 설명 단순화
-                        } as AIRecommendation;
-                        recommendationsList.push(newRec);
-                        addedRecommendationsRef.current.add(titleKey);
-                        setRecommendations([...recommendationsList]);
+                          description: simplifyDescription(currentRec.description),
+                        } as AIRecommendation);
                       }
                     }
                   } else if (json.field === 'priority') {
                     currentRec.priority = json.value;
                     setCurrentRecommendation({ ...currentRec });
                     
-                    // priority가 설정되면 완성된 것으로 간주하고 목록 업데이트
+                    // priority가 설정되면 완성된 것으로 간주 - Map에만 저장
                     if (currentRec.title && currentRec.description && currentRec.description.length > 10) {
-                      const titleKey = currentRec.title.trim().toLowerCase();
-                      const existingIndex = recommendationsList.findIndex(r => r.title.trim().toLowerCase() === titleKey);
-                      
-                      if (existingIndex >= 0) {
-                        recommendationsList[existingIndex].priority = json.value;
-                        setRecommendations([...recommendationsList]);
+                      const titleKey = currentRec.title.trim().toLowerCase().replace(/^[:\s]+/, '').replace(/[:\s]+$/, '');
+                      if (completedRecommendations.has(titleKey)) {
+                        // 이미 있는 항목의 priority 업데이트
+                        const existing = completedRecommendations.get(titleKey)!;
+                        existing.priority = json.value;
                       } else if (!addedRecommendationsRef.current.has(titleKey)) {
-                        const newRec = {
+                        // 새 항목 추가
+                        completedRecommendations.set(titleKey, {
                           ...currentRec,
                           id: Date.now().toString() + Math.random().toString(36).substring(7),
                           category: categoryTitle.toLowerCase(),
                           priority: json.value,
-                          description: simplifyDescription(currentRec.description), // 설명 단순화
-                        } as AIRecommendation;
-                        recommendationsList.push(newRec);
-                        addedRecommendationsRef.current.add(titleKey);
-                        setRecommendations([...recommendationsList]);
+                          description: simplifyDescription(currentRec.description),
+                        } as AIRecommendation);
                       }
                     }
                   }
@@ -225,23 +228,41 @@ export function AIRecommendationsPanel({
                 }
               } catch (e) {
                 // JSON 파싱 실패 무시 (스트리밍 중일 수 있음)
-                console.log('JSON 파싱 실패:', e, data.substring(0, 100));
               }
             }
           }
         }
       }
 
+      // 스트리밍 완료 후 최종 처리
       setIsStreaming(false);
-      if (currentRec.title && currentRec.description) {
-        recommendationsList.push({
-          ...currentRec,
-          id: Date.now().toString() + Math.random().toString(36).substring(7),
-          category: categoryTitle.toLowerCase(),
-          priority: currentRec.priority || 'medium',
-        } as AIRecommendation);
+      if (currentRec.title && currentRec.description && currentRec.description.length > 10) {
+        const titleKey = currentRec.title.trim().toLowerCase().replace(/^[:\s]+/, '').replace(/[:\s]+$/, '');
+        if (!completedRecommendations.has(titleKey) && !addedRecommendationsRef.current.has(titleKey)) {
+          completedRecommendations.set(titleKey, {
+            ...currentRec,
+            id: Date.now().toString() + Math.random().toString(36).substring(7),
+            category: categoryTitle.toLowerCase(),
+            priority: currentRec.priority || 'medium',
+            description: simplifyDescription(currentRec.description),
+          } as AIRecommendation);
+        }
       }
-      setRecommendations(recommendationsList);
+      
+      // 완성된 추천 항목들을 state에 추가 (중복 제거)
+      const newRecommendations = Array.from(completedRecommendations.values());
+      setRecommendations((prev) => {
+        const existingTitles = new Set(prev.map(r => r.title.trim().toLowerCase().replace(/^[:\s]+/, '').replace(/[:\s]+$/, '')));
+        const uniqueNew = newRecommendations.filter(r => {
+          const cleanTitle = r.title.trim().toLowerCase().replace(/^[:\s]+/, '').replace(/[:\s]+$/, '');
+          return !existingTitles.has(cleanTitle) && !addedRecommendationsRef.current.has(cleanTitle);
+        });
+        uniqueNew.forEach(r => {
+          const cleanTitle = r.title.trim().toLowerCase().replace(/^[:\s]+/, '').replace(/[:\s]+$/, '');
+          addedRecommendationsRef.current.add(cleanTitle);
+        });
+        return [...prev, ...uniqueNew];
+      });
     } catch (error: any) {
       if (error.name === 'AbortError') {
         console.log('요청이 취소되었습니다.');
