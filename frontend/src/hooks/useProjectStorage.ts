@@ -263,8 +263,19 @@ export const useProjectStorage = () => {
         .single();
 
       if (projectError) {
-        console.error('프로젝트 데이터 조회 오류:', projectError);
+        console.error('프로젝트 데이터 조회 오류:', {
+          error: projectError,
+          code: projectError.code,
+          message: projectError.message,
+          details: projectError.details,
+          hint: projectError.hint,
+        });
         throw new Error(`프로젝트 조회 실패: ${projectError.message}`);
+      }
+
+      if (!projectData) {
+        console.error('프로젝트 데이터가 null입니다:', projectId);
+        throw new Error('프로젝트 데이터를 찾을 수 없습니다');
       }
 
       // 채팅 메시지 가져오기
@@ -280,27 +291,25 @@ export const useProjectStorage = () => {
       }
 
       // 요구사항 데이터 가져오기
-      const { data: requirementsData, error: requirementsError } = await supabase
-        .from('requirements')
-        .select('*')
-        .eq('project_id', projectId)
-        .single();
-
-      if (requirementsError && requirementsError.code !== 'PGRST116') {
-        console.error('요구사항 데이터 조회 오류:', requirementsError);
-        throw new Error(`요구사항 조회 실패: ${requirementsError.message}`);
-      }
+      // requirements 테이블은 JSONB 필드가 없으므로 projects 테이블의 requirements JSONB 필드 사용
+      // requirements 테이블은 정규화된 개별 요구사항이므로, 여기서는 projects.requirements JSONB 사용
+      const requirementsFromProject = projectData?.requirements || null;
 
       console.log('기존 프로젝트 데이터 로드 성공:', {
-        project: projectData,
+        project: projectData ? {
+          id: projectData.id,
+          title: projectData.title,
+          hasProjectOverview: !!projectData.project_overview,
+          hasRequirements: !!requirementsFromProject,
+        } : null,
         messagesCount: messagesData?.length || 0,
-        hasRequirements: !!requirementsData
+        hasRequirements: !!requirementsFromProject,
       });
 
       const result = {
-        project: projectData,
+        project: projectData || {},
         messages: messagesData || [],
-        requirements: requirementsData?.requirements_json || null,
+        requirements: requirementsFromProject,
       };
 
       setState(prev => ({
