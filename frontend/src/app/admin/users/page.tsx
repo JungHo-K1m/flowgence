@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { createClient } from "@/lib/supabase";
 
 interface User {
@@ -19,6 +19,8 @@ export default function UsersPage() {
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   useEffect(() => {
     loadUsers();
@@ -36,7 +38,45 @@ export default function UsersPage() {
       );
       setFilteredUsers(filtered);
     }
+    // 검색 시 첫 페이지로 이동
+    setCurrentPage(1);
   }, [searchTerm, users]);
+
+  // 페이지네이션 계산
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+  const paginatedUsers = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredUsers.slice(startIndex, endIndex);
+  }, [filteredUsers, currentPage, itemsPerPage]);
+
+  // 페이지 변경
+  const handlePageChange = (page: number) => {
+    setCurrentPage(Math.min(Math.max(1, page), totalPages));
+  };
+
+  // 페이지당 항목 수 변경
+  const handleItemsPerPageChange = (value: number) => {
+    setItemsPerPage(value);
+    setCurrentPage(1); // 첫 페이지로 이동
+  };
+
+  // 페이지 번호 배열 생성 (최대 5개)
+  const getPageNumbers = () => {
+    const pages: number[] = [];
+    const maxVisible = 5;
+    let startPage = Math.max(1, currentPage - 2);
+    let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+
+    if (endPage - startPage < maxVisible - 1) {
+      startPage = Math.max(1, endPage - maxVisible + 1);
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i);
+    }
+    return pages;
+  };
 
   const loadUsers = async () => {
     setLoading(true);
@@ -164,9 +204,9 @@ export default function UsersPage() {
         <h1 className="text-2xl font-bold text-gray-900">사용자 관리</h1>
       </div>
 
-      {/* Search Bar */}
+      {/* Search Bar & Items Per Page */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center">
+        <div className="flex items-center justify-between gap-4">
           <div className="relative flex-1">
             <input
               type="text"
@@ -176,6 +216,18 @@ export default function UsersPage() {
               className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6366F1]"
             />
             <span className="absolute left-3 top-2.5 text-gray-400">🔍</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">표시 개수:</span>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6366F1]"
+            >
+              <option value={10}>10명</option>
+              <option value={30}>30명</option>
+              <option value={50}>50명</option>
+            </select>
           </div>
         </div>
       </div>
@@ -213,7 +265,7 @@ export default function UsersPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredUsers.length === 0 ? (
+              {paginatedUsers.length === 0 ? (
                 <tr>
                   <td
                     colSpan={8}
@@ -225,7 +277,7 @@ export default function UsersPage() {
                   </td>
                 </tr>
               ) : (
-                filteredUsers.map((user) => (
+                paginatedUsers.map((user) => (
                   <tr key={user.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {user.email}
@@ -265,22 +317,44 @@ export default function UsersPage() {
           <div className="px-6 py-4 border-t border-gray-200">
             <div className="flex items-center justify-between">
               <p className="text-sm text-gray-600">
-                총 {filteredUsers.length}명의 사용자
+                총 {filteredUsers.length}명의 사용자 (
+                {(currentPage - 1) * itemsPerPage + 1}-
+                {Math.min(currentPage * itemsPerPage, filteredUsers.length)}명 표시)
               </p>
               <div className="flex items-center space-x-2">
-                <button className="px-3 py-1 text-sm text-gray-600 hover:text-gray-900">
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className={`px-3 py-1 text-sm rounded ${
+                    currentPage === 1
+                      ? "text-gray-400 cursor-not-allowed"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                  }`}
+                >
                   이전
                 </button>
-                <button className="px-3 py-1 text-sm bg-[#6366F1] text-white rounded">
-                  1
-                </button>
-                <button className="px-3 py-1 text-sm text-gray-600 hover:text-gray-900">
-                  2
-                </button>
-                <button className="px-3 py-1 text-sm text-gray-600 hover:text-gray-900">
-                  3
-                </button>
-                <button className="px-3 py-1 text-sm text-gray-600 hover:text-gray-900">
+                {getPageNumbers().map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => handlePageChange(page)}
+                    className={`px-3 py-1 text-sm rounded ${
+                      currentPage === page
+                        ? "bg-[#6366F1] text-white"
+                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className={`px-3 py-1 text-sm rounded ${
+                    currentPage === totalPages
+                      ? "text-gray-400 cursor-not-allowed"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                  }`}
+                >
                   다음
                 </button>
               </div>

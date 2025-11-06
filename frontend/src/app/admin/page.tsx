@@ -28,6 +28,17 @@ interface PendingReview {
   daysWaiting: number;
 }
 
+interface ExtractedRequirements {
+  totalCount?: number;
+  categories?: any[];
+}
+
+interface ProjectOverview {
+  estimation?: {
+    totalCost?: string;
+  };
+}
+
 export default function AdminPage() {
   const [stats, setStats] = useState<DashboardStats>({
     totalProjects: 0,
@@ -43,6 +54,25 @@ export default function AdminPage() {
   useEffect(() => {
     loadDashboardData();
   }, []);
+
+  // 프로젝트 견적 금액 계산 함수
+  const getEstimateAmount = (project: any): number => {
+    // AI가 생성한 견적이 있으면 해당 금액 사용
+    if (project.project_overview?.estimation?.totalCost) {
+      const totalCostStr = project.project_overview.estimation.totalCost;
+      const cost = parseInt(totalCostStr.replace(/[^0-9]/g, "")) || 0;
+      if (cost > 0) return cost;
+    }
+    
+    // AI 견적이 없으면 요구사항당 100만원으로 계산 (임시)
+    if (project.requirements) {
+      const extractedRequirements = project.requirements as ExtractedRequirements;
+      const requirementCount = extractedRequirements.totalCount || 0;
+      return requirementCount * 1000000;
+    }
+    
+    return 0;
+  };
 
   const loadDashboardData = async () => {
     setLoading(true);
@@ -67,9 +97,12 @@ export default function AdminPage() {
       const totalProjects = projects?.length || 0;
       const completedProjects =
         projects?.filter((p) => p.status === "completed").length || 0;
-      const totalEstimate =
-        (projects?.filter((p) => p.status === "completed").length || 0) *
-        8000000;
+      
+      // 실제 견적금액 합계 계산
+      const totalEstimate = (projects || []).reduce((sum, project) => {
+        return sum + getEstimateAmount(project);
+      }, 0);
+      
       const pendingApproval =
         projects?.filter((p) => p.status === "draft").length || 0;
 
@@ -103,12 +136,14 @@ export default function AdminPage() {
           const diffTime = Math.abs(today.getTime() - createdDate.getTime());
           const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
+          const estimateAmount = getEstimateAmount(p);
+
           return {
             id: p.id,
             title: p.title || "제목 없음",
             userName: p.profiles?.full_name || p.profiles?.email || "알 수 없음",
             estimate:
-              p.status === "completed" ? "₩15,000,000" : "견적 산출중",
+              estimateAmount > 0 ? `₩${estimateAmount.toLocaleString()}` : "견적 산출중",
             daysWaiting: diffDays,
           };
         });

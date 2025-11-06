@@ -1,8 +1,19 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { createClient } from "@/lib/supabase";
 import Link from "next/link";
+
+interface ExtractedRequirements {
+  totalCount?: number;
+  categories?: any[];
+}
+
+interface ProjectOverview {
+  estimation?: {
+    totalCost?: string;
+  };
+}
 
 interface Project {
   id: string;
@@ -13,6 +24,8 @@ interface Project {
   estimateDate: string;
   estimate: string;
   requirementsCount: number;
+  requirements?: ExtractedRequirements;
+  project_overview?: ProjectOverview;
 }
 
 export default function ProjectsPage() {
@@ -22,6 +35,8 @@ export default function ProjectsPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   useEffect(() => {
     loadProjects();
@@ -29,7 +44,71 @@ export default function ProjectsPage() {
 
   useEffect(() => {
     filterProjects();
+    // 필터 변경 시 첫 페이지로 이동
+    setCurrentPage(1);
   }, [searchTerm, categoryFilter, statusFilter, projects]);
+
+  // 페이지네이션 계산
+  const totalPages = Math.ceil(filteredProjects.length / itemsPerPage);
+  const paginatedProjects = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredProjects.slice(startIndex, endIndex);
+  }, [filteredProjects, currentPage, itemsPerPage]);
+
+  // 페이지 변경
+  const handlePageChange = (page: number) => {
+    setCurrentPage(Math.min(Math.max(1, page), totalPages));
+  };
+
+  // 페이지당 항목 수 변경
+  const handleItemsPerPageChange = (value: number) => {
+    setItemsPerPage(value);
+    setCurrentPage(1); // 첫 페이지로 이동
+  };
+
+  // 페이지 번호 배열 생성 (최대 5개)
+  const getPageNumbers = () => {
+    const pages: number[] = [];
+    const maxVisible = 5;
+    let startPage = Math.max(1, currentPage - 2);
+    let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+
+    if (endPage - startPage < maxVisible - 1) {
+      startPage = Math.max(1, endPage - maxVisible + 1);
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i);
+    }
+    return pages;
+  };
+
+  // 프로젝트 요구사항 수 계산 함수
+  const getRequirementCount = (project: any): number => {
+    if (!project.requirements) return 0;
+    const extractedRequirements = project.requirements as ExtractedRequirements;
+    return extractedRequirements.totalCount || 0;
+  };
+
+  // 프로젝트 견적 금액 계산 함수
+  const getEstimateAmount = (project: any): number => {
+    // AI가 생성한 견적이 있으면 해당 금액 사용
+    if (project.project_overview?.estimation?.totalCost) {
+      const totalCostStr = project.project_overview.estimation.totalCost;
+      const cost = parseInt(totalCostStr.replace(/[^0-9]/g, "")) || 0;
+      if (cost > 0) return cost;
+    }
+    
+    // AI 견적이 없으면 요구사항당 100만원으로 계산 (임시)
+    if (project.requirements) {
+      const extractedRequirements = project.requirements as ExtractedRequirements;
+      const requirementCount = extractedRequirements.totalCount || 0;
+      return requirementCount * 1000000;
+    }
+    
+    return 0;
+  };
 
   const loadProjects = async () => {
     setLoading(true);
@@ -51,19 +130,23 @@ export default function ProjectsPage() {
 
       if (error) throw error;
 
-      const formattedProjects: Project[] = (projects || []).map((p) => ({
-        id: p.id,
-        title: p.title || "제목 없음",
-        userName: p.profiles?.full_name || p.profiles?.email || "알 수 없음",
-        status: p.status || "draft",
-        createdAt: p.created_at,
-        estimateDate: p.updated_at,
-        estimate:
-          p.status === "completed"
-            ? `${(8000000).toLocaleString()}원`
-            : "미산출",
-        requirementsCount: 8, // 임시 하드코딩
-      }));
+      const formattedProjects: Project[] = (projects || []).map((p) => {
+        const requirementCount = getRequirementCount(p);
+        const estimateAmount = getEstimateAmount(p);
+
+        return {
+          id: p.id,
+          title: p.title || "제목 없음",
+          userName: p.profiles?.full_name || p.profiles?.email || "알 수 없음",
+          status: p.status || "draft",
+          createdAt: p.created_at,
+          estimateDate: p.updated_at,
+          estimate: estimateAmount > 0 ? `${estimateAmount.toLocaleString()}원` : "미산출",
+          requirementsCount: requirementCount,
+          requirements: p.requirements,
+          project_overview: p.project_overview,
+        };
+      });
 
       setProjects(formattedProjects);
       setFilteredProjects(formattedProjects);
@@ -170,7 +253,7 @@ export default function ProjectsPage() {
             onChange={(e) => setStatusFilter(e.target.value)}
             className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6366F1]"
           >
-            <option value="all">카테고리</option>
+            <option value="all">상태</option>
             <option value="requirements_review">요구사항 검토</option>
             <option value="requirements_extraction">요구사항 추출</option>
             <option value="estimation">견적 산출</option>
@@ -188,6 +271,19 @@ export default function ProjectsPage() {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6366F1]"
             />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600 whitespace-nowrap">표시 개수:</span>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6366F1]"
+            >
+              <option value={10}>10개</option>
+              <option value={30}>30개</option>
+              <option value={50}>50개</option>
+            </select>
           </div>
         </div>
       </div>
@@ -225,7 +321,7 @@ export default function ProjectsPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredProjects.length === 0 ? (
+              {paginatedProjects.length === 0 ? (
                 <tr>
                   <td
                     colSpan={8}
@@ -237,7 +333,7 @@ export default function ProjectsPage() {
                   </td>
                 </tr>
               ) : (
-                filteredProjects.map((project) => (
+                paginatedProjects.map((project) => (
                   <tr key={project.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
@@ -279,22 +375,44 @@ export default function ProjectsPage() {
           <div className="px-6 py-4 border-t border-gray-200">
             <div className="flex items-center justify-between">
               <p className="text-sm text-gray-600">
-                총 {filteredProjects.length}개 프로젝트
+                총 {filteredProjects.length}개 프로젝트 (
+                {(currentPage - 1) * itemsPerPage + 1}-
+                {Math.min(currentPage * itemsPerPage, filteredProjects.length)}개 표시)
               </p>
               <div className="flex items-center space-x-2">
-                <button className="px-3 py-1 text-sm text-gray-600 hover:text-gray-900">
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className={`px-3 py-1 text-sm rounded ${
+                    currentPage === 1
+                      ? "text-gray-400 cursor-not-allowed"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                  }`}
+                >
                   이전
                 </button>
-                <button className="px-3 py-1 text-sm bg-[#6366F1] text-white rounded">
-                  1
-                </button>
-                <button className="px-3 py-1 text-sm text-gray-600 hover:text-gray-900">
-                  2
-                </button>
-                <button className="px-3 py-1 text-sm text-gray-600 hover:text-gray-900">
-                  3
-                </button>
-                <button className="px-3 py-1 text-sm text-gray-600 hover:text-gray-900">
+                {getPageNumbers().map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => handlePageChange(page)}
+                    className={`px-3 py-1 text-sm rounded ${
+                      currentPage === page
+                        ? "bg-[#6366F1] text-white"
+                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className={`px-3 py-1 text-sm rounded ${
+                    currentPage === totalPages
+                      ? "text-gray-400 cursor-not-allowed"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                  }`}
+                >
                   다음
                 </button>
               </div>
