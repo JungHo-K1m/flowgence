@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { createClient } from "@/lib/supabase";
-import Link from "next/link";
 
 interface ExtractedRequirements {
   totalCount?: number;
-  categories?: any[];
+  categories?: unknown[];
 }
 
 interface ProjectOverview {
@@ -40,12 +39,14 @@ export default function ProjectsPage() {
 
   useEffect(() => {
     loadProjects();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     filterProjects();
     // 필터 변경 시 첫 페이지로 이동
     setCurrentPage(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm, categoryFilter, statusFilter, projects]);
 
   // 페이지네이션 계산
@@ -72,7 +73,7 @@ export default function ProjectsPage() {
     const pages: number[] = [];
     const maxVisible = 5;
     let startPage = Math.max(1, currentPage - 2);
-    let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+    const endPage = Math.min(totalPages, startPage + maxVisible - 1);
 
     if (endPage - startPage < maxVisible - 1) {
       startPage = Math.max(1, endPage - maxVisible + 1);
@@ -85,14 +86,17 @@ export default function ProjectsPage() {
   };
 
   // 프로젝트 요구사항 수 계산 함수
-  const getRequirementCount = (project: any): number => {
+  const getRequirementCount = (project: { requirements?: ExtractedRequirements }): number => {
     if (!project.requirements) return 0;
     const extractedRequirements = project.requirements as ExtractedRequirements;
     return extractedRequirements.totalCount || 0;
   };
 
   // 프로젝트 견적 금액 계산 함수
-  const getEstimateAmount = (project: any): number => {
+  const getEstimateAmount = (project: { 
+    requirements?: ExtractedRequirements; 
+    project_overview?: ProjectOverview 
+  }): number => {
     // AI가 생성한 견적이 있으면 해당 금액 사용
     if (project.project_overview?.estimation?.totalCost) {
       const totalCostStr = project.project_overview.estimation.totalCost;

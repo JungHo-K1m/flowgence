@@ -30,7 +30,7 @@ interface PendingReview {
 
 interface ExtractedRequirements {
   totalCount?: number;
-  categories?: any[];
+  categories?: unknown[];
 }
 
 interface ProjectOverview {
@@ -53,10 +53,14 @@ export default function AdminPage() {
 
   useEffect(() => {
     loadDashboardData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 프로젝트 견적 금액 계산 함수
-  const getEstimateAmount = (project: any): number => {
+  const getEstimateAmount = (project: { 
+    requirements?: ExtractedRequirements; 
+    project_overview?: ProjectOverview 
+  }): number => {
     // AI가 생성한 견적이 있으면 해당 금액 사용
     if (project.project_overview?.estimation?.totalCost) {
       const totalCostStr = project.project_overview.estimation.totalCost;
