@@ -287,6 +287,19 @@ export class ChatService {
             
             try {
               const jsonResponse = JSON.parse(jsonText);
+              console.log('재시도 응답 - JSON 파싱 성공:', jsonResponse);
+              console.log('재시도 응답 - projectOverview 존재:', !!jsonResponse.projectOverview);
+              
+              // projectOverview가 빈 객체인지 확인
+              if (jsonResponse.projectOverview && typeof jsonResponse.projectOverview === 'object') {
+                const overviewKeys = Object.keys(jsonResponse.projectOverview);
+                console.log('재시도 응답 - projectOverview 키 목록:', overviewKeys);
+                if (overviewKeys.length === 0) {
+                  console.warn('⚠️ 재시도 응답 - projectOverview가 빈 객체입니다. null로 설정합니다.');
+                  jsonResponse.projectOverview = null;
+                }
+              }
+              
               return {
                 content: jsonResponse.content || retryResponseText,
                 metadata: { 
@@ -328,8 +341,10 @@ export class ChatService {
       const responseText = data.content[0].text;
       
       console.log('=== Claude API 응답 디버깅 ===');
-      console.log('응답 텍스트:', responseText);
+      console.log('응답 텍스트 전체:', responseText);
       console.log('응답 길이:', responseText.length);
+      console.log('응답 텍스트 처음 500자:', responseText.substring(0, 500));
+      console.log('응답 텍스트 마지막 500자:', responseText.substring(Math.max(0, responseText.length - 500)));
       
       // 마크다운 코드 블록에서 JSON 추출
       let jsonText = responseText;
@@ -338,17 +353,54 @@ export class ChatService {
       const jsonBlockMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/);
       if (jsonBlockMatch) {
         jsonText = jsonBlockMatch[1];
-        console.log('코드 블록에서 JSON 추출:', jsonText.substring(0, 200) + '...');
+        console.log('✅ 코드 블록에서 JSON 추출 성공');
+        console.log('추출된 JSON 텍스트 처음 500자:', jsonText.substring(0, 500));
       } else {
         // 코드 블록이 없는 경우 원본 텍스트 사용
-        console.log('코드 블록 없음, 원본 텍스트 사용');
+        console.log('⚠️ 코드 블록 없음, 원본 텍스트에서 JSON 추출 시도');
+        // 원본 텍스트가 JSON으로 시작하는지 확인
+        const trimmedText = responseText.trim();
+        if (trimmedText.startsWith('{')) {
+          console.log('✅ 원본 텍스트가 JSON 형식으로 시작함');
+          jsonText = trimmedText;
+        } else {
+          console.warn('⚠️ 원본 텍스트가 JSON 형식이 아닐 수 있음');
+        }
       }
       
       // JSON 응답 파싱 시도
       try {
         const jsonResponse = JSON.parse(jsonText);
-        console.log('JSON 파싱 성공:', jsonResponse);
-        console.log('projectOverview 존재:', !!jsonResponse.projectOverview);
+        console.log('JSON 파싱 성공');
+        console.log('jsonResponse 전체 구조:', {
+          hasContent: !!jsonResponse.content,
+          hasProjectOverview: !!jsonResponse.projectOverview,
+          projectOverviewType: typeof jsonResponse.projectOverview,
+          projectOverviewValue: jsonResponse.projectOverview,
+          allKeys: Object.keys(jsonResponse),
+        });
+        
+        // projectOverview가 빈 객체인지 확인
+        if (jsonResponse.projectOverview && typeof jsonResponse.projectOverview === 'object') {
+          const overviewKeys = Object.keys(jsonResponse.projectOverview);
+          console.log('projectOverview 키 목록:', overviewKeys);
+          console.log('projectOverview가 빈 객체인가?', overviewKeys.length === 0);
+          
+          if (overviewKeys.length === 0) {
+            console.warn('⚠️ projectOverview가 빈 객체입니다. null로 설정합니다.');
+            jsonResponse.projectOverview = null;
+          } else {
+            // serviceCoreElements 확인
+            if (jsonResponse.projectOverview.serviceCoreElements) {
+              const serviceKeys = Object.keys(jsonResponse.projectOverview.serviceCoreElements);
+              console.log('serviceCoreElements 키 목록:', serviceKeys);
+              console.log('targetUsers:', jsonResponse.projectOverview.serviceCoreElements.targetUsers);
+              console.log('estimatedDuration:', jsonResponse.projectOverview.serviceCoreElements.estimatedDuration);
+            } else {
+              console.warn('⚠️ serviceCoreElements가 없습니다.');
+            }
+          }
+        }
         
         return {
           content: jsonResponse.content || responseText,

@@ -147,6 +147,17 @@ export const useProjectOverview = () => {
       console.log('설정할 overview 데이터:', data.projectOverview);
       console.log('projectOverview 타입:', typeof data.projectOverview);
       console.log('projectOverview가 null인가?', data.projectOverview === null);
+      console.log('projectOverview가 빈 객체인가?', 
+        data.projectOverview && typeof data.projectOverview === 'object' && 
+        Object.keys(data.projectOverview).length === 0
+      );
+      
+      // projectOverview가 빈 객체인 경우 null로 처리
+      if (data.projectOverview && typeof data.projectOverview === 'object' && 
+          Object.keys(data.projectOverview).length === 0) {
+        console.warn('⚠️ projectOverview가 빈 객체입니다. null로 처리합니다.');
+        data.projectOverview = null;
+      }
       
       // 백엔드 응답 구조를 프론트엔드 구조로 변환
       let processedOverview = data.projectOverview;
