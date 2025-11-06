@@ -2037,7 +2037,7 @@ function HomePageContent() {
             serviceCoreElements: {
               title: projectDescription.substring(0, 50) || "프로젝트",
               description: projectDescription || "",
-              keyFeatures: allRequirements.slice(0, 5).map(r => r.title),
+              keyFeatures: allRequirements.slice(0, 5).map((r: Requirement) => r.title),
               targetUsers: ["미정"],
               estimatedDuration: "미정",
               projectScale: mandatoryCount > 10 ? "대규모" : mandatoryCount > 5 ? "중규모" : "소규모",
