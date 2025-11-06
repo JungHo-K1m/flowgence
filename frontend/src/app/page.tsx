@@ -68,6 +68,7 @@ function HomePageContent() {
   const [isRequirementsLoading, setIsRequirementsLoading] = useState(false);
   const [chatMessages, setChatMessages] = useState<Message[]>([]);
   const hasResumedProject = useRef(false);
+  const isProcessingStep1To2 = useRef(false); // 1단계 → 2단계 전환 중복 호출 방지
   
   // 파일 처리 관련 상태
   const [isProcessingFiles, setIsProcessingFiles] = useState(false);
@@ -148,6 +149,11 @@ function HomePageContent() {
       return;
     }
 
+    // 1단계 → 2단계 전환 중이면 세션 복원하지 않음
+    if (isProcessingStep1To2.current) {
+      return;
+    }
+
     // 세션 복원
     const sessionData = restoreSession();
     if (sessionData) {
@@ -161,7 +167,10 @@ function HomePageContent() {
       setUserComment(sessionData.userComment);
       setFileNamesDisplay(sessionData.fileNamesDisplay);
       setSelectedServiceType(sessionData.selectedServiceType);
-      setCurrentStep(sessionData.currentStep);
+      // 1단계 → 2단계 전환 중이 아닐 때만 currentStep 복원
+      if (!isProcessingStep1To2.current) {
+        setCurrentStep(sessionData.currentStep);
+      }
       setChatMessages(sessionData.chatMessages || []);
       setEditableRequirements(sessionData.editableRequirements);
       if (sessionData.extractedRequirements && updateExtractedRequirements) {
@@ -1980,9 +1989,20 @@ function HomePageContent() {
 
   const handleNextStep = async () => {
     if (currentStep === 1) {
+      // 중복 호출 방지
+      if (isProcessingStep1To2.current) {
+        console.log("1단계 → 2단계 전환 중복 호출 방지");
+        return;
+      }
+      
       // 프로젝트 개요에서 요구사항 관리로 전환 (즉시 페이지 전환)
 
       // 1단계에서 2단계로 넘어갈 때는 로그인 없이 진행 가능
+      isProcessingStep1To2.current = true;
+      
+      // 세션 자동 저장 임시 중지 (전환 완료 후 재개)
+      stopAutoSave();
+      
       // 1. 즉시 페이지 전환
       setShowRequirements(true);
       setCurrentStep(2);
@@ -2162,6 +2182,14 @@ function HomePageContent() {
         }
       } finally {
         setIsRequirementsLoading(false);
+        isProcessingStep1To2.current = false; // 처리 완료 플래그 해제
+        
+        // 세션 자동 저장 재개 (전환 완료 후)
+        setTimeout(() => {
+          startAutoSave(() => {
+            // 자동 저장 콜백
+          });
+        }, 1000); // 1초 후 재개 (세션 복원이 완료될 시간 확보)
       }
     } else if (currentStep === 2) {
       // 2단계에서 3단계로 넘어갈 때는 로그인 필요
