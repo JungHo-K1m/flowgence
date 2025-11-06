@@ -82,12 +82,15 @@ export function useProjectRestore() {
           );
         }
       } else {
-        console.warn("프로젝트 개요 데이터가 없거나 비어있습니다:", {
+        // 프로젝트 개요가 없는 경우는 정상일 수 있음 (요구사항만 추출한 경우 등)
+        // 경고 대신 정보 로그로 변경
+        console.info("프로젝트 개요 데이터가 없습니다:", {
           overview: projectData.overview,
           type: typeof projectData.overview,
           isNull: projectData.overview === null,
           isUndefined: projectData.overview === undefined,
           keys: projectData.overview ? Object.keys(projectData.overview) : [],
+          note: "프로젝트 개요가 없어도 요구사항 관리와 견적 확인은 정상적으로 진행됩니다.",
         });
       }
 

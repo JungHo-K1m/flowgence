@@ -242,6 +242,27 @@ function HomePageContent() {
             setEditableRequirements,
           });
 
+          // 프로젝트 개요가 없으면 DB에서 다시 조회
+          if (!projectData.overview && projectData.projectId) {
+            console.log("프로젝트 개요가 없어서 DB에서 다시 조회:", projectData.projectId);
+            getProjectData(projectData.projectId)
+              .then((data) => {
+                if (data?.project?.project_overview && setOverviewDirectly) {
+                  console.log("DB에서 프로젝트 개요 조회 성공:", {
+                    hasOverview: !!data.project.project_overview,
+                    targetUsers: data.project.project_overview?.serviceCoreElements?.targetUsers,
+                    estimatedDuration: data.project.project_overview?.serviceCoreElements?.estimatedDuration,
+                  });
+                  setOverviewDirectly(data.project.project_overview);
+                } else {
+                  console.log("DB에서 프로젝트 개요를 찾을 수 없음");
+                }
+              })
+              .catch((error) => {
+                console.error("DB에서 프로젝트 개요 조회 실패:", error);
+              });
+          }
+
           // 복구 완료 후 sessionStorage 정리
           sessionStorage.removeItem("flowgence_resume_project");
           console.log("프로젝트 복구 완료 (이어서 작업하기)");
@@ -257,6 +278,7 @@ function HomePageContent() {
     updateOverview,
     setOverviewDirectly,
     updateExtractedRequirements,
+    getProjectData,
   ]);
 
   // 외부 URL 쿼리 파라미터로 프로젝트 초기화 (다른 사이트에서 링크로 접근)
