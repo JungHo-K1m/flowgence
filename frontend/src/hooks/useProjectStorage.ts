@@ -29,7 +29,11 @@ export const useProjectStorage = () => {
     try {
       console.log('프로젝트와 메시지 저장 시작:', {
         title: projectData.title,
-        messagesCount: messages.length
+        messagesCount: messages.length,
+        hasProjectOverview: !!projectData.project_overview,
+        projectOverviewType: typeof projectData.project_overview,
+        projectOverviewKeys: projectData.project_overview ? Object.keys(projectData.project_overview) : [],
+        projectOverviewRaw: projectData.project_overview,
       });
 
       // Supabase 연결 상태 확인
@@ -41,7 +45,7 @@ export const useProjectStorage = () => {
         project_data: {
           title: projectData.title,
           description: projectData.description,
-          project_overview: projectData.project_overview
+          project_overview: projectData.project_overview || null // null이면 명시적으로 null 전달
         },
         messages_data: messages
       });

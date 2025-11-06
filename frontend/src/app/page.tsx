@@ -2046,8 +2046,12 @@ function HomePageContent() {
 
           console.log("프로젝트 저장 시작 (개요 포함):", {
             hasOverview: !!overview,
+            overviewType: typeof overview,
+            overviewValue: overview,
+            overviewKeys: overview ? Object.keys(overview) : [],
             targetUsers: overview?.serviceCoreElements?.targetUsers,
             estimatedDuration: overview?.serviceCoreElements?.estimatedDuration,
+            projectDataOverview: projectData.project_overview,
           });
           const projectResult = await saveProjectWithMessages(
             projectData,
