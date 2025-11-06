@@ -30,7 +30,6 @@ interface Project {
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
-  const [categoryFilter, setCategoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
@@ -47,7 +46,7 @@ export default function ProjectsPage() {
     // 필터 변경 시 첫 페이지로 이동
     setCurrentPage(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchTerm, categoryFilter, statusFilter, projects]);
+  }, [searchTerm, statusFilter, projects]);
 
   // 페이지네이션 계산
   const totalPages = Math.ceil(filteredProjects.length / itemsPerPage);
@@ -238,26 +237,13 @@ export default function ProjectsPage() {
 
       {/* Filters */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center space-x-4">
-          <select
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6366F1]"
-          >
-            <option value="all">카테고리</option>
-            <option value="food">음식 배달</option>
-            <option value="realestate">부동산</option>
-            <option value="work">업무 관리</option>
-            <option value="education">온라인 교육</option>
-            <option value="shopping">쇼핑몰</option>
-          </select>
-
+        <div className="flex items-center gap-4">
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6366F1]"
+            className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6366F1] min-w-[150px]"
           >
-            <option value="all">상태</option>
+            <option value="all">전체 상태</option>
             <option value="requirements_review">요구사항 검토</option>
             <option value="requirements_extraction">요구사항 추출</option>
             <option value="estimation">견적 산출</option>
@@ -270,7 +256,7 @@ export default function ProjectsPage() {
           <div className="flex-1">
             <input
               type="text"
-              placeholder="검색..."
+              placeholder="프로젝트명 또는 사용자명으로 검색..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6366F1]"
