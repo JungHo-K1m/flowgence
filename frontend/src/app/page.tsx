@@ -2185,11 +2185,33 @@ function HomePageContent() {
         isProcessingStep1To2.current = false; // 처리 완료 플래그 해제
         
         // 세션 자동 저장 재개 (전환 완료 후)
-        setTimeout(() => {
-          startAutoSave(() => {
-            // 자동 저장 콜백
-          });
-        }, 1000); // 1초 후 재개 (세션 복원이 완료될 시간 확보)
+        // 자동 저장은 useEffect에서 자동으로 재개되므로 여기서는 제거
+        // setTimeout(() => {
+        //   startAutoSave(() => {
+        //     return {
+        //       currentStep,
+        //       projectDescription,
+        //       userComment,
+        //       fileNamesDisplay,
+        //       selectedServiceType,
+        //       uploadedFiles: uploadedFiles.map((file) => ({
+        //         name: file.name,
+        //         size: file.size,
+        //         type: file.type,
+        //         lastModified: file.lastModified,
+        //       })),
+        //       chatMessages,
+        //       editableRequirements,
+        //       extractedRequirements,
+        //       overview,
+        //       showChatInterface,
+        //       showRequirements,
+        //       showConfirmation,
+        //       showFinalResult,
+        //       fileContents,
+        //     };
+        //   });
+        // }, 1000);
       }
     } else if (currentStep === 2) {
       // 2단계에서 3단계로 넘어갈 때는 로그인 필요
