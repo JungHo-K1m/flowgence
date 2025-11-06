@@ -75,6 +75,28 @@ export const useProjectStorage = () => {
         responseData: data,
         errorDetails: error,
       });
+      
+      // RPC 함수로 저장된 프로젝트 조회 (project_overview 확인)
+      if (data?.project_id && !error) {
+        try {
+          const { data: savedProject, error: fetchError } = await supabase
+            .from('projects')
+            .select('project_overview')
+            .eq('id', data.project_id)
+            .single();
+          
+          if (!fetchError && savedProject) {
+            console.log('✅ RPC 저장 후 DB 확인:', {
+              projectId: data.project_id,
+              hasProjectOverview: !!savedProject.project_overview,
+              targetUsers: savedProject.project_overview?.serviceCoreElements?.targetUsers,
+              estimatedDuration: savedProject.project_overview?.serviceCoreElements?.estimatedDuration,
+            });
+          }
+        } catch (checkError) {
+          console.warn('⚠️ 저장 후 DB 확인 실패:', checkError);
+        }
+      }
 
       if (error) {
         console.error('프로젝트 저장 오류:', error);
@@ -279,8 +301,25 @@ export const useProjectStorage = () => {
           hasServiceCoreElements: !!data.project_overview.serviceCoreElements,
           targetUsers: data.project_overview.serviceCoreElements?.targetUsers,
           estimatedDuration: data.project_overview.serviceCoreElements?.estimatedDuration,
+          serviceCoreElementsKeys: data.project_overview.serviceCoreElements ? Object.keys(data.project_overview.serviceCoreElements) : [],
         } : null,
       });
+      
+      // 저장된 데이터 상세 확인
+      if (data?.project_overview?.serviceCoreElements) {
+        console.log('✅ DB에 저장된 project_overview 상세:', {
+          targetUsers: data.project_overview.serviceCoreElements.targetUsers,
+          targetUsersLength: data.project_overview.serviceCoreElements.targetUsers?.length,
+          targetUsersType: Array.isArray(data.project_overview.serviceCoreElements.targetUsers) ? 'array' : typeof data.project_overview.serviceCoreElements.targetUsers,
+          estimatedDuration: data.project_overview.serviceCoreElements.estimatedDuration,
+          estimatedDurationType: typeof data.project_overview.serviceCoreElements.estimatedDuration,
+        });
+      } else {
+        console.warn('⚠️ DB 응답에 serviceCoreElements가 없습니다:', {
+          hasProjectOverview: !!data?.project_overview,
+          projectOverviewKeys: data?.project_overview ? Object.keys(data.project_overview) : [],
+        });
+      }
 
       if (error) {
         console.error('프로젝트 개요 업데이트 오류:', error);
