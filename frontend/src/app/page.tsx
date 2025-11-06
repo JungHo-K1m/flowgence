@@ -2039,6 +2039,16 @@ function HomePageContent() {
       // 1단계에서 2단계로 넘어갈 때는 로그인 없이 진행 가능
       isProcessingStep1To2.current = true;
       
+      console.log("=== 1단계 → 2단계 전환 시작 ===");
+      console.log("현재 overview state (전환 시작 시점):", {
+        hasOverview: !!overview,
+        overviewType: typeof overview,
+        overviewValue: overview,
+        overviewKeys: overview ? Object.keys(overview) : [],
+        targetUsers: overview?.serviceCoreElements?.targetUsers,
+        estimatedDuration: overview?.serviceCoreElements?.estimatedDuration,
+      });
+      
       // 세션 자동 저장 임시 중지 (전환 완료 후 재개)
       stopAutoSave();
       
@@ -2081,11 +2091,14 @@ function HomePageContent() {
 
         console.log("요구사항 추출 완료:", requirements);
         console.log("=== 프로젝트 개요 저장 시점 1: 1단계 → 2단계 전환 시 ===");
-        console.log("현재 overview state:", {
+        console.log("현재 overview state (요구사항 추출 후):", {
           hasOverview: !!overview,
           overviewType: typeof overview,
           overviewValue: overview,
           overviewKeys: overview ? Object.keys(overview) : [],
+          targetUsers: overview?.serviceCoreElements?.targetUsers,
+          estimatedDuration: overview?.serviceCoreElements?.estimatedDuration,
+          serviceCoreElementsKeys: overview?.serviceCoreElements ? Object.keys(overview.serviceCoreElements) : [],
         });
 
         // 프로젝트 개요가 없으면 요구사항에서 기본 정보 추출하여 생성
