@@ -2024,12 +2024,12 @@ function HomePageContent() {
 
         // 로그인된 사용자만 프로젝트 데이터 저장
         if (user) {
-          // 3. 프로젝트 데이터 저장
+          // 3. 프로젝트 데이터 저장 (프로젝트 개요 포함)
           const projectData = {
             title: projectDescription.substring(0, 100),
             description: projectDescription,
             serviceType: selectedServiceType,
-            project_overview: overview,
+            project_overview: overview, // 프로젝트 개요 포함
             uploadedFiles,
           };
 
@@ -2044,7 +2044,11 @@ function HomePageContent() {
             },
           }));
 
-          console.log("프로젝트 저장 시작");
+          console.log("프로젝트 저장 시작 (개요 포함):", {
+            hasOverview: !!overview,
+            targetUsers: overview?.serviceCoreElements?.targetUsers,
+            estimatedDuration: overview?.serviceCoreElements?.estimatedDuration,
+          });
           const projectResult = await saveProjectWithMessages(
             projectData,
             messages
@@ -2053,6 +2057,21 @@ function HomePageContent() {
           if (projectResult.status === "success") {
             console.log("프로젝트 저장 성공:", projectResult.project_id);
             setSavedProjectId(projectResult.project_id);
+
+            // 프로젝트 개요가 있으면 명시적으로도 저장 (saveProjectWithMessages가 저장하지만, 확실히 하기 위해)
+            if (overview) {
+              try {
+                console.log("프로젝트 개요 명시적 저장:", {
+                  projectId: projectResult.project_id,
+                  hasOverview: !!overview,
+                });
+                await updateProjectOverview(projectResult.project_id, overview);
+                console.log("프로젝트 개요 명시적 저장 성공");
+              } catch (overviewError) {
+                console.error("프로젝트 개요 명시적 저장 실패:", overviewError);
+                // 개요 저장 실패해도 계속 진행 (saveProjectWithMessages에서 이미 저장했을 수 있음)
+              }
+            }
 
             // 4. 요구사항 저장
             if (requirements) {
@@ -2065,47 +2084,11 @@ function HomePageContent() {
               if (requirementsResult.status === "success") {
                 console.log("요구사항 저장 성공");
                 setEditableRequirements(requirements);
-
-                // 5. 프로젝트 개요도 함께 저장 (요구사항 저장 성공 후)
-                if (overview) {
-                  try {
-                    console.log("프로젝트 개요 저장 시작:", {
-                      projectId: projectResult.project_id,
-                      hasOverview: !!overview,
-                      targetUsers: overview?.serviceCoreElements?.targetUsers,
-                      estimatedDuration: overview?.serviceCoreElements?.estimatedDuration,
-                    });
-                    await updateProjectOverview(projectResult.project_id, overview);
-                    console.log("프로젝트 개요 저장 성공");
-                  } catch (overviewError) {
-                    console.error("프로젝트 개요 저장 실패:", overviewError);
-                    // 개요 저장 실패해도 요구사항은 저장되었으므로 계속 진행
-                  }
-                } else {
-                  console.warn("프로젝트 개요가 없어서 저장하지 않습니다:", {
-                    hasOverviewState: !!overview,
-                    projectId: projectResult.project_id,
-                  });
-                }
               } else {
                 console.error(
                   "요구사항 저장 실패:",
                   requirementsResult.message
                 );
-              }
-            } else {
-              // 요구사항이 없어도 프로젝트 개요는 저장
-              if (overview) {
-                try {
-                  console.log("요구사항 없음, 프로젝트 개요만 저장:", {
-                    projectId: projectResult.project_id,
-                    hasOverview: !!overview,
-                  });
-                  await updateProjectOverview(projectResult.project_id, overview);
-                  console.log("프로젝트 개요 저장 성공");
-                } catch (overviewError) {
-                  console.error("프로젝트 개요 저장 실패:", overviewError);
-                }
               }
             }
           } else {
