@@ -473,8 +473,16 @@ function HomePageContent() {
   // 편집된 요구사항을 DB에 저장
   const saveEditedRequirements = useCallback(
     async (updatedRequirements: ExtractedRequirements) => {
+      console.log("=== 프로젝트 개요 저장 시점 2: 요구사항 편집 후 저장 시 ===");
+      console.log("saveEditedRequirements 호출:", {
+        savedProjectId,
+        requirementsCount: updatedRequirements.totalCount,
+        hasOverview: !!overview,
+        overviewType: typeof overview,
+      });
+
       if (!savedProjectId) {
-        console.warn("저장된 프로젝트 ID가 없습니다. DB 저장을 건너뜁니다.", {
+        console.warn("⚠️ 저장된 프로젝트 ID가 없습니다. DB 저장을 건너뜁니다.", {
           savedProjectId,
           requirementsCount: updatedRequirements.totalCount,
         });
@@ -490,57 +498,88 @@ function HomePageContent() {
         });
 
         // 1. 요구사항 저장
+        console.log("💾 요구사항 저장 시작:", {
+          projectId: savedProjectId,
+          requirementsCount: updatedRequirements.totalCount,
+        });
         const result = await saveRequirements(
           savedProjectId,
           updatedRequirements
         );
 
         if (result.status === "success") {
-          console.log("편집된 요구사항 DB 저장 성공:", {
+          console.log("✅ 요구사항 DB 저장 성공:", {
             status: result.status,
             message: result.message,
           });
 
           // 2. 프로젝트 개요도 함께 저장
+          console.log("=== 프로젝트 개요 저장 확인 ===");
+          console.log("현재 overview state:", {
+            hasOverview: !!overview,
+            overviewType: typeof overview,
+            overviewValue: overview,
+            overviewKeys: overview ? Object.keys(overview) : [],
+          });
+
           // 현재 overview state가 있으면 사용하고, 없으면 DB에서 조회
           let overviewToSave = overview;
           if (!overviewToSave && savedProjectId) {
             try {
-              console.log("overview state가 없어서 DB에서 조회:", savedProjectId);
+              console.log("⚠️ overview state가 없어서 DB에서 조회:", savedProjectId);
               const projectData = await getProjectData(savedProjectId);
               if (projectData?.project?.project_overview) {
                 overviewToSave = projectData.project.project_overview;
-                console.log("DB에서 overview 조회 성공:", {
+                console.log("✅ DB에서 overview 조회 성공:", {
                   hasOverview: !!overviewToSave,
+                  overviewType: typeof overviewToSave,
+                  overviewKeys: overviewToSave ? Object.keys(overviewToSave) : [],
                   targetUsers: overviewToSave?.serviceCoreElements?.targetUsers,
                   estimatedDuration: overviewToSave?.serviceCoreElements?.estimatedDuration,
                 });
                 // 조회한 overview를 state에도 설정
                 if (setOverviewDirectly) {
+                  console.log("📝 조회한 overview를 state에 설정");
                   setOverviewDirectly(overviewToSave);
                 }
+              } else {
+                console.warn("⚠️ DB에서도 프로젝트 개요를 찾을 수 없음");
               }
             } catch (fetchError) {
-              console.error("DB에서 overview 조회 실패:", fetchError);
+              console.error("❌ DB에서 overview 조회 실패:", fetchError);
             }
+          } else if (overviewToSave) {
+            console.log("✅ overview state 사용:", {
+              targetUsers: overviewToSave?.serviceCoreElements?.targetUsers,
+              estimatedDuration: overviewToSave?.serviceCoreElements?.estimatedDuration,
+            });
           }
 
           if (overviewToSave) {
             try {
-              console.log("프로젝트 개요도 함께 저장:", {
-                savedProjectId,
+              console.log("📋 updateProjectOverview 호출:", {
+                projectId: savedProjectId,
                 hasOverview: !!overviewToSave,
+                overviewType: typeof overviewToSave,
                 targetUsers: overviewToSave?.serviceCoreElements?.targetUsers,
                 estimatedDuration: overviewToSave?.serviceCoreElements?.estimatedDuration,
+                overviewKeys: Object.keys(overviewToSave),
               });
-              await updateProjectOverview(savedProjectId, overviewToSave);
-              console.log("프로젝트 개요 저장 성공");
+              const updateResult = await updateProjectOverview(savedProjectId, overviewToSave);
+              console.log("✅ 프로젝트 개요 저장 성공:", {
+                projectId: savedProjectId,
+                updatedProject: updateResult,
+              });
             } catch (overviewError) {
-              console.error("프로젝트 개요 저장 실패:", overviewError);
+              console.error("❌ 프로젝트 개요 저장 실패:", {
+                error: overviewError,
+                projectId: savedProjectId,
+                hasOverview: !!overviewToSave,
+              });
               // 개요 저장 실패해도 요구사항은 저장되었으므로 계속 진행
             }
           } else {
-            console.warn("프로젝트 개요가 없어서 저장하지 않습니다:", {
+            console.warn("⚠️ 프로젝트 개요가 없어서 저장하지 않습니다:", {
               hasOverviewState: !!overview,
               savedProjectId,
             });
@@ -2041,11 +2080,18 @@ function HomePageContent() {
         );
 
         console.log("요구사항 추출 완료:", requirements);
+        console.log("=== 프로젝트 개요 저장 시점 1: 1단계 → 2단계 전환 시 ===");
+        console.log("현재 overview state:", {
+          hasOverview: !!overview,
+          overviewType: typeof overview,
+          overviewValue: overview,
+          overviewKeys: overview ? Object.keys(overview) : [],
+        });
 
         // 프로젝트 개요가 없으면 요구사항에서 기본 정보 추출하여 생성
         let overviewToSave = overview;
         if (!overviewToSave && requirements) {
-          console.log("프로젝트 개요가 없어서 요구사항에서 기본 정보 추출");
+          console.log("⚠️ 프로젝트 개요가 없어서 요구사항에서 기본 정보 추출");
           // 요구사항에서 기본 정보 추출
           const categories = requirements.categories || [];
           const allRequirements = categories.flatMap((cat: RequirementCategory) => 
@@ -2067,15 +2113,26 @@ function HomePageContent() {
               steps: [],
             },
           };
-          console.log("기본 프로젝트 개요 생성:", overviewToSave);
+          console.log("✅ 기본 프로젝트 개요 생성 완료:", {
+            overview: overviewToSave,
+            targetUsers: overviewToSave.serviceCoreElements.targetUsers,
+            estimatedDuration: overviewToSave.serviceCoreElements.estimatedDuration,
+          });
           // state에도 설정
           if (setOverviewDirectly) {
+            console.log("📝 overview state에 직접 설정");
             setOverviewDirectly(overviewToSave);
           }
+        } else {
+          console.log("✅ 기존 overview 사용:", {
+            targetUsers: overviewToSave?.serviceCoreElements?.targetUsers,
+            estimatedDuration: overviewToSave?.serviceCoreElements?.estimatedDuration,
+          });
         }
 
         // 로그인된 사용자만 프로젝트 데이터 저장
         if (user) {
+          console.log("=== 로그인된 사용자: 프로젝트 저장 시작 ===");
           // 3. 프로젝트 데이터 저장 (프로젝트 개요 포함)
           const projectData = {
             title: projectDescription.substring(0, 100),
@@ -2084,6 +2141,12 @@ function HomePageContent() {
             project_overview: overviewToSave, // 프로젝트 개요 포함 (없으면 기본값)
             uploadedFiles,
           };
+          console.log("📦 저장할 projectData:", {
+            title: projectData.title,
+            hasProjectOverview: !!projectData.project_overview,
+            projectOverviewType: typeof projectData.project_overview,
+            projectOverviewKeys: projectData.project_overview ? Object.keys(projectData.project_overview) : [],
+          });
 
           const messages = chatMessages.map((msg) => ({
             role: (msg.type === "user" ? "user" : "assistant") as
@@ -2096,7 +2159,7 @@ function HomePageContent() {
             },
           }));
 
-          console.log("프로젝트 저장 시작 (개요 포함):", {
+          console.log("💾 saveProjectWithMessages 호출 시작:", {
             hasOverview: !!overviewToSave,
             hasOriginalOverview: !!overview,
             overviewType: typeof overviewToSave,
@@ -2110,28 +2173,43 @@ function HomePageContent() {
             projectData,
             messages
           );
+          console.log("✅ saveProjectWithMessages 완료:", {
+            status: projectResult.status,
+            projectId: projectResult.project_id,
+            message: projectResult.message,
+          });
 
           if (projectResult.status === "success") {
-            console.log("프로젝트 저장 성공:", projectResult.project_id);
+            console.log("✅ 프로젝트 저장 성공:", projectResult.project_id);
             setSavedProjectId(projectResult.project_id);
 
             // 프로젝트 개요가 있으면 명시적으로도 저장 (saveProjectWithMessages가 저장하지만, 확실히 하기 위해)
             if (overviewToSave) {
               try {
-                console.log("프로젝트 개요 명시적 저장:", {
+                console.log("=== 프로젝트 개요 명시적 저장 시작 ===");
+                console.log("📋 updateProjectOverview 호출:", {
                   projectId: projectResult.project_id,
                   hasOverview: !!overviewToSave,
+                  overviewType: typeof overviewToSave,
                   targetUsers: overviewToSave?.serviceCoreElements?.targetUsers,
                   estimatedDuration: overviewToSave?.serviceCoreElements?.estimatedDuration,
+                  overviewKeys: Object.keys(overviewToSave),
                 });
-                await updateProjectOverview(projectResult.project_id, overviewToSave);
-                console.log("프로젝트 개요 명시적 저장 성공");
+                const updateResult = await updateProjectOverview(projectResult.project_id, overviewToSave);
+                console.log("✅ 프로젝트 개요 명시적 저장 성공:", {
+                  projectId: projectResult.project_id,
+                  updatedProject: updateResult,
+                });
               } catch (overviewError) {
-                console.error("프로젝트 개요 명시적 저장 실패:", overviewError);
+                console.error("❌ 프로젝트 개요 명시적 저장 실패:", {
+                  error: overviewError,
+                  projectId: projectResult.project_id,
+                  hasOverview: !!overviewToSave,
+                });
                 // 개요 저장 실패해도 계속 진행 (saveProjectWithMessages에서 이미 저장했을 수 있음)
               }
             } else {
-              console.warn("프로젝트 개요가 없어서 저장하지 않습니다:", {
+              console.warn("⚠️ 프로젝트 개요가 없어서 저장하지 않습니다:", {
                 hasOriginalOverview: !!overview,
                 hasOverviewToSave: !!overviewToSave,
                 projectId: projectResult.project_id,

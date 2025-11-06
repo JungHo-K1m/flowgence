@@ -164,18 +164,43 @@ export function ConfirmationPanel({
       0
     );
 
-    // 예상 사용자 값 추출 (빈 배열 체크 포함)
+    // 예상 사용자 값 추출 (빈 배열 체크 포함, '미정' 필터링)
     const targetUsers = projectOverview?.serviceCoreElements?.targetUsers;
-    const estimatedUsersValue = 
-      targetUsers && Array.isArray(targetUsers) && targetUsers.length > 0
-        ? targetUsers.join(", ")
-        : "미정";
+    let estimatedUsersValue = "미정";
+    if (targetUsers && Array.isArray(targetUsers) && targetUsers.length > 0) {
+      // '미정'을 제외한 실제 값만 추출
+      const validUsers = targetUsers.filter((user: string) => user && user.trim() !== "미정" && user.trim() !== "");
+      if (validUsers.length > 0) {
+        estimatedUsersValue = validUsers.join(", ");
+      }
+    }
 
-    // 프로젝트 기간 값 추출
+    // 프로젝트 기간 값 추출 ('미정' 필터링 및 요구사항 기반 추정)
     const estimatedDuration = projectOverview?.serviceCoreElements?.estimatedDuration;
     const timelineDevelopment = projectOverview?.estimation?.timeline?.development;
-    const durationValue = 
-      estimatedDuration || timelineDevelopment || "미정";
+    
+    let durationValue = "미정";
+    
+    // '미정'이 아닌 실제 값이 있는지 확인
+    if (estimatedDuration && estimatedDuration.trim() !== "미정" && estimatedDuration.trim() !== "") {
+      durationValue = estimatedDuration;
+    } else if (timelineDevelopment && timelineDevelopment.trim() !== "미정" && timelineDevelopment.trim() !== "") {
+      durationValue = timelineDevelopment;
+    } else if (extractedRequirements && extractedRequirements.categories) {
+      // 요구사항 기반으로 추정: 각 카테고리의 요구사항 수를 기반으로 기간 추정
+      const totalRequirements = extractedRequirements.totalCount || 0;
+      const mandatoryCount = extractedRequirements.categories.reduce((total: number, cat: RequirementCategory) => {
+        return total + (cat.subCategories?.reduce((subTotal: number, sub: { requirements?: Requirement[] }) => {
+          return subTotal + (sub.requirements?.filter((r: Requirement) => r.priority === 'high').length || 0);
+        }, 0) || 0);
+      }, 0);
+      
+      // 필수 요구사항 1개당 약 1주일, 전체 요구사항을 고려하여 추정
+      if (totalRequirements > 0) {
+        const estimatedWeeks = Math.max(4, Math.ceil(mandatoryCount * 1.5 + (totalRequirements - mandatoryCount) * 0.5));
+        durationValue = `${estimatedWeeks}주`;
+      }
+    }
 
     // 디버깅 로그 (개발 환경에서만)
     if (process.env.NODE_ENV === 'development') {

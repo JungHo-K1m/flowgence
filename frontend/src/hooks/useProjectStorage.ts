@@ -27,6 +27,7 @@ export const useProjectStorage = () => {
     }));
 
     try {
+      console.log('=== saveProjectWithMessages 함수 호출 ===');
       console.log('프로젝트와 메시지 저장 시작:', {
         title: projectData.title,
         messagesCount: messages.length,
@@ -35,12 +36,30 @@ export const useProjectStorage = () => {
         projectOverviewKeys: projectData.project_overview ? Object.keys(projectData.project_overview) : [],
         projectOverviewRaw: projectData.project_overview,
       });
+      
+      if (projectData.project_overview) {
+        console.log('📋 project_overview 상세 정보:', {
+          serviceCoreElements: projectData.project_overview.serviceCoreElements ? {
+            hasServiceCoreElements: true,
+            targetUsers: projectData.project_overview.serviceCoreElements.targetUsers,
+            estimatedDuration: projectData.project_overview.serviceCoreElements.estimatedDuration,
+            hasUserJourney: !!projectData.project_overview.userJourney,
+          } : null,
+        });
+      }
 
       // Supabase 연결 상태 확인
       const { data: { user } } = await supabase.auth.getUser();
       console.log('현재 사용자:', user?.id);
 
       // Supabase 함수 호출
+      console.log('📤 Supabase RPC 함수 호출:', {
+        functionName: 'save_project_with_messages',
+        projectDataTitle: projectData.title,
+        hasProjectOverview: !!projectData.project_overview,
+        projectOverviewValue: projectData.project_overview || null,
+      });
+      
       const { data, error } = await supabase.rpc('save_project_with_messages', {
         project_data: {
           title: projectData.title,
@@ -48,6 +67,13 @@ export const useProjectStorage = () => {
           project_overview: projectData.project_overview || null // null이면 명시적으로 null 전달
         },
         messages_data: messages
+      });
+      
+      console.log('📥 Supabase RPC 응답:', {
+        hasData: !!data,
+        hasError: !!error,
+        responseData: data,
+        errorDetails: error,
       });
 
       if (error) {
@@ -212,14 +238,49 @@ export const useProjectStorage = () => {
     }));
 
     try {
-      console.log('프로젝트 개요 업데이트:', { projectId, hasOverview: !!overview });
+      console.log('=== updateProjectOverview 함수 호출 ===');
+      console.log('프로젝트 개요 업데이트:', { 
+        projectId, 
+        hasOverview: !!overview,
+        overviewType: typeof overview,
+        overviewKeys: overview ? Object.keys(overview) : [],
+      });
+      
+      if (overview) {
+        console.log('📋 업데이트할 overview 상세 정보:', {
+          serviceCoreElements: overview.serviceCoreElements ? {
+            targetUsers: overview.serviceCoreElements.targetUsers,
+            estimatedDuration: overview.serviceCoreElements.estimatedDuration,
+            hasUserJourney: !!overview.userJourney,
+          } : null,
+        });
+      }
 
+      console.log('📤 Supabase UPDATE 쿼리 실행:', {
+        table: 'projects',
+        projectId: projectId,
+        hasOverview: !!overview,
+        overviewValue: overview,
+      });
+      
       const { data, error } = await supabase
         .from('projects')
         .update({ project_overview: overview })
         .eq('id', projectId)
         .select()
         .single();
+      
+      console.log('📥 Supabase UPDATE 응답:', {
+        hasData: !!data,
+        hasError: !!error,
+        responseData: data,
+        errorDetails: error,
+        updatedProjectOverview: data?.project_overview ? {
+          hasServiceCoreElements: !!data.project_overview.serviceCoreElements,
+          targetUsers: data.project_overview.serviceCoreElements?.targetUsers,
+          estimatedDuration: data.project_overview.serviceCoreElements?.estimatedDuration,
+        } : null,
+      });
 
       if (error) {
         console.error('프로젝트 개요 업데이트 오류:', error);
