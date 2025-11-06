@@ -303,12 +303,6 @@ function HomePageContent() {
   // 외부 URL 쿼리 파라미터로 프로젝트 초기화 (다른 사이트에서 링크로 접근)
   const hasInitializedFromQuery = useRef(false);
 
-  // 요구사항 업데이트 훅 사용
-  const {
-    updateRequirements: updateRequirementsFromChat,
-    isLoading: isUpdatingRequirements,
-  } = useRequirementsUpdate();
-
   // 요구사항 편집 모달 상태
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<string>("");
