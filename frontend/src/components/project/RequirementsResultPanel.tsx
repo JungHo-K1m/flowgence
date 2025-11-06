@@ -105,11 +105,7 @@ export function RequirementsResultPanel({
                 subCategory.requirements?.map((req) => req.title) || []
             ) || []
         ) || ["기본 기능 1", "기본 기능 2", "기본 기능 3"],
-        excluded: [
-          "오프라인 매장 POS, 복잡한 WMS/OMS 고도화 (기초 재고/출고 연동만)",
-          "커뮤니티형 SNS (피드·팔로우 등), 다국가 멀티 통화 완전 대응 (추후 단계)",
-          "수의사 상담/처방전 검증 (링크 수준 가이드만 제공)",
-        ],
+        excluded: [], // 제외 범위는 현재 AI가 생성하지 않음
       },
       functionalRequirements: extractedRequirements?.categories?.flatMap(
         (category, categoryIndex) =>
@@ -530,17 +526,21 @@ export function RequirementsResultPanel({
                   </ul>
                 </div>
                 <div>
-                  <h3 className="font-medium text-gray-900 mb-3">
-                    제외 범위 (Excluded Scope)
-                  </h3>
-                  <ul className="space-y-2">
-                    {requirementsData.scope.excluded.map((item, index) => (
-                      <li key={index} className="flex items-start">
-                        <span className="text-red-500 mr-2 mt-1">•</span>
-                        <span className="text-gray-600">{item}</span>
-                      </li>
-                    ))}
-                  </ul>
+                  {requirementsData.scope.excluded.length > 0 && (
+                    <>
+                      <h3 className="font-medium text-gray-900 mb-3">
+                        제외 범위 (Excluded Scope)
+                      </h3>
+                      <ul className="space-y-2">
+                        {requirementsData.scope.excluded.map((item, index) => (
+                          <li key={index} className="flex items-start">
+                            <span className="text-red-500 mr-2 mt-1">•</span>
+                            <span className="text-gray-600">{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
                 </div>
               </div>
             </section>

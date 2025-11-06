@@ -74,8 +74,8 @@ ${requirementsData.overview.valueProposition}
 ### 포함 기능
 ${requirementsData.scope.included.map(item => `- ${item}`).join('\n')}
 
-### 제외 기능
-${requirementsData.scope.excluded.map(item => `- ${item}`).join('\n')}
+${requirementsData.scope.excluded.length > 0 ? `### 제외 기능
+${requirementsData.scope.excluded.map(item => `- ${item}`).join('\n')}` : ''}
 
 ---
 
