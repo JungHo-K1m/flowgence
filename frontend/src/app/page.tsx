@@ -204,6 +204,24 @@ function HomePageContent() {
     }
   }, [searchParams, restoreSession, updateOverview, updateExtractedRequirements]);
 
+  // 요구사항 업데이트 훅 사용
+  const {
+    updateRequirements: updateRequirementsFromChat,
+    isLoading: isUpdatingRequirements,
+  } = useRequirementsUpdate();
+
+  const {
+    saveProjectWithMessages,
+    saveRequirements,
+    updateProjectStatus,
+    updateProjectOverview,
+    isLoading: isSaving,
+    error: saveError,
+    savedProjectId,
+    getProjectData,
+    setSavedProjectId,
+  } = useProjectStorage();
+
   // 프로젝트 복구 로직 (이어서 작업하기 - DB 저장된 프로젝트)
   useEffect(() => {
     const resumeProjectId = searchParams.get("resume");
@@ -279,6 +297,7 @@ function HomePageContent() {
     setOverviewDirectly,
     updateExtractedRequirements,
     getProjectData,
+    setSavedProjectId,
   ]);
 
   // 외부 URL 쿼리 파라미터로 프로젝트 초기화 (다른 사이트에서 링크로 접근)
@@ -289,18 +308,6 @@ function HomePageContent() {
     updateRequirements: updateRequirementsFromChat,
     isLoading: isUpdatingRequirements,
   } = useRequirementsUpdate();
-
-  const {
-    saveProjectWithMessages,
-    saveRequirements,
-    updateProjectStatus,
-    updateProjectOverview,
-    isLoading: isSaving,
-    error: saveError,
-    savedProjectId,
-    getProjectData,
-    setSavedProjectId,
-  } = useProjectStorage();
 
   // 요구사항 편집 모달 상태
   const [showEditModal, setShowEditModal] = useState(false);
