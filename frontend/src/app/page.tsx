@@ -2028,11 +2028,10 @@ function HomePageContent() {
           console.log("프로젝트 개요가 없어서 요구사항에서 기본 정보 추출");
           // 요구사항에서 기본 정보 추출
           const categories = requirements.categories || [];
-          const allRequirements = categories.flatMap(cat => 
-            cat.subCategories?.flatMap(sub => sub.requirements || []) || []
+          const allRequirements = categories.flatMap((cat: RequirementCategory) => 
+            cat.subCategories?.flatMap((sub: { requirements?: Requirement[] }) => sub.requirements || []) || []
           );
-          const mandatoryCount = allRequirements.filter(r => r.priority === 'high').length;
-          const recommendedCount = allRequirements.filter(r => r.priority === 'medium').length;
+          const mandatoryCount = allRequirements.filter((r: Requirement) => r.priority === 'high').length;
           
           overviewToSave = {
             serviceCoreElements: {
