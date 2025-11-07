@@ -1662,31 +1662,20 @@ function HomePageContent() {
             const currentDate = new Date().toISOString();
             const requesterName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || '익명';
             
-            console.log('=== 요구사항 데이터 보강 시작 ===');
-            console.log('requesterName:', requesterName);
-            console.log('currentDate:', currentDate);
-            console.log('원본 requirements:', requirements);
-            
             const enrichedRequirements = {
               ...requirements,
               categories: requirements.categories?.map((cat: any) => ({
                 ...cat,
                 subCategories: cat.subCategories?.map((sub: any) => ({
                   ...sub,
-                  requirements: sub.requirements?.map((req: any) => {
-                    const enrichedReq = {
-                      ...req,
-                      requester: req.requester || requesterName,
-                      initialRequestDate: req.initialRequestDate || currentDate,
-                    };
-                    console.log('보강된 요구사항:', enrichedReq);
-                    return enrichedReq;
-                  })
+                  requirements: sub.requirements?.map((req: any) => ({
+                    ...req,
+                    requester: req.requester || requesterName,
+                    initialRequestDate: req.initialRequestDate || currentDate,
+                  }))
                 }))
               }))
             };
-            
-            console.log('=== 최종 enrichedRequirements ===', enrichedRequirements);
             
             setEditableRequirements(enrichedRequirements);
 
@@ -1694,7 +1683,7 @@ function HomePageContent() {
             if (user && savedProjectId) {
               try {
                 await saveRequirements(savedProjectId, enrichedRequirements);
-                console.log("요구사항 저장 완료 (요청자 및 날짜 포함)");
+                console.log("요구사항 저장 완료");
               } catch (error) {
                 console.error("요구사항 저장 실패:", error);
               }
@@ -2281,8 +2270,6 @@ function HomePageContent() {
                   }))
                 }))
               };
-              
-              console.log("보강된 요구사항 데이터:", enrichedRequirements);
               
               const requirementsResult = await saveRequirements(
                 projectResult.project_id,
