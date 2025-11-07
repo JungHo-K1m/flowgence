@@ -15,6 +15,8 @@ interface RequirementsData {
     name: string;
     description: string;
     priority: string;
+    requester?: string;
+    initialRequestDate?: string;
   }>;
   nonFunctionalRequirements: Array<{
     category: string;
