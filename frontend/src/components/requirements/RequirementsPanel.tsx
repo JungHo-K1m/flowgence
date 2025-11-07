@@ -281,7 +281,7 @@ export function RequirementsPanel({
           ? [
               {
                 id: "non_functional",
-                name: "🔧 비기능 요구사항",
+                name: "비기능 요구사항",
                 count: nonFunctionalRequirements.length,
               },
             ]
@@ -402,7 +402,7 @@ export function RequirementsPanel({
               return (
                 <div key="non_functional" className="mb-6">
                   <div
-                    className="w-full flex items-center justify-between p-3 rounded-lg bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 transition-colors cursor-pointer"
+                    className={`w-full flex items-center justify-between p-3 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer bg-gray-50`}
                     onClick={() => toggleSection("non_functional")}
                   >
                     <div className="flex items-center space-x-3">
@@ -416,10 +416,10 @@ export function RequirementsPanel({
                         width={14}
                         height={8}
                       />
-                      <span className="font-medium text-indigo-900">
-                        {category.name}
+                      <span className="font-medium text-gray-900">
+                        비기능 요구사항
                       </span>
-                      <span className="text-sm text-indigo-600">
+                      <span className="text-sm text-gray-500">
                         ({nonFunctionalRequirements.length})
                       </span>
                     </div>
@@ -429,7 +429,7 @@ export function RequirementsPanel({
                           onClick={(e) => {
                             e.stopPropagation();
                             requireAuth(() => {
-                              setEditingNFR(null); // 새 항목 추가 모드
+                              setEditingNFR(null);
                               setShowNFRModal(true);
                             });
                           }}
@@ -450,93 +450,55 @@ export function RequirementsPanel({
                         </p>
                       ) : (
                         filteredNFRs.map((nfr: any) => {
-                        const categoryIcon =
-                          nfr.category === "성능"
-                            ? "⚡"
-                            : nfr.category === "보안"
-                            ? "🔒"
-                            : nfr.category === "사용성"
-                            ? "👥"
-                            : nfr.category === "호환성"
-                            ? "🔄"
-                            : nfr.category === "확장성"
-                            ? "📈"
-                            : nfr.category === "유지보수성"
-                            ? "🛠️"
-                            : "📋";
-
                         return (
                           <div
                             key={nfr.id}
-                            className="p-4 bg-white border border-indigo-200 rounded-lg hover:shadow-sm transition-shadow"
+                            className="p-4 bg-white border border-gray-200 rounded-lg hover:shadow-sm transition-shadow"
                           >
                             <div className="flex items-start justify-between">
                               <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <span className="text-lg">{categoryIcon}</span>
-                                  <h4 className="font-medium text-gray-900">
-                                    {nfr.category}
-                                  </h4>
-                                  {nfr.priority && (
-                                    <span
-                                      className={`px-2 py-0.5 text-xs font-semibold rounded-full ${
-                                        nfr.priority === "high"
-                                          ? "bg-red-100 text-red-800"
-                                          : nfr.priority === "medium"
-                                          ? "bg-yellow-100 text-yellow-800"
-                                          : "bg-green-100 text-green-800"
-                                      }`}
-                                    >
-                                      {nfr.priority === "high"
-                                        ? "높음"
-                                        : nfr.priority === "medium"
-                                        ? "중간"
-                                        : "낮음"}
-                                    </span>
-                                  )}
-                                </div>
-                                <p className="text-sm text-gray-600 mb-2">
-                                  {nfr.description}
-                                </p>
+                                <h4 className="font-medium text-gray-900 mb-1">
+                                  [{nfr.category}] {nfr.description}
+                                </h4>
                                 {nfr.metrics && (
-                                  <div className="flex items-start gap-1 text-sm text-gray-500 bg-gray-50 p-2 rounded">
-                                    <span>📊</span>
-                                    <span>측정 지표: {nfr.metrics}</span>
-                                  </div>
+                                  <p className="text-sm text-gray-500 mb-2">
+                                    측정 지표: {nfr.metrics}
+                                  </p>
                                 )}
+                                <div className="flex items-center gap-2 mt-2">
+                                  <span
+                                    className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                                      nfr.priority === "high"
+                                        ? "bg-red-100 text-red-800"
+                                        : nfr.priority === "medium"
+                                        ? "bg-yellow-100 text-yellow-800"
+                                        : "bg-green-100 text-green-800"
+                                    }`}
+                                  >
+                                    {nfr.priority === "high"
+                                      ? "높음"
+                                      : nfr.priority === "medium"
+                                      ? "중간"
+                                      : "낮음"}
+                                  </span>
+                                </div>
                               </div>
-                              <div className="flex flex-col gap-1 ml-4">
+                              <div className="flex items-center space-x-2 ml-4">
                                 <button
-                                  onClick={() => {
+                                  onClick={() =>
                                     requireAuth(() => {
-                                      setEditingNFR(nfr); // 편집 모드
+                                      setEditingNFR(nfr);
                                       setShowNFRModal(true);
-                                    });
-                                  }}
-                                  className="px-2 py-1 text-xs text-[#4F46E5] hover:bg-indigo-50 rounded transition-colors"
+                                    })
+                                  }
+                                  className="p-1 hover:opacity-70 transition-opacity"
                                 >
-                                  편집
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    requireAuth(async () => {
-                                      if (
-                                        window.confirm(
-                                          "이 비기능 요구사항을 삭제하시겠습니까?"
-                                        )
-                                      ) {
-                                        try {
-                                          await onDeleteNFR?.(nfr.id);
-                                        } catch (error) {
-                                          console.error("삭제 실패:", error);
-                                          alert("삭제 중 오류가 발생했습니다.");
-                                        }
-                                      }
-                                    });
-                                  }}
-                                  className="px-2 py-1 text-xs text-red-600 hover:bg-red-50 rounded transition-colors"
-                                >
-                                  삭제
+                                  <Image
+                                    src="/images/edit-icon.png"
+                                    alt="편집"
+                                    width={14}
+                                    height={14}
+                                  />
                                 </button>
                               </div>
                             </div>
@@ -845,16 +807,16 @@ function NFREditModal({
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
               required
             >
               <option value="">선택하세요</option>
-              <option value="성능">⚡ 성능 (Performance)</option>
-              <option value="보안">🔒 보안 (Security)</option>
-              <option value="사용성">👥 사용성 (Usability)</option>
-              <option value="호환성">🔄 호환성 (Compatibility)</option>
-              <option value="확장성">📈 확장성 (Scalability)</option>
-              <option value="유지보수성">🛠️ 유지보수성 (Maintainability)</option>
+              <option value="성능">성능 (Performance)</option>
+              <option value="보안">보안 (Security)</option>
+              <option value="사용성">사용성 (Usability)</option>
+              <option value="호환성">호환성 (Compatibility)</option>
+              <option value="확장성">확장성 (Scalability)</option>
+              <option value="유지보수성">유지보수성 (Maintainability)</option>
             </select>
           </div>
 
@@ -867,7 +829,7 @@ function NFREditModal({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={4}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
               placeholder="구체적이고 측정 가능한 요구사항을 입력하세요"
               required
             />
@@ -933,7 +895,7 @@ function NFREditModal({
               type="text"
               value={metrics}
               onChange={(e) => setMetrics(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
               placeholder="예: 페이지 로드 시간 < 3초, 동시 접속자 1000명 이상"
             />
           </div>
@@ -949,7 +911,8 @@ function NFREditModal({
             </button>
             <button
               type="submit"
-              className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+              className="px-6 py-2 text-white rounded-lg transition-colors"
+              style={{ backgroundColor: "#6366F1" }}
             >
               {nfr ? "수정" : "추가"}
             </button>
