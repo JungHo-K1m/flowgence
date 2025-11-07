@@ -19,8 +19,11 @@ interface RequirementsData {
     initialRequestDate?: string;
   }>;
   nonFunctionalRequirements: Array<{
+    id?: string;
     category: string;
     description: string;
+    priority?: string;
+    metrics?: string;
   }>;
   screenList: string[];
   dataModel?: {
@@ -143,20 +146,25 @@ ${requirementsData.functionalRequirements
 
 ## 🔧 비기능 요구사항
 
-| 카테고리 | 설명 | 중요도 |
-|----------|------|--------|
-${requirementsData.nonFunctionalRequirements.map(req => {
+${requirementsData.nonFunctionalRequirements.length === 0 ? '비기능 요구사항이 정의되지 않았습니다.' : `| 카테고리 | 설명 | 측정 지표 | 중요도 |
+|----------|------|----------|--------|
+${requirementsData.nonFunctionalRequirements.map((req: any) => {
   const categoryIcon = req.category === "성능" ? "⚡" : 
                       req.category === "보안" ? "🔒" : 
                       req.category === "사용성" ? "👥" : 
-                      req.category === "호환성" ? "🔄" : "📋";
+                      req.category === "호환성" ? "🔄" : 
+                      req.category === "확장성" ? "📈" :
+                      req.category === "유지보수성" ? "🛠️" : "📋";
   
   const categoryName = `<span class="requirement-name">${categoryIcon} ${req.category}</span>`;
   const description = `<span class="requirement-description">${req.description}</span>`;
-  const importance = `<span class="priority-badge mandatory">높음</span>`;
+  const metrics = req.metrics ? `<span class="requirement-description">${req.metrics}</span>` : '-';
+  const priorityText = req.priority === 'high' ? '높음' : req.priority === 'medium' ? '중간' : req.priority === 'low' ? '낮음' : '높음';
+  const priorityClass = req.priority === 'high' ? 'mandatory' : req.priority === 'medium' ? 'recommended' : 'optional';
+  const importance = `<span class="priority-badge ${priorityClass}">${priorityText}</span>`;
   
-  return `| ${categoryName} | ${description} | ${importance} |`;
-}).join('\n')}
+  return `| ${categoryName} | ${description} | ${metrics} | ${importance} |`;
+}).join('\n')}`}
 
 ---
 

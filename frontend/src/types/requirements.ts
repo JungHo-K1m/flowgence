@@ -26,8 +26,18 @@ export interface RequirementCategory {
   }[];
 }
 
+// 비기능 요구사항 (Non-Functional Requirements)
+export interface NonFunctionalRequirement {
+  id: string;
+  category: string; // "성능", "보안", "사용성", "호환성", "확장성", "유지보수성"
+  description: string;
+  priority: 'high' | 'medium' | 'low';
+  metrics?: string; // 측정 가능한 지표 (예: "페이지 로드 3초 이내")
+}
+
 export interface ExtractedRequirements {
   categories: RequirementCategory[];
+  nonFunctionalRequirements?: NonFunctionalRequirement[]; // 비기능 요구사항 추가
   extractedAt: string;
   totalCount: number;
   needsReview: boolean;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { ExtractedRequirements } from "@/types/requirements";
+import { ExtractedRequirements, NonFunctionalRequirement } from "@/types/requirements";
 import { generateRequirementsMarkdown } from "@/lib/requirementsMarkdownGenerator";
 import { downloadMarkdownAsPDF } from "@/lib/pdfGenerator";
 import { shareRequirementsToNotion } from "@/lib/notionService";
@@ -136,26 +136,13 @@ export function RequirementsResultPanel({
           initialRequestDate: undefined,
         },
       ],
-      nonFunctionalRequirements: [
-        {
-          category: "성능",
-          description: "모든 페이지는 3초 이내에 로드되어야 한다.",
-        },
-        {
-          category: "보안",
-          description: "사용자 비밀번호는 암호화하여 저장해야 한다.",
-        },
-        {
-          category: "사용성",
-          description:
-            "직관적인 UI/UX를 제공하여 사용자가 쉽게 사용할 수 있어야 한다.",
-        },
-        {
-          category: "호환성",
-          description:
-            "최신 버전의 Chrome, Firefox, Safari 브라우저와 호환되어야 한다.",
-        },
-      ],
+      nonFunctionalRequirements: extractedRequirements?.nonFunctionalRequirements?.map(nfr => ({
+        id: nfr.id,
+        category: nfr.category,
+        description: nfr.description,
+        priority: nfr.priority,
+        metrics: nfr.metrics,
+      })) || [],
       screenList: projectOverview?.userJourney?.steps?.map(
         (step) => step.title
       ) || [
@@ -628,17 +615,43 @@ export function RequirementsResultPanel({
                 비기능 요구사항
               </h2>
               <div className="space-y-4">
-                {requirementsData.nonFunctionalRequirements.map(
-                  (req, index) => (
-                    <div
-                      key={index}
-                      className="border border-gray-200 rounded-lg p-4"
-                    >
-                      <h3 className="font-medium text-gray-900 mb-2">
-                        {req.category}
-                      </h3>
-                      <p className="text-gray-600">{req.description}</p>
-                    </div>
+                {requirementsData.nonFunctionalRequirements.length === 0 ? (
+                  <p className="text-gray-500 text-center py-4">
+                    비기능 요구사항이 아직 정의되지 않았습니다.
+                  </p>
+                ) : (
+                  requirementsData.nonFunctionalRequirements.map(
+                    (req: any, index: number) => (
+                      <div
+                        key={req.id || index}
+                        className="border border-gray-200 rounded-lg p-4"
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <h3 className="font-medium text-gray-900">
+                            {req.category}
+                          </h3>
+                          {req.priority && (
+                            <span
+                              className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                                req.priority === 'high'
+                                  ? 'bg-red-100 text-red-800'
+                                  : req.priority === 'medium'
+                                  ? 'bg-yellow-100 text-yellow-800'
+                                  : 'bg-green-100 text-green-800'
+                              }`}
+                            >
+                              {req.priority === 'high' ? '높음' : req.priority === 'medium' ? '중간' : '낮음'}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-gray-600 mb-2">{req.description}</p>
+                        {req.metrics && (
+                          <p className="text-sm text-gray-500 italic">
+                            📊 측정 지표: {req.metrics}
+                          </p>
+                        )}
+                      </div>
+                    )
                   )
                 )}
               </div>

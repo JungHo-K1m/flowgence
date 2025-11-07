@@ -444,9 +444,17 @@ export class ChatService {
     ).join('\n');
 
     const systemPrompt = `당신은 SI 프로젝트 요구사항 분석 전문가입니다.
-대화 내용을 분석하여 요구사항을 추출하고 계층적으로 분류해주세요.
+대화 내용을 분석하여 기능 요구사항과 비기능 요구사항을 추출하고 계층적으로 분류해주세요.
 
 중요: 응답은 반드시 유효한 JSON 형식이어야 하며, 다른 텍스트나 설명은 포함하지 마세요.
+
+비기능 요구사항 카테고리:
+- 성능 (Performance): 응답시간, 처리속도, 로드시간 등
+- 보안 (Security): 인증, 암호화, 접근제어, 데이터 보호 등
+- 사용성 (Usability): UI/UX, 접근성, 사용자 편의성 등
+- 호환성 (Compatibility): 브라우저, 디바이스, OS 호환성 등
+- 확장성 (Scalability): 사용자 증가, 데이터 증가 대응 등
+- 유지보수성 (Maintainability): 코드 품질, 문서화, 모니터링 등
 
 응답 형식:
 {
@@ -468,8 +476,23 @@ export class ChatService {
         }
       ]
     }
+  ],
+  "nonFunctionalRequirements": [
+    {
+      "id": "nfr-1",
+      "category": "성능|보안|사용성|호환성|확장성|유지보수성",
+      "description": "구체적이고 측정 가능한 요구사항",
+      "priority": "high|medium|low",
+      "metrics": "측정 가능한 지표 (선택사항)"
+    }
   ]
-}`;
+}
+
+비기능 요구사항 추출 가이드:
+1. 대화에서 명시적으로 언급된 비기능 요구사항을 우선 추출
+2. 프로젝트 특성상 필수적인 비기능 요구사항 추가 (최소 3-5개)
+3. 각 요구사항은 구체적이고 측정 가능해야 함
+4. 우선순위는 프로젝트 중요도에 따라 결정`;
 
     try {
       const response = await fetch('https://api.anthropic.com/v1/messages', {
