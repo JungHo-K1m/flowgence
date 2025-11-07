@@ -98,7 +98,7 @@ ${requirementsData.scope.excluded.map(item => `- ${item}`).join('\n')}` : ''}
 ${requirementsData.functionalRequirements
   .filter(req => req.priority === "필수")
   .map((req) => {
-    const formatDate = (dateStr) => dateStr ? new Date(dateStr).toLocaleDateString('ko-KR') : '-';
+    const formatDate = (dateStr: string | undefined) => dateStr ? new Date(dateStr).toLocaleDateString('ko-KR') : '-';
     const shortDescription = req.description.length > 80 ? 
       req.description.substring(0, 80) + "..." : 
       req.description;
@@ -114,7 +114,7 @@ ${requirementsData.functionalRequirements
 ${requirementsData.functionalRequirements
   .filter(req => req.priority === "권장")
   .map((req) => {
-    const formatDate = (dateStr) => dateStr ? new Date(dateStr).toLocaleDateString('ko-KR') : '-';
+    const formatDate = (dateStr: string | undefined) => dateStr ? new Date(dateStr).toLocaleDateString('ko-KR') : '-';
     const shortDescription = req.description.length > 80 ? 
       req.description.substring(0, 80) + "..." : 
       req.description;
@@ -125,19 +125,16 @@ ${requirementsData.functionalRequirements
 
 <div class="section-break"></div>
 
-| ID | 요구사항명 | 설명 |
-|----|------------|------|
+| 요구사항 ID | 요구사항명 | 요구사항 내용 | 요청자 | 최초 요청 일자 | 중요도 |
+|-------------|-----------|--------------|--------|--------------|--------|
 ${requirementsData.functionalRequirements
   .filter(req => req.priority === "선택")
-  .map((req, index) => {
-    const requirementId = `<span class="requirement-id">REQ-${String(index + 1).padStart(3, '0')}</span>`;
-    const requirementName = `<span class="requirement-name">${req.name}</span>`;
-    const shortDescription = req.description.length > 60 ? 
-      req.description.substring(0, 60) + "..." : 
+  .map((req) => {
+    const formatDate = (dateStr: string | undefined) => dateStr ? new Date(dateStr).toLocaleDateString('ko-KR') : '-';
+    const shortDescription = req.description.length > 80 ? 
+      req.description.substring(0, 80) + "..." : 
       req.description;
-    const description = `<span class="requirement-description">${shortDescription}</span>`;
-    
-    return `| ${requirementId} | ${requirementName} | ${description} |`;
+    return `| ${req.id} | ${req.name} | ${shortDescription} | ${req.requester || '-'} | ${formatDate(req.initialRequestDate)} | ${req.priority} |`;
   }).join('\n')}
 
 ---
