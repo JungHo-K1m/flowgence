@@ -1658,13 +1658,32 @@ function HomePageContent() {
           );
 
           if (requirements) {
-            setEditableRequirements(requirements);
+            // 요청자 및 날짜 정보 자동 설정
+            const currentDate = new Date().toISOString();
+            const requesterName = user?.full_name || user?.email?.split('@')[0] || '익명';
+            
+            const enrichedRequirements = {
+              ...requirements,
+              categories: requirements.categories?.map((cat: any) => ({
+                ...cat,
+                subCategories: cat.subCategories?.map((sub: any) => ({
+                  ...sub,
+                  requirements: sub.requirements?.map((req: any) => ({
+                    ...req,
+                    requester: req.requester || requesterName,
+                    initialRequestDate: req.initialRequestDate || currentDate,
+                  }))
+                }))
+              }))
+            };
+            
+            setEditableRequirements(enrichedRequirements);
 
             // 로그인된 사용자면 DB에 저장
             if (user && savedProjectId) {
               try {
-                await saveRequirements(savedProjectId, requirements);
-                console.log("요구사항 저장 완료");
+                await saveRequirements(savedProjectId, enrichedRequirements);
+                console.log("요구사항 저장 완료 (요청자 및 날짜 포함)");
               } catch (error) {
                 console.error("요구사항 저장 실패:", error);
               }

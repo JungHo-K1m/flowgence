@@ -10,6 +10,10 @@ export interface Requirement {
   needsClarification: boolean;
   clarificationQuestions: string[];
   status: 'draft' | 'review' | 'approved' | 'rejected' | 'implemented';
+  
+  // 추가 필드 (표준 요구사항 명세서 형식 - 최소 구현)
+  requester?: string;              // 요청자
+  initialRequestDate?: string;     // 최초 요청 일자 (ISO 8601)
 }
 
 export interface RequirementCategory {

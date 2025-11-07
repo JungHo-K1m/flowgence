@@ -121,6 +121,9 @@ export function RequirementsResultPanel({
                     : req.priority === "medium"
                     ? "권장"
                     : "선택",
+                // 추가 필드
+                requester: req.requester,
+                initialRequestDate: req.initialRequestDate,
               })) || []
           ) || []
       ) || [
@@ -129,6 +132,8 @@ export function RequirementsResultPanel({
           name: "기본 기능 1",
           description: "기본 기능 설명",
           priority: "필수",
+          requester: undefined,
+          initialRequestDate: undefined,
         },
       ],
       nonFunctionalRequirements: [
@@ -525,7 +530,7 @@ export function RequirementsResultPanel({
                     ))}
                   </ul>
                 </div>
-                <div>
+                <div></div>
                   {requirementsData.scope.excluded.length > 0 && (
                     <>
                       <h3 className="font-medium text-gray-900 mb-3">
@@ -554,33 +559,52 @@ export function RequirementsResultPanel({
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        ID
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                        요구사항 ID
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                         요구사항명
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        설명
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                        요구사항 내용
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        우선순위
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                        요청자
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                        최초 요청 일자
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                        중요도
                       </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {requirementsData.functionalRequirements.map((req) => (
-                      <tr key={req.id}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      <tr key={req.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                           {req.id}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {req.name}
+                        <td className="px-4 py-4 text-sm text-gray-900 max-w-[200px]">
+                          <div className="line-clamp-2" title={req.name}>
+                            {req.name}
+                          </div>
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-600">
-                          {req.description}
+                        <td className="px-6 py-4 text-sm text-gray-600 max-w-[300px]">
+                          <div className="line-clamp-3" title={req.description}>
+                            {req.description}
+                          </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
+                          {req.requester || '-'}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600">
+                          {req.initialRequestDate 
+                            ? new Date(req.initialRequestDate).toLocaleDateString('ko-KR')
+                            : '-'
+                          }
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-center">
                           <span
                             className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                               req.priority === "필수"
