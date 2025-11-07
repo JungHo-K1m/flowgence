@@ -77,6 +77,9 @@ export function RequirementsResultPanel({
 
   // 실제 데이터 기반 요구사항 결과
   const requirementsData = useMemo(() => {
+    console.log('=== RequirementsResultPanel 데이터 확인 ===');
+    console.log('extractedRequirements:', extractedRequirements);
+    
     const projectName =
       projectOverview?.serviceCoreElements?.title ||
       projectData.serviceType ||
@@ -111,20 +114,24 @@ export function RequirementsResultPanel({
         (category, categoryIndex) =>
           category.subCategories?.flatMap(
             (subCategory, subIndex) =>
-              subCategory.requirements?.map((req, reqIndex) => ({
-                id: `FR-${categoryIndex + 1}-${subIndex + 1}-${reqIndex + 1}`,
-                name: req.title,
-                description: req.description,
-                priority:
-                  req.priority === "high"
-                    ? "필수"
-                    : req.priority === "medium"
-                    ? "권장"
-                    : "선택",
-                // 추가 필드
-                requester: req.requester,
-                initialRequestDate: req.initialRequestDate,
-              })) || []
+              subCategory.requirements?.map((req, reqIndex) => {
+                const mappedReq = {
+                  id: `FR-${categoryIndex + 1}-${subIndex + 1}-${reqIndex + 1}`,
+                  name: req.title,
+                  description: req.description,
+                  priority:
+                    req.priority === "high"
+                      ? "필수"
+                      : req.priority === "medium"
+                      ? "권장"
+                      : "선택",
+                  // 추가 필드
+                  requester: req.requester,
+                  initialRequestDate: req.initialRequestDate,
+                };
+                console.log('매핑된 요구사항:', mappedReq);
+                return mappedReq;
+              }) || []
           ) || []
       ) || [
         {
