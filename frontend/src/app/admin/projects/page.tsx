@@ -1,12 +1,8 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { createClient } from "@/lib/supabase";
-
-interface ExtractedRequirements {
-  totalCount?: number;
-  categories?: unknown[];
-}
+import { ExtractedRequirements } from "@/types/requirements";
 
 interface ProjectOverview {
   estimation?: {

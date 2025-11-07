@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase";
 import Link from "next/link";
 import { RequirementsResultPanel } from "@/components/project/RequirementsResultPanel";
+import { ExtractedRequirements } from "@/types/requirements";
 
 interface DashboardStats {
   totalProjects: number;
@@ -36,17 +37,18 @@ interface ProjectDetail {
   status: string;
   created_at: string;
   updated_at: string;
-  requirements?: ExtractedRequirements | null;
+  requirements?: {
+    categories?: any[];
+    totalCount?: number;
+    extractedAt?: string;
+    needsReview?: boolean;
+    [key: string]: any;
+  } | null;
   project_overview?: ProjectOverview | null;
   profiles?: {
     full_name?: string | null;
     email?: string | null;
   };
-}
-
-interface ExtractedRequirements {
-  totalCount?: number;
-  categories?: unknown[];
 }
 
 interface ProjectOverview {
@@ -598,11 +600,11 @@ export default function AdminPage() {
                             chatMessages: [],
                           }}
                           extractedRequirements={{
-                            ...selectedProject.requirements,
+                            categories: selectedProject.requirements.categories || [],
                             extractedAt: selectedProject.requirements.extractedAt || selectedProject.created_at,
                             needsReview: selectedProject.requirements.needsReview ?? false,
                             totalCount: selectedProject.requirements.totalCount || 0,
-                          } as ExtractedRequirements}
+                          }}
                           projectOverview={
                             selectedProject.project_overview || undefined
                           }
