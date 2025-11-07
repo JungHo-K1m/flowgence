@@ -16,6 +16,7 @@ import { ProjectOverviewPanel } from "@/components/project/ProjectOverviewPanel"
 import { RequirementsPanel } from "@/components/requirements/RequirementsPanel";
 import { RequirementsLoading } from "@/components/requirements/RequirementsLoading";
 import { AIVerificationLoading } from "@/components/requirements/AIVerificationLoading";
+import { VerificationResultModal } from "@/components/requirements/VerificationResultModal";
 import { ConfirmationPanel } from "@/components/project/ConfirmationPanel";
 import { RequirementsResultPanel } from "@/components/project/RequirementsResultPanel";
 import { FinalConfirmationModal } from "@/components/project/FinalConfirmationModal";
@@ -69,6 +70,7 @@ function HomePageContent() {
   const [isRequirementsLoading, setIsRequirementsLoading] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false); // AI 검증 중 상태
   const [verificationResult, setVerificationResult] = useState<any>(null); // AI 검증 결과
+  const [showVerificationModal, setShowVerificationModal] = useState(false); // AI 검증 결과 모달
   const [chatMessages, setChatMessages] = useState<Message[]>([]);
   const hasResumedProject = useRef(false);
   const isProcessingStep1To2 = useRef(false); // 1단계 → 2단계 전환 중복 호출 방지
@@ -2489,7 +2491,7 @@ function HomePageContent() {
             // 검증 결과 저장
             setVerificationResult(result);
 
-            // 검증 결과가 있으면 콘솔에 표시 (추후 UI에 표시 가능)
+            // 검증 결과가 있으면 콘솔에 표시
             if (result.suggestions && result.suggestions.length > 0) {
               console.log("💡 AI 제안사항:", result.suggestions);
             }
@@ -2500,19 +2502,48 @@ function HomePageContent() {
 
             console.log("📊 검증 요약:", result.summary);
             console.log("=== AI 검증 완료 ===");
+
+            // 검증 결과에 따른 처리
+            if (result.status === "ok") {
+              // OK: 자동으로 다음 단계 진행
+              console.log("✅ 검증 통과 - 자동으로 다음 단계 진행");
+              setIsVerifying(false);
+              setShowRequirements(false);
+              setShowConfirmation(true);
+              setCurrentStep(3);
+            } else if (result.status === "warning" || result.status === "error") {
+              // WARNING/ERROR: 모달 표시하고 사용자 선택
+              console.log("⚠️ 검증 결과 모달 표시 - 사용자 선택 대기");
+              setIsVerifying(false);
+              setShowVerificationModal(true);
+            } else {
+              // 예외 상황: 기본적으로 다음 단계 진행
+              console.log("❓ 알 수 없는 status - 기본적으로 진행");
+              setIsVerifying(false);
+              setShowRequirements(false);
+              setShowConfirmation(true);
+              setCurrentStep(3);
+            }
           } catch (error) {
             console.error("AI 검증 중 오류:", error);
-            // 검증 실패 시에도 계속 진행
+            // 검증 실패 시: 모달 표시
             setVerificationResult({
               status: "error",
-              message: "검증 중 오류가 발생했지만 계속 진행합니다.",
+              score: 0,
+              suggestions: [{
+                type: "unclear",
+                severity: "high",
+                message: "검증 중 오류가 발생했습니다. 요구사항을 다시 확인해주세요.",
+              }],
+              warnings: [],
+              summary: {
+                totalRequirements: 0,
+                issuesFound: 1,
+                criticalIssues: 1,
+              },
             });
-          } finally {
             setIsVerifying(false);
-            // 검증 완료 후 다음 단계로 이동
-            setShowRequirements(false);
-            setShowConfirmation(true);
-            setCurrentStep(3);
+            setShowVerificationModal(true);
           }
         },
         {
@@ -2553,6 +2584,27 @@ function HomePageContent() {
 
     // 프로젝트 완료 시 세션 삭제
     clearSession();
+  };
+
+  // 검증 모달 핸들러
+  const handleVerificationProceed = () => {
+    console.log("검증 모달 - 계속 진행 선택");
+    setShowVerificationModal(false);
+    setShowRequirements(false);
+    setShowConfirmation(true);
+    setCurrentStep(3);
+  };
+
+  const handleVerificationGoBack = () => {
+    console.log("검증 모달 - 이전으로 돌아가기 선택");
+    setShowVerificationModal(false);
+    // Step 2로 돌아가기 (이미 Step 2에 있음)
+  };
+
+  const handleVerificationClose = () => {
+    console.log("검증 모달 - 수정하기 선택");
+    setShowVerificationModal(false);
+    // Step 2에 그대로 머물면서 요구사항 수정
   };
 
   const handlePrevStep = () => {
@@ -3027,6 +3079,17 @@ function HomePageContent() {
 
       {/* AI 검증 로딩 화면 */}
       {isVerifying && <AIVerificationLoading />}
+
+      {/* AI 검증 결과 모달 */}
+      {showVerificationModal && verificationResult && (
+        <VerificationResultModal
+          isOpen={showVerificationModal}
+          result={verificationResult}
+          onClose={handleVerificationClose}
+          onProceed={handleVerificationProceed}
+          onGoBack={handleVerificationGoBack}
+        />
+      )}
     </div>
   );
 }
