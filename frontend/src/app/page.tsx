@@ -943,6 +943,103 @@ function HomePageContent() {
     [editableRequirements, saveEditedRequirements]
   );
 
+  // 비기능 요구사항 추가 핸들러
+  const handleAddNFR = useCallback(
+    async (newNFR: {
+      category: string;
+      description: string;
+      priority: "high" | "medium" | "low";
+      metrics?: string;
+    }) => {
+      if (!editableRequirements) return;
+
+      try {
+        const nfrId = `nfr-${Date.now()}`;
+        const updatedRequirements = {
+          ...editableRequirements,
+          nonFunctionalRequirements: [
+            ...(editableRequirements.nonFunctionalRequirements || []),
+            {
+              id: nfrId,
+              ...newNFR,
+            },
+          ],
+        };
+
+        setEditableRequirements(updatedRequirements);
+        await saveEditedRequirements(updatedRequirements);
+        console.log("비기능 요구사항 추가 완료:", nfrId);
+      } catch (error) {
+        console.error("비기능 요구사항 추가 실패:", error);
+        throw error;
+      }
+    },
+    [editableRequirements, saveEditedRequirements]
+  );
+
+  // 비기능 요구사항 편집 핸들러
+  const handleEditNFR = useCallback(
+    async (
+      nfrId: string,
+      updatedNFR: {
+        category: string;
+        description: string;
+        priority: "high" | "medium" | "low";
+        metrics?: string;
+      }
+    ) => {
+      if (!editableRequirements) return;
+
+      try {
+        const updatedRequirements = {
+          ...editableRequirements,
+          nonFunctionalRequirements: (
+            editableRequirements.nonFunctionalRequirements || []
+          ).map((nfr) =>
+            nfr.id === nfrId
+              ? {
+                  ...nfr,
+                  ...updatedNFR,
+                }
+              : nfr
+          ),
+        };
+
+        setEditableRequirements(updatedRequirements);
+        await saveEditedRequirements(updatedRequirements);
+        console.log("비기능 요구사항 편집 완료:", nfrId);
+      } catch (error) {
+        console.error("비기능 요구사항 편집 실패:", error);
+        throw error;
+      }
+    },
+    [editableRequirements, saveEditedRequirements]
+  );
+
+  // 비기능 요구사항 삭제 핸들러
+  const handleDeleteNFR = useCallback(
+    async (nfrId: string) => {
+      if (!editableRequirements) return;
+
+      try {
+        const updatedRequirements = {
+          ...editableRequirements,
+          nonFunctionalRequirements: (
+            editableRequirements.nonFunctionalRequirements || []
+          ).filter((nfr) => nfr.id !== nfrId),
+        };
+
+        setEditableRequirements(updatedRequirements);
+        await saveEditedRequirements(updatedRequirements);
+        console.log("비기능 요구사항 삭제 완료:", nfrId);
+      } catch (error) {
+        console.error("비기능 요구사항 삭제 실패:", error);
+        throw error;
+      }
+    },
+    [editableRequirements, saveEditedRequirements]
+  );
+
   // 중분류 삭제 핸들러
   const handleCategoryDelete = useCallback(
     async (categoryId: string) => {
@@ -2738,6 +2835,9 @@ function HomePageContent() {
                       setIsEditingMode(true); // UI 편집 모드 시작
                     }}
                     onDeleteCategory={handleCategoryDeleteRequest}
+                    onAddNFR={handleAddNFR}
+                    onEditNFR={handleEditNFR}
+                    onDeleteNFR={handleDeleteNFR}
                     isNextButtonEnabled={isStep2ButtonEnabled}
                     isLoading={isOverviewLoading}
                   />
