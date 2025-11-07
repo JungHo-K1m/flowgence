@@ -530,23 +530,21 @@ export function RequirementsResultPanel({
                     ))}
                   </ul>
                 </div>
-                <div></div>
-                  {requirementsData.scope.excluded.length > 0 && (
-                    <>
-                      <h3 className="font-medium text-gray-900 mb-3">
-                        제외 범위 (Excluded Scope)
-                      </h3>
-                      <ul className="space-y-2">
-                        {requirementsData.scope.excluded.map((item, index) => (
-                          <li key={index} className="flex items-start">
-                            <span className="text-red-500 mr-2 mt-1">•</span>
-                            <span className="text-gray-600">{item}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </>
-                  )}
-                </div>
+                {requirementsData.scope.excluded.length > 0 && (
+                  <div>
+                    <h3 className="font-medium text-gray-900 mb-3">
+                      제외 범위 (Excluded Scope)
+                    </h3>
+                    <ul className="space-y-2">
+                      {requirementsData.scope.excluded.map((item, index) => (
+                        <li key={index} className="flex items-start">
+                          <span className="text-red-500 mr-2 mt-1">•</span>
+                          <span className="text-gray-600">{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             </section>
 
