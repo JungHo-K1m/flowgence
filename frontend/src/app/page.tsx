@@ -15,6 +15,7 @@ import { ChatInterface } from "@/components/chat/ChatInterface";
 import { ProjectOverviewPanel } from "@/components/project/ProjectOverviewPanel";
 import { RequirementsPanel } from "@/components/requirements/RequirementsPanel";
 import { RequirementsLoading } from "@/components/requirements/RequirementsLoading";
+import { AIVerificationLoading } from "@/components/requirements/AIVerificationLoading";
 import { ConfirmationPanel } from "@/components/project/ConfirmationPanel";
 import { RequirementsResultPanel } from "@/components/project/RequirementsResultPanel";
 import { FinalConfirmationModal } from "@/components/project/FinalConfirmationModal";
@@ -66,6 +67,8 @@ function HomePageContent() {
   const [showFinalResult, setShowFinalResult] = useState(false);
   const [showFinalModal, setShowFinalModal] = useState(false);
   const [isRequirementsLoading, setIsRequirementsLoading] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false); // AI 검증 중 상태
+  const [verificationResult, setVerificationResult] = useState<any>(null); // AI 검증 결과
   const [chatMessages, setChatMessages] = useState<Message[]>([]);
   const hasResumedProject = useRef(false);
   const isProcessingStep1To2 = useRef(false); // 1단계 → 2단계 전환 중복 호출 방지
@@ -2461,12 +2464,56 @@ function HomePageContent() {
         // }, 1000);
       }
     } else if (currentStep === 2) {
-      // 2단계에서 3단계로 넘어갈 때는 로그인 필요
+      // 2단계에서 3단계로 넘어갈 때는 로그인 필요 + AI 검증
       requireAuth(
-        () => {
-          setShowRequirements(false);
-          setShowConfirmation(true);
-          setCurrentStep(3);
+        async () => {
+          try {
+            console.log("=== Step 2 → Step 3: AI 검증 시작 ===");
+            setIsVerifying(true);
+
+            // AI 검증 API 호출
+            const response = await fetch("/api/requirements/verify", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                requirements: editableRequirements || extractedRequirements,
+                projectId: savedProjectId,
+              }),
+            });
+
+            const result = await response.json();
+            console.log("AI 검증 결과:", result);
+
+            // 검증 결과 저장
+            setVerificationResult(result);
+
+            // 검증 결과가 있으면 콘솔에 표시 (추후 UI에 표시 가능)
+            if (result.suggestions && result.suggestions.length > 0) {
+              console.log("💡 AI 제안사항:", result.suggestions);
+            }
+
+            if (result.warnings && result.warnings.length > 0) {
+              console.log("⚠️ 경고사항:", result.warnings);
+            }
+
+            console.log("📊 검증 요약:", result.summary);
+            console.log("=== AI 검증 완료 ===");
+          } catch (error) {
+            console.error("AI 검증 중 오류:", error);
+            // 검증 실패 시에도 계속 진행
+            setVerificationResult({
+              status: "error",
+              message: "검증 중 오류가 발생했지만 계속 진행합니다.",
+            });
+          } finally {
+            setIsVerifying(false);
+            // 검증 완료 후 다음 단계로 이동
+            setShowRequirements(false);
+            setShowConfirmation(true);
+            setCurrentStep(3);
+          }
         },
         {
           description: projectDescription,
@@ -2977,6 +3024,9 @@ function HomePageContent() {
         categoryTitle={categoryToDelete?.title || ""}
         requirementCount={categoryToDelete?.requirementCount || 0}
       />
+
+      {/* AI 검증 로딩 화면 */}
+      {isVerifying && <AIVerificationLoading />}
     </div>
   );
 }
