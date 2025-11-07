@@ -1660,7 +1660,7 @@ function HomePageContent() {
           if (requirements) {
             // 요청자 및 날짜 정보 자동 설정
             const currentDate = new Date().toISOString();
-            const requesterName = user?.full_name || user?.email?.split('@')[0] || '익명';
+            const requesterName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || '익명';
             
             const enrichedRequirements = {
               ...requirements,
