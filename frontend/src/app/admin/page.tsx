@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase";
 import Link from "next/link";
 import { RequirementsResultPanel } from "@/components/project/RequirementsResultPanel";
-import { ExtractedRequirements } from "@/types/requirements";
 
 interface DashboardStats {
   totalProjects: number;
@@ -610,7 +609,8 @@ export default function AdminPage() {
                             totalCount: selectedProject.requirements.totalCount || 0,
                           }}
                           projectOverview={
-                            selectedProject.project_overview || undefined
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            (selectedProject.project_overview || undefined) as any
                           }
                         />
                       </div>
