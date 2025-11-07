@@ -2262,14 +2262,36 @@ function HomePageContent() {
             // 4. 요구사항 저장
             if (requirements) {
               console.log("요구사항 저장 시작");
+              
+              // 요구사항 데이터 보강 (요청자 및 날짜 추가)
+              const currentDate = new Date().toISOString();
+              const requesterName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || '익명';
+              
+              const enrichedRequirements = {
+                ...requirements,
+                categories: requirements.categories?.map((cat: any) => ({
+                  ...cat,
+                  subCategories: cat.subCategories?.map((sub: any) => ({
+                    ...sub,
+                    requirements: sub.requirements?.map((req: any) => ({
+                      ...req,
+                      requester: req.requester || requesterName,
+                      initialRequestDate: req.initialRequestDate || currentDate,
+                    }))
+                  }))
+                }))
+              };
+              
+              console.log("보강된 요구사항 데이터:", enrichedRequirements);
+              
               const requirementsResult = await saveRequirements(
                 projectResult.project_id,
-                requirements
+                enrichedRequirements
               );
 
               if (requirementsResult.status === "success") {
                 console.log("요구사항 저장 성공");
-                setEditableRequirements(requirements);
+                setEditableRequirements(enrichedRequirements);
               } else {
                 console.error(
                   "요구사항 저장 실패:",
@@ -2283,7 +2305,27 @@ function HomePageContent() {
         } else {
           // 로그인하지 않은 사용자는 로컬 상태로만 저장
           console.log("로그인하지 않은 사용자: 로컬 상태로만 저장");
-          setEditableRequirements(requirements);
+          
+          // 요구사항 데이터 보강 (요청자 및 날짜 추가)
+          const currentDate = new Date().toISOString();
+          const requesterName = '익명';
+          
+          const enrichedRequirements = {
+            ...requirements,
+            categories: requirements.categories?.map((cat: any) => ({
+              ...cat,
+              subCategories: cat.subCategories?.map((sub: any) => ({
+                ...sub,
+                requirements: sub.requirements?.map((req: any) => ({
+                  ...req,
+                  requester: req.requester || requesterName,
+                  initialRequestDate: req.initialRequestDate || currentDate,
+                }))
+              }))
+            }))
+          };
+          
+          setEditableRequirements(enrichedRequirements);
         }
       } catch (error) {
         console.error("요구사항 추출 또는 저장 중 오류:", error);
