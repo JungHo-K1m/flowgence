@@ -597,9 +597,12 @@ export default function AdminPage() {
                             uploadedFiles: [] as File[],
                             chatMessages: [],
                           }}
-                          extractedRequirements={
-                            selectedProject.requirements as ExtractedRequirements
-                          }
+                          extractedRequirements={{
+                            ...selectedProject.requirements,
+                            extractedAt: selectedProject.requirements.extractedAt || selectedProject.created_at,
+                            needsReview: selectedProject.requirements.needsReview ?? false,
+                            totalCount: selectedProject.requirements.totalCount || 0,
+                          } as ExtractedRequirements}
                           projectOverview={
                             selectedProject.project_overview || undefined
                           }
