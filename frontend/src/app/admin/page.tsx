@@ -38,10 +38,12 @@ interface ProjectDetail {
   created_at: string;
   updated_at: string;
   requirements?: {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     categories?: any[];
     totalCount?: number;
     extractedAt?: string;
     needsReview?: boolean;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     [key: string]: any;
   } | null;
   project_overview?: ProjectOverview | null;
@@ -86,7 +88,8 @@ export default function AdminPage() {
 
   // 프로젝트 견적 금액 계산 함수
   const getEstimateAmount = (project: { 
-    requirements?: ExtractedRequirements | null; 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    requirements?: { totalCount?: number; [key: string]: any } | null; 
     project_overview?: ProjectOverview | null; 
   }): number => {
     // AI가 생성한 견적이 있으면 해당 금액 사용
@@ -105,7 +108,8 @@ export default function AdminPage() {
     return 0;
   };
 
-  const getRequirementCount = (project: { requirements?: ExtractedRequirements | null }): number => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const getRequirementCount = (project: { requirements?: { totalCount?: number; [key: string]: any } | null }): number => {
     return project.requirements?.totalCount || 0;
   };
 
