@@ -3024,6 +3024,7 @@ function HomePageContent() {
             }}
             extractedRequirements={extractedRequirements}
             projectOverview={overview}
+            wireframe={wireframe}
           />
         </div>
       )}

@@ -8,6 +8,8 @@ import { shareRequirementsToNotion } from "@/lib/notionService";
 import { checkNotionSetup } from "@/lib/notionConfig";
 import { getShareOptions, showNotionGuide } from "@/lib/shareAlternatives";
 import { ShareOptionsModal } from "@/components/ui/ShareOptionsModal";
+import { WireframeSpec } from "@/types/wireframe";
+import { LoFiCanvas } from "@/components/wireframe/LoFiCanvas";
 
 interface ProjectOverview {
   serviceCoreElements: {
@@ -63,12 +65,14 @@ interface RequirementsResultPanelProps {
   };
   extractedRequirements?: ExtractedRequirements | null;
   projectOverview?: ProjectOverview | null;
+  wireframe?: WireframeSpec | null;
 }
 
 export function RequirementsResultPanel({
   projectData,
   extractedRequirements,
   projectOverview,
+  wireframe,
 }: RequirementsResultPanelProps) {
   const [activeSection, setActiveSection] = useState("overview");
   const [searchQuery, setSearchQuery] = useState("");
@@ -180,6 +184,7 @@ export function RequirementsResultPanel({
     { id: "functional", label: "기능 요구사항" },
     { id: "non-functional", label: "비기능 요구사항" },
     { id: "screens", label: "화면 목록" },
+    { id: "wireframe", label: "화면 미리보기", hidden: !wireframe },
     { id: "data-model", label: "데이터 모델" },
   ];
 
@@ -394,7 +399,7 @@ export function RequirementsResultPanel({
           {/* Navigation Menu */}
           <div className="flex-1 p-4">
             <nav className="space-y-1">
-              {sections.map((section) => (
+              {sections.filter((section) => !section.hidden).map((section) => (
                 <button
                   key={section.id}
                   onClick={() => scrollToSection(section.id)}
@@ -673,6 +678,31 @@ export function RequirementsResultPanel({
                 ))}
               </div>
             </section>
+
+            {/* Wireframe Section */}
+            {wireframe && (
+              <section id="wireframe" className="mb-8">
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                  📱 화면 미리보기 (로파이 와이어프레임)
+                </h2>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                  <div className="flex items-start gap-3">
+                    <span className="text-blue-600 text-xl">💡</span>
+                    <div className="flex-1 text-sm text-blue-800">
+                      <p className="font-medium mb-1">와이어프레임 정보</p>
+                      <ul className="list-disc list-inside space-y-1 text-blue-700">
+                        <li>이것은 <strong>로파이(저해상도) 와이어프레임</strong>입니다</li>
+                        <li>화면 구조와 주요 요소 배치를 확인할 수 있습니다</li>
+                        <li>실제 디자인은 개발 단계에서 세부적으로 진행됩니다</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex justify-center bg-gray-50 rounded-lg p-8 border border-gray-200">
+                  <LoFiCanvas spec={wireframe} scale={0.8} />
+                </div>
+              </section>
+            )}
 
             {/* Data Model Section */}
             <section id="data-model" className="mb-24">
