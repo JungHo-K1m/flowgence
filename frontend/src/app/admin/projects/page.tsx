@@ -3,10 +3,18 @@
 import { useState, useEffect, useMemo } from "react";
 import { createClient } from "@/lib/supabase";
 import { ExtractedRequirements } from "@/types/requirements";
+import { RequirementsResultPanel } from "@/components/project/RequirementsResultPanel";
 
 interface ProjectOverview {
   estimation?: {
     totalCost?: string;
+  };
+  serviceCoreElements?: {
+    title: string;
+    description: string;
+    keyFeatures: string[];
+    targetUsers: string[];
+    estimatedDuration: string;
   };
 }
 
@@ -23,6 +31,29 @@ interface Project {
   project_overview?: ProjectOverview;
 }
 
+interface ProjectDetail {
+  id: string;
+  title: string;
+  description: string | null;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  requirements?: {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    categories?: any[];
+    totalCount?: number;
+    extractedAt?: string;
+    needsReview?: boolean;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    [key: string]: any;
+  } | null;
+  project_overview?: ProjectOverview | null;
+  profiles?: {
+    full_name?: string | null;
+    email?: string | null;
+  };
+}
+
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
@@ -31,6 +62,9 @@ export default function ProjectsPage() {
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [selectedProject, setSelectedProject] = useState<ProjectDetail | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   useEffect(() => {
     loadProjects();
@@ -174,6 +208,44 @@ export default function ProjectsPage() {
     }
 
     setFilteredProjects(filtered);
+  };
+
+  // 프로젝트 상세 보기 열기
+  const openProjectDetail = async (id: string) => {
+    setIsDetailOpen(true);
+    setDetailLoading(true);
+    
+    try {
+      const supabase = createClient();
+      const { data: project, error } = await supabase
+        .from("projects")
+        .select(
+          `
+          *,
+          profiles:user_id (
+            full_name,
+            email
+          )
+        `
+        )
+        .eq("id", id)
+        .single();
+
+      if (error) throw error;
+
+      setSelectedProject(project);
+    } catch (error) {
+      console.error("프로젝트 상세 로드 실패:", error);
+      setSelectedProject(null);
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  // 프로젝트 상세 보기 닫기
+  const closeProjectDetail = () => {
+    setIsDetailOpen(false);
+    setSelectedProject(null);
   };
 
   const getStatusBadge = (status: string) => {
@@ -349,7 +421,10 @@ export default function ProjectsPage() {
                       {project.requirementsCount}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <button className="text-[#6366F1] hover:text-[#4F46E5] font-medium">
+                      <button 
+                        onClick={() => openProjectDetail(project.id)}
+                        className="text-[#6366F1] hover:text-[#4F46E5] font-medium"
+                      >
                         상세보기
                       </button>
                     </td>
@@ -410,6 +485,203 @@ export default function ProjectsPage() {
           </div>
         )}
       </div>
+
+      {/* 프로젝트 상세 모달 */}
+      {isDetailOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="w-full max-w-5xl bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[90vh]">
+            <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+              <h2 className="text-lg font-semibold text-gray-900">프로젝트 상세</h2>
+              <button
+                onClick={closeProjectDetail}
+                className="text-gray-500 hover:text-gray-800"
+                aria-label="닫기"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="overflow-y-auto max-h-[calc(90vh-4rem)]">
+              {detailLoading ? (
+                <div className="p-8 text-center text-gray-500">
+                  프로젝트 정보를 불러오는 중...
+                </div>
+              ) : selectedProject ? (
+                <div className="space-y-6 p-6">
+                  {/* 프로젝트 기본 정보 */}
+                  <section className="border border-gray-200 rounded-lg p-6 shadow-sm">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+                      <div>
+                        <h3 className="text-2xl font-semibold text-gray-900 mb-1">
+                          {selectedProject.title}
+                        </h3>
+                        <p className="text-sm text-gray-600">
+                          {selectedProject.profiles?.full_name ||
+                            selectedProject.profiles?.email ||
+                            "알 수 없음"}
+                        </p>
+                      </div>
+                      {getStatusBadge(selectedProject.status)}
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-700">
+                      <div className="space-y-1">
+                        <p className="text-gray-500">요청일</p>
+                        <p>
+                          {new Date(selectedProject.created_at).toLocaleDateString(
+                            "ko-KR",
+                            {
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                            }
+                          )}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-gray-500">최종 수정일</p>
+                        <p>
+                          {new Date(selectedProject.updated_at).toLocaleDateString(
+                            "ko-KR",
+                            {
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                            }
+                          )}
+                        </p>
+                      </div>
+                      <div className="space-y-1 md:col-span-2">
+                        <p className="text-gray-500">프로젝트 설명</p>
+                        <p className="text-gray-900">
+                          {selectedProject.description || "설명 없음"}
+                        </p>
+                      </div>
+                    </div>
+                  </section>
+
+                  {/* 프로젝트 개요 */}
+                  {selectedProject.project_overview?.serviceCoreElements && (
+                    <section className="border border-gray-200 rounded-lg p-6 shadow-sm">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                        🎯 프로젝트 개요
+                      </h3>
+                      <div className="space-y-4 text-sm text-gray-800">
+                        <div>
+                          <p className="text-gray-500 mb-1">서비스명</p>
+                          <p className="text-gray-900">
+                            {selectedProject.project_overview.serviceCoreElements.title ||
+                              selectedProject.title}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-gray-500 mb-1">서비스 설명</p>
+                          <p className="text-gray-900">
+                            {selectedProject.project_overview.serviceCoreElements
+                              .description ||
+                              selectedProject.description ||
+                              "설명 없음"}
+                          </p>
+                        </div>
+                        {selectedProject.project_overview.serviceCoreElements
+                          .keyFeatures &&
+                          selectedProject.project_overview.serviceCoreElements
+                            .keyFeatures.length > 0 && (
+                            <div>
+                              <p className="text-gray-500 mb-2">핵심 기능</p>
+                              <ul className="list-disc list-inside space-y-1 text-gray-900">
+                                {selectedProject.project_overview.serviceCoreElements.keyFeatures.map(
+                                  (feature, index) => (
+                                    <li key={index}>{feature}</li>
+                                  )
+                                )}
+                              </ul>
+                            </div>
+                          )}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-gray-500 mb-1">타겟 유저</p>
+                            <p className="text-gray-900">
+                              {selectedProject.project_overview.serviceCoreElements.targetUsers?.join(
+                                ", "
+                              ) || "미정"}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-gray-500 mb-1">예상 개발 기간</p>
+                            <p className="text-gray-900">
+                              {selectedProject.project_overview.serviceCoreElements
+                                .estimatedDuration || "미정"}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </section>
+                  )}
+
+                  {/* 견적 정보 */}
+                  <section className="border border-gray-200 rounded-lg p-6 shadow-sm">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                      💰 견적 정보
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-800">
+                      <div className="space-y-1">
+                        <p className="text-gray-500">총 견적금액</p>
+                        <p className="text-2xl font-bold text-[#6366F1]">
+                          {getEstimateAmount(selectedProject).toLocaleString()}원
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-gray-500">요구사항 개수</p>
+                        <p className="text-2xl font-bold text-gray-900">
+                          {getRequirementCount(selectedProject)}개
+                        </p>
+                      </div>
+                    </div>
+                  </section>
+
+                  {/* 요구사항 상세 */}
+                  <section className="border border-gray-200 rounded-lg p-6 shadow-sm">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                      📝 요구사항 상세
+                    </h3>
+                    {selectedProject.requirements ? (
+                      <div className="border border-gray-200 rounded-lg">
+                        <RequirementsResultPanel
+                          projectData={{
+                            description: selectedProject.description || "",
+                            serviceType:
+                              selectedProject.project_overview?.serviceCoreElements?.title ||
+                              "",
+                            uploadedFiles: [] as File[],
+                            chatMessages: [],
+                          }}
+                          extractedRequirements={{
+                            categories: selectedProject.requirements.categories || [],
+                            extractedAt: selectedProject.requirements.extractedAt || selectedProject.created_at,
+                            needsReview: selectedProject.requirements.needsReview ?? false,
+                            totalCount: selectedProject.requirements.totalCount || 0,
+                          }}
+                          projectOverview={
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            (selectedProject.project_overview || undefined) as any
+                          }
+                        />
+                      </div>
+                    ) : (
+                      <p className="text-gray-500">
+                        요구사항 데이터가 아직 등록되지 않았습니다.
+                      </p>
+                    )}
+                  </section>
+                </div>
+              ) : (
+                <div className="p-8 text-center text-gray-500">
+                  프로젝트 정보를 찾을 수 없습니다.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
