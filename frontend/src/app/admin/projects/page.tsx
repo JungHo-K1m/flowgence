@@ -626,13 +626,18 @@ export default function ProjectsPage() {
                       <div className="space-y-1">
                         <p className="text-gray-500">총 견적금액</p>
                         <p className="text-2xl font-bold text-[#6366F1]">
-                          {getEstimateAmount(selectedProject).toLocaleString()}원
+                          {getEstimateAmount({
+                            requirements: selectedProject.requirements as ExtractedRequirements | null,
+                            project_overview: selectedProject.project_overview
+                          }).toLocaleString()}원
                         </p>
                       </div>
                       <div className="space-y-1">
                         <p className="text-gray-500">요구사항 개수</p>
                         <p className="text-2xl font-bold text-gray-900">
-                          {getRequirementCount(selectedProject)}개
+                          {getRequirementCount({
+                            requirements: selectedProject.requirements as ExtractedRequirements | null
+                          })}개
                         </p>
                       </div>
                     </div>
