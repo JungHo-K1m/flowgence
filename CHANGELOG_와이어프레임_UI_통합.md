@@ -1,28 +1,94 @@
-# 와이어프레임 UI 통합 완료
+# 와이어프레임 UI 통합 완료 (탭 구조)
 
 **날짜**: 2025-11-11  
 **작업자**: AI Assistant  
-**목적**: 3단계(기능 구성) 탭에 와이어프레임 자동 생성 UI 통합
+**목적**: 3단계(기능 구성)에 "화면 미리보기" 탭 추가
+
+## 🔄 구조 변경 이유
+- **문제**: 기존 방식(ConfirmationPanel 아래에 배치)은 스크롤로 접근이 어려움
+- **해결**: "확정 요구사항", "상세 견적"과 같은 레벨의 **탭으로 구성**
+- **장점**: 명확한 UI, 탭 전환으로 쉬운 접근, 일관된 UX
 
 ---
 
 ## ✅ 완료된 작업
 
-### 1. page.tsx Import 추가
+### 1. ConfirmationPanel.tsx 업데이트
+
+#### Import 추가
 ```typescript
-import { useWireframe } from "@/hooks/useWireframe";
+import { WireframeSpec } from "@/types/wireframe";
 import { LoFiCanvas } from "@/components/wireframe/LoFiCanvas";
 ```
 
-### 2. useWireframe 훅 통합
+#### Props 인터페이스 확장
 ```typescript
-// 와이어프레임 관련 상태
+interface ConfirmationPanelProps {
+  // ... 기존 props
+  // 와이어프레임 관련
+  wireframe?: WireframeSpec | null;
+  isGeneratingWireframe?: boolean;
+  wireframeError?: string | null;
+  onGenerateWireframe?: () => void;
+  onRegenerateWireframe?: () => void;
+  savedProjectId?: string;
+}
+```
+
+#### activeTab 타입 확장
+```typescript
+const [activeTab, setActiveTab] = useState<"requirements" | "estimate" | "wireframe">(
+  "requirements"
+);
+```
+
+#### 탭 버튼 추가
+```typescript
+<button onClick={() => setActiveTab("wireframe")}>
+  📱 화면 미리보기
+</button>
+```
+
+#### 탭 컨텐츠 추가 (1166-1294 라인)
+- 초기 상태: 생성 버튼
+- 로딩 상태: 스피너 + 메시지
+- 에러 상태: 에러 메시지 + 재시도
+- 완료 상태: 와이어프레임 + 정보 패널
+
+### 2. page.tsx 업데이트
+
+#### useWireframe 훅 사용
+```typescript
 const { wireframe, isGenerating, error: wireframeError, generateWireframe, clearWireframe } = useWireframe();
 ```
 
-### 3. ConfirmationPanel 아래에 와이어프레임 섹션 추가
+#### ConfirmationPanel에 props 전달
+```typescript
+<ConfirmationPanel
+  // ... 기존 props
+  wireframe={wireframe}
+  isGeneratingWireframe={isGenerating}
+  wireframeError={wireframeError}
+  onGenerateWireframe={() => {
+    if (savedProjectId) {
+      generateWireframe(savedProjectId);
+    } else {
+      alert('프로젝트를 먼저 저장해주세요');
+    }
+  }}
+  onRegenerateWireframe={() => {
+    clearWireframe();
+    if (savedProjectId) {
+      generateWireframe(savedProjectId);
+    }
+  }}
+  savedProjectId={savedProjectId}
+/>
+```
 
-위치: `frontend/src/app/page.tsx` (2997-3109라인)
+#### 기존 독립 와이어프레임 섹션 제거
+- ConfirmationPanel 아래에 있던 와이어프레임 섹션 완전히 제거
+- 모든 와이어프레임 UI는 이제 탭 내부에서 관리
 
 **구성 요소:**
 - ✅ 섹션 헤더 (제목 + 설명)
@@ -34,7 +100,28 @@ const { wireframe, isGenerating, error: wireframeError, generateWireframe, clear
 
 ---
 
-## 🎨 UI 구조
+## 🎨 새로운 탭 구조
+
+### Step 3 화면 레이아웃
+```
+┌─────────────────────────────────────────┐
+│  [1 프로젝트 개요] - [2 요구사항] -    │
+│  [3 기능 구성] - [4 완료]              │
+└─────────────────────────────────────────┘
+┌─────────────────────────────────────────┐
+│  기능 구성 확인                         │
+├─────────────────────────────────────────┤
+│ [확정 요구사항] [상세 견적] [📱 화면 미리보기] │ ← 탭!
+├─────────────────────────────────────────┤
+│                                         │
+│  (탭별 컨텐츠)                          │
+│                                         │
+└─────────────────────────────────────────┘
+│  [← 이전]              [다음 단계 →]   │
+└─────────────────────────────────────────┘
+```
+
+## 🎨 와이어프레임 탭 UI 상태
 
 ### 초기 상태 (생성 전)
 ```
@@ -207,7 +294,7 @@ const { wireframe, isGenerating, error: wireframeError, generateWireframe, clear
 
 ---
 
-## 🔄 사용자 흐름
+## 🔄 사용자 흐름 (탭 구조)
 
 ### 정상 플로우
 ```
@@ -218,20 +305,32 @@ Step 2: 요구사항 추출/편집
 AI 검증 (status: ok 또는 warning)
       ↓
 Step 3: 기능 구성 확인
-      ├─ ConfirmationPanel (상단)
-      └─ 와이어프레임 섹션 (하단)
-           ↓
-    [와이어프레임 생성하기] 클릭
-           ↓
-    로딩 (10-15초)
-           ↓
-    와이어프레임 표시
-           ↓
-    (선택) [🔄 다시 생성] 클릭 → 재생성
-           ↓
-    [다음 단계] 클릭
-           ↓
+      ↓
+[확정 요구사항] 탭 (기본) → 내용 확인
+      ↓
+[상세 견적] 탭 클릭 → 견적 확인
+      ↓
+[📱 화면 미리보기] 탭 클릭  ← NEW!
+      ↓
+[와이어프레임 생성하기] 클릭
+      ↓
+로딩 (10-15초)
+      ↓
+와이어프레임 표시
+      ↓
+(선택) [🔄 다시 생성] 클릭 → 재생성
+      ↓
+다른 탭으로 전환 or [다음 단계] 클릭
+      ↓
 Step 4: 최종 결과
+```
+
+### 탭 전환 플로우
+```
+[확정 요구사항] ↔ [상세 견적] ↔ [📱 화면 미리보기]
+                                      ↑
+                                  독립적 접근
+                                  스크롤 불필요
 ```
 
 ### 에러 플로우
@@ -351,24 +450,31 @@ if (!savedProjectId) {
 ## 📝 다음 단계
 
 ### 즉시 필요한 작업
-1. ✅ **Supabase 마이그레이션 실행**
-   ```bash
-   # Supabase 대시보드 → SQL Editor
-   # supabase/migrations/20250111_create_wireframes_table.sql 실행
-   ```
-
-2. ✅ **백엔드 재시작**
-   ```bash
-   cd backend
-   npm run start:dev
-   ```
-
-3. ✅ **프론트엔드 테스트**
+1. ✅ **Supabase 마이그레이션 실행** (완료)
+2. ✅ **백엔드 재시작** (사용자가 직접 수행)
+3. ✅ **프론트엔드 빌드 & 테스트**
    ```bash
    cd frontend
    npm run dev
    # http://localhost:3000
    ```
+
+### 테스트 시나리오
+```
+1. Step 1-2 진행 (프로젝트 생성)
+2. Step 3 도착 → "기능 구성 확인" 화면
+3. 상단 탭 확인:
+   - [확정 요구사항] (기본 선택)
+   - [상세 견적]
+   - [📱 화면 미리보기] ← 클릭!
+4. 와이어프레임 탭 진입
+5. [와이어프레임 생성하기] 버튼 클릭
+6. 로딩 10-15초 대기
+7. 와이어프레임 표시 확인
+8. [다시 생성] 버튼 테스트 (선택)
+9. 다른 탭으로 전환 테스트
+10. [다음 단계] 클릭 → Step 4 진행
+```
 
 ### 선택적 개선사항 (Phase 2)
 - [ ] 와이어프레임 편집 기능

@@ -15,6 +15,8 @@ import {
 import { shareEstimateToNotion } from "@/lib/notionService";
 import { checkNotionSetup } from "@/lib/notionConfig";
 import { getShareOptions, showNotionGuide } from "@/lib/shareAlternatives";
+import { WireframeSpec } from "@/types/wireframe";
+import { LoFiCanvas } from "@/components/wireframe/LoFiCanvas";
 
 interface ProjectOverview {
   serviceCoreElements: {
@@ -73,6 +75,13 @@ interface ConfirmationPanelProps {
   };
   extractedRequirements?: ExtractedRequirements | null;
   projectOverview?: ProjectOverview | null;
+  // 와이어프레임 관련
+  wireframe?: WireframeSpec | null;
+  isGeneratingWireframe?: boolean;
+  wireframeError?: string | null;
+  onGenerateWireframe?: () => void;
+  onRegenerateWireframe?: () => void;
+  savedProjectId?: string;
 }
 
 export function ConfirmationPanel({
@@ -82,8 +91,14 @@ export function ConfirmationPanel({
   projectData,
   extractedRequirements,
   projectOverview,
+  wireframe,
+  isGeneratingWireframe,
+  wireframeError,
+  onGenerateWireframe,
+  onRegenerateWireframe,
+  savedProjectId,
 }: ConfirmationPanelProps) {
-  const [activeTab, setActiveTab] = useState<"requirements" | "estimate">(
+  const [activeTab, setActiveTab] = useState<"requirements" | "estimate" | "wireframe">(
     "requirements"
   );
   const [expandedCategories, setExpandedCategories] = useState<Set<number>>(
@@ -645,6 +660,16 @@ export function ConfirmationPanel({
           >
             상세 견적
           </button>
+          <button
+            onClick={() => setActiveTab("wireframe")}
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              activeTab === "wireframe"
+                ? "border-blue-500 text-blue-600"
+                : "border-transparent text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            📱 화면 미리보기
+          </button>
         </div>
       </div>
 
@@ -1138,7 +1163,135 @@ export function ConfirmationPanel({
               </>
             )}
           </div>
-        )}
+        ) : activeTab === "wireframe" ? (
+          <div className="p-6">
+            <div className="space-y-6">
+              {/* 안내 메시지 */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <span className="text-blue-600 text-xl">📱</span>
+                  <div className="flex-1">
+                    <h3 className="text-sm font-medium text-blue-800 mb-1">
+                      화면 미리보기 (로파이 와이어프레임)
+                    </h3>
+                    <p className="text-sm text-blue-600">
+                      AI가 요구사항을 기반으로 메인 화면의 구조를 자동으로 생성합니다.
+                      실제 디자인은 개발 단계에서 세부적으로 진행됩니다.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 초기 상태: 생성 버튼 */}
+              {!wireframe && !isGeneratingWireframe && !wireframeError && (
+                <div className="text-center py-16 border-2 border-dashed border-gray-300 rounded-lg">
+                  <div className="text-6xl mb-4">🎨</div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    AI가 화면을 자동으로 그려드립니다
+                  </h3>
+                  <p className="text-sm text-gray-600 mb-6">
+                    요구사항을 분석하여 최적의 레이아웃을 구성합니다
+                  </p>
+                  <button
+                    onClick={onGenerateWireframe}
+                    disabled={!savedProjectId}
+                    className="px-8 py-3 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-lg hover:from-indigo-600 hover:to-purple-600 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                  >
+                    와이어프레임 생성하기
+                  </button>
+                  {!savedProjectId && (
+                    <p className="text-sm text-red-600 mt-3">
+                      ⚠️ 프로젝트를 먼저 저장해주세요
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* 로딩 상태 */}
+              {isGeneratingWireframe && (
+                <div className="flex flex-col items-center justify-center py-20 gap-6">
+                  <div className="relative">
+                    <div className="animate-spin rounded-full h-24 w-24 border-4 border-t-transparent border-indigo-600"></div>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-3xl">📱</span>
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xl text-gray-800 font-semibold mb-2">
+                      AI가 화면을 그리고 있습니다...
+                    </p>
+                    <p className="text-sm text-gray-600 mb-1">
+                      요구사항을 분석하고 최적의 레이아웃을 구성하고 있습니다
+                    </p>
+                    <p className="text-xs text-gray-500 mt-2">
+                      예상 소요 시간: 10-15초
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* 에러 상태 */}
+              {wireframeError && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-8 text-center">
+                  <div className="text-5xl mb-4">⚠️</div>
+                  <p className="text-red-800 font-medium mb-2 text-lg">
+                    와이어프레임 생성 실패
+                  </p>
+                  <p className="text-sm text-red-600 mb-6">{wireframeError}</p>
+                  <button
+                    onClick={onGenerateWireframe}
+                    className="px-6 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors font-medium"
+                  >
+                    다시 시도
+                  </button>
+                </div>
+              )}
+
+              {/* 완료 상태: 와이어프레임 표시 */}
+              {wireframe && !isGeneratingWireframe && (
+                <div className="space-y-6">
+                  {/* 다시 생성 버튼 */}
+                  <div className="flex justify-end">
+                    <button
+                      onClick={onRegenerateWireframe}
+                      className="px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2"
+                    >
+                      <span>🔄</span>
+                      <span>다시 생성</span>
+                    </button>
+                  </div>
+
+                  {/* 와이어프레임 렌더링 */}
+                  <div className="flex justify-center bg-gray-50 rounded-lg p-8 border border-gray-200">
+                    <LoFiCanvas spec={wireframe} scale={0.8} />
+                  </div>
+
+                  {/* 정보 패널 */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <span className="text-blue-600 text-xl">💡</span>
+                      <div className="flex-1 text-sm text-blue-800">
+                        <p className="font-medium mb-2">와이어프레임 정보</p>
+                        <ul className="list-disc list-inside space-y-1 text-blue-700">
+                          <li>
+                            이것은 <strong>로파이(저해상도) 와이어프레임</strong>입니다
+                          </li>
+                          <li>화면 구조와 주요 요소 배치를 확인할 수 있습니다</li>
+                          <li>
+                            실제 디자인은 개발 단계에서 세부적으로 진행됩니다
+                          </li>
+                          <li>
+                            만족스럽지 않다면 "다시 생성" 버튼을 눌러주세요
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : null}
       </div>
 
       {/* Footer */}

@@ -19,7 +19,6 @@ import { AIVerificationLoading } from "@/components/requirements/AIVerificationL
 import { VerificationResultModal } from "@/components/requirements/VerificationResultModal";
 import { ConfirmationPanel } from "@/components/project/ConfirmationPanel";
 import { useWireframe } from "@/hooks/useWireframe";
-import { LoFiCanvas } from "@/components/wireframe/LoFiCanvas";
 import { RequirementsResultPanel } from "@/components/project/RequirementsResultPanel";
 import { FinalConfirmationModal } from "@/components/project/FinalConfirmationModal";
 import { ProgressBar } from "@/components/layout/ProgressBar";
@@ -2992,121 +2991,24 @@ function HomePageContent() {
             }}
             extractedRequirements={extractedRequirements}
             projectOverview={overview}
+            wireframe={wireframe}
+            isGeneratingWireframe={isGenerating}
+            wireframeError={wireframeError}
+            onGenerateWireframe={() => {
+              if (savedProjectId) {
+                generateWireframe(savedProjectId);
+              } else {
+                alert('프로젝트를 먼저 저장해주세요');
+              }
+            }}
+            onRegenerateWireframe={() => {
+              clearWireframe();
+              if (savedProjectId) {
+                generateWireframe(savedProjectId);
+              }
+            }}
+            savedProjectId={savedProjectId}
           />
-
-          {/* 와이어프레임 섹션 */}
-          <div className="mt-8 bg-white rounded-lg shadow-sm border border-gray-200">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-                    <span className="text-2xl">📱</span>
-                    화면 미리보기 (로파이 와이어프레임)
-                  </h3>
-                  <p className="text-sm text-gray-600 mt-1">
-                    AI가 요구사항을 기반으로 메인 화면의 구조를 자동으로 생성합니다
-                  </p>
-                </div>
-                {wireframe && (
-                  <button
-                    onClick={() => {
-                      clearWireframe();
-                      if (savedProjectId) {
-                        generateWireframe(savedProjectId);
-                      }
-                    }}
-                    disabled={isGenerating}
-                    className="px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    🔄 다시 생성
-                  </button>
-                )}
-              </div>
-
-              {!wireframe && !isGenerating && !wireframeError && (
-                <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg">
-                  <div className="text-4xl mb-4">🎨</div>
-                  <p className="text-gray-600 mb-4">
-                    AI가 화면을 자동으로 그려드립니다
-                  </p>
-                  <button
-                    onClick={() => {
-                      if (savedProjectId) {
-                        generateWireframe(savedProjectId);
-                      } else {
-                        alert('프로젝트를 먼저 저장해주세요');
-                      }
-                    }}
-                    disabled={!savedProjectId}
-                    className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-lg hover:from-indigo-600 hover:to-purple-600 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-                  >
-                    와이어프레임 생성하기
-                  </button>
-                </div>
-              )}
-
-              {isGenerating && (
-                <div className="flex flex-col items-center justify-center py-16 gap-6">
-                  <div className="relative">
-                    <div className="animate-spin rounded-full h-20 w-20 border-4 border-t-transparent border-indigo-600"></div>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-2xl">📱</span>
-                    </div>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-lg text-gray-800 font-semibold mb-2">
-                      AI가 화면을 그리고 있습니다...
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      요구사항을 분석하고 최적의 레이아웃을 구성하고 있습니다
-                    </p>
-                    <p className="text-xs text-gray-500 mt-2">
-                      예상 소요 시간: 10-15초
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {wireframeError && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-                  <div className="text-4xl mb-4">⚠️</div>
-                  <p className="text-red-800 font-medium mb-2">와이어프레임 생성 실패</p>
-                  <p className="text-sm text-red-600 mb-4">{wireframeError}</p>
-                  <button
-                    onClick={() => {
-                      if (savedProjectId) {
-                        generateWireframe(savedProjectId);
-                      }
-                    }}
-                    className="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
-                  >
-                    다시 시도
-                  </button>
-                </div>
-              )}
-
-              {wireframe && !isGenerating && (
-                <div className="space-y-6">
-                  <div className="flex justify-center bg-gray-50 rounded-lg p-8">
-                    <LoFiCanvas spec={wireframe} scale={0.8} />
-                  </div>
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <div className="flex items-start gap-3">
-                      <span className="text-blue-600 text-xl">💡</span>
-                      <div className="flex-1 text-sm text-blue-800">
-                        <p className="font-medium mb-1">와이어프레임 정보</p>
-                        <ul className="list-disc list-inside space-y-1 text-blue-700">
-                          <li>이것은 <strong>로파이(저해상도) 와이어프레임</strong>입니다</li>
-                          <li>화면 구조와 주요 요소 배치를 확인할 수 있습니다</li>
-                          <li>실제 디자인은 개발 단계에서 세부적으로 진행됩니다</li>
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
         </div>
       )}
 
