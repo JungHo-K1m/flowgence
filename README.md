@@ -200,6 +200,7 @@ flowgence/
 │   │   │   ├── chat/             # 채팅 UI
 │   │   │   ├── requirements/     # 요구사항 관리
 │   │   │   ├── project/          # 프로젝트 관련
+│   │   │   ├── wireframe/        # 와이어프레임
 │   │   │   └── ui/               # shadcn/ui 컴포넌트
 │   │   ├── hooks/                # Custom Hooks
 │   │   ├── lib/                  # 유틸리티
@@ -215,6 +216,7 @@ flowgence/
 │   │   ├── entities/             # TypeORM 엔티티
 │   │   ├── projects/             # 프로젝트 모듈
 │   │   ├── chat/                 # 채팅 모듈
+│   │   ├── wireframes/           # 와이어프레임 모듈
 │   │   └── supabase/             # Supabase 서비스
 │   ├── dist/                     # 빌드 결과물
 │   └── test/                     # 테스트 파일
@@ -223,11 +225,20 @@ flowgence/
 │   ├── schema.sql                # 기본 스키마
 │   └── *.sql                     # 마이그레이션 파일
 │
+├── docs/                          # 📚 프로젝트 문서
+│   ├── changelogs/               # 변경 이력
+│   ├── guides/                   # 구현 가이드
+│   ├── fixes/                    # 버그 수정
+│   ├── PROJECT_OVERVIEW.md       # 상세 프로젝트 문서
+│   └── README.md                 # 문서 인덱스
+│
 ├── shared/                        # 공통 타입/인터페이스
 │   └── types/
 │
+├── supabase/                      # Supabase 마이그레이션
+│   └── migrations/
+│
 ├── docker-compose.yml            # 개발 환경
-├── PROJECT_OVERVIEW.md           # 상세 프로젝트 문서
 └── README.md                     # 이 파일
 ```
 
@@ -395,9 +406,15 @@ vercel logs
 이 프로젝트는 MIT 라이선스를 따릅니다.
 
 ### **추가 문서**
-- 📖 **상세 문서**: [PROJECT_OVERVIEW.md](./PROJECT_OVERVIEW.md)
-- 🚀 **배포 가이드**: PROJECT_OVERVIEW.md 참조
-- 🔧 **기술 스택 상세**: PROJECT_OVERVIEW.md 참조
+- 📖 **상세 문서**: [PROJECT_OVERVIEW.md](./docs/PROJECT_OVERVIEW.md)
+- 📚 **프로젝트 문서**: [docs/](./docs/) - 변경 이력, 가이드, 버그 수정 등 모든 문서
+- 🚀 **배포 가이드**: docs/PROJECT_OVERVIEW.md 참조
+- 🔧 **기술 스택 상세**: docs/PROJECT_OVERVIEW.md 참조
+
+#### **문서 카테고리**
+- 📋 **[변경 이력](./docs/changelogs/)** - 기능 추가 및 개선 사항
+- 📖 **[구현 가이드](./docs/guides/)** - 기능 구현 방법 및 설정
+- 🔧 **[버그 수정](./docs/fixes/)** - 발견된 버그와 수정 내역
 
 ---
 

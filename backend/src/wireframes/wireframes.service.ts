@@ -39,7 +39,18 @@ export class WireframesService {
       // 3. LLM으로 와이어프레임 JSON 생성
       const spec = await this.generateSpecFromLLM(summary);
 
-      // 4. Supabase에 저장
+      // 4. 기존 와이어프레임 삭제 (재생성 시)
+      const { error: deleteError } = await this.supabase
+        .from('wireframes')
+        .delete()
+        .eq('project_id', projectId);
+
+      if (deleteError) {
+        console.warn('기존 와이어프레임 삭제 실패:', deleteError.message);
+        // 삭제 실패는 무시 (처음 생성 시 데이터가 없을 수 있음)
+      }
+
+      // 5. 새 와이어프레임 저장
       const { data: saved, error: saveError } = await this.supabase
         .from('wireframes')
         .insert({
