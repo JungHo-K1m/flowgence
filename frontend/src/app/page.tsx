@@ -3007,7 +3007,7 @@ function HomePageContent() {
                 generateWireframe(savedProjectId);
               }
             }}
-            savedProjectId={savedProjectId}
+            savedProjectId={savedProjectId ?? undefined}
           />
         </div>
       )}
