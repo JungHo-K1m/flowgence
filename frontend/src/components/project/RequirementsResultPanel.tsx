@@ -334,18 +334,15 @@ export function RequirementsResultPanel({
     setTimeout(() => {
       const element = document.getElementById(sectionId);
       if (element) {
-        // 컨텐츠 영역 내에서 스크롤
-        const contentArea = element.closest(".flex-1.overflow-y-auto");
+        // requirements-content 클래스를 가진 스크롤 컨테이너 찾기
+        const contentArea = document.querySelector('.requirements-content');
         if (contentArea) {
-          const rect = element.getBoundingClientRect();
-          const absoluteElementTop = rect.top + window.pageYOffset;
-          const absoluteContentTop =
-            (contentArea as HTMLElement).getBoundingClientRect().top +
-            window.pageYOffset;
-          const relativeTop = absoluteElementTop - absoluteContentTop;
-
-          (contentArea as HTMLElement).scrollTo({
-            top: relativeTop - 20,
+          // 요소의 offsetTop을 사용하여 컨테이너 내 상대 위치 계산
+          const elementTop = (element as HTMLElement).offsetTop;
+          
+          // 스크롤 위치 설정 (상단 여백 20px 추가)
+          contentArea.scrollTo({
+            top: elementTop - 20,
             behavior: "smooth",
           });
         }
