@@ -1281,7 +1281,7 @@ export function ConfirmationPanel({
                             실제 디자인은 개발 단계에서 세부적으로 진행됩니다
                           </li>
                           <li>
-                            만족스럽지 않다면 "다시 생성" 버튼을 눌러주세요
+                            만족스럽지 않다면 &quot;다시 생성&quot; 버튼을 눌러주세요
                           </li>
                         </ul>
                       </div>
