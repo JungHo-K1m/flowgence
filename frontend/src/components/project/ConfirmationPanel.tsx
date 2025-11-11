@@ -843,7 +843,7 @@ export function ConfirmationPanel({
               )}
             </div>
           </div>
-        ) : (
+        ) : activeTab === "estimate" ? (
           <div className="p-6">
             {!projectOverview ? (
               <div className="text-center py-8 text-gray-500">
