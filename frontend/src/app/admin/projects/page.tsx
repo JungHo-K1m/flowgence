@@ -115,7 +115,7 @@ export default function ProjectsPage() {
   };
 
   // 프로젝트 요구사항 수 계산 함수
-  const getRequirementCount = (project: { requirements?: ExtractedRequirements }): number => {
+  const getRequirementCount = (project: { requirements?: ExtractedRequirements | null }): number => {
     if (!project.requirements) return 0;
     const extractedRequirements = project.requirements as ExtractedRequirements;
     return extractedRequirements.totalCount || 0;
@@ -123,8 +123,8 @@ export default function ProjectsPage() {
 
   // 프로젝트 견적 금액 계산 함수
   const getEstimateAmount = (project: { 
-    requirements?: ExtractedRequirements; 
-    project_overview?: ProjectOverview 
+    requirements?: ExtractedRequirements | null; 
+    project_overview?: ProjectOverview | null; 
   }): number => {
     // AI가 생성한 견적이 있으면 해당 금액 사용
     if (project.project_overview?.estimation?.totalCost) {
