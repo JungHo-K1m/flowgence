@@ -17,6 +17,7 @@ import { File } from './entities/file.entity';
 import { ChatModule } from './chat/chat.module';
 import { ProjectsModule } from './projects/projects.module';
 import { SupabaseModule } from './supabase/supabase.module';
+import { WireframesModule } from './wireframes/wireframes.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { SupabaseModule } from './supabase/supabase.module';
     ChatModule,
     ProjectsModule,
     SupabaseModule,
+    WireframesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
