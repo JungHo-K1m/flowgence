@@ -33,9 +33,12 @@ AI 수정 중 오류: Error: Claude API 오류: 404
    - 사용 중인 모델: `claude-3-5-sonnet-20241022` ❌
    - 문제: 이 날짜의 모델은 존재하지 않음
 
-### Claude 3.5 Sonnet 올바른 모델 이름
-- ✅ `claude-3-5-sonnet-20240620` (2024년 6월 20일 버전)
-- 이것이 현재 사용 가능한 최신 Claude 3.5 Sonnet 모델입니다.
+### 올바른 Claude 모델 이름
+- ✅ `claude-sonnet-4-20250514` (Claude Sonnet 4 - 최신)
+- ✅ `claude-3-5-sonnet-20241022` (Claude 3.5 Sonnet)
+- ✅ `claude-3-7-sonnet-20250219` (Claude Sonnet 3.7)
+
+**최종 선택: `claude-sonnet-4-20250514` (가장 최신이며 성능이 우수)**
 
 ## 해결 방법
 
@@ -64,7 +67,7 @@ body: JSON.stringify({
 **수정 후:**
 ```typescript
 body: JSON.stringify({
-  model: 'claude-3-5-sonnet-20240620',
+  model: 'claude-sonnet-4-20250514',
   max_tokens: 4000,
   system: systemPrompt,
   messages: [
@@ -96,7 +99,7 @@ body: JSON.stringify({
 **수정 후:**
 ```typescript
 body: JSON.stringify({
-  model: 'claude-3-5-sonnet-20240620',
+  model: 'claude-sonnet-4-20250514',
   max_tokens: 4096,
   messages: [
     {
@@ -132,14 +135,15 @@ Railway는 자동 배포가 설정되어 있으므로:
 ## Claude 모델 버전 참고
 
 ### 사용 가능한 Claude 모델 (2025년 1월 기준)
-- `claude-3-5-sonnet-20240620` ✅ (최신 3.5 Sonnet)
-- `claude-3-opus-20240229` (3.0 Opus, 가장 강력)
-- `claude-3-sonnet-20240229` (3.0 Sonnet, 균형)
-- `claude-3-haiku-20240307` (3.0 Haiku, 가장 빠름)
+- ✅ `claude-opus-4-20250514` (Claude Opus 4 - 가장 강력)
+- ✅ `claude-sonnet-4-20250514` (Claude Sonnet 4 - 균형, **현재 사용 중**)
+- ✅ `claude-3-7-sonnet-20250219` (Claude Sonnet 3.7)
+- ✅ `claude-3-5-sonnet-20241022` (Claude Sonnet 3.5)
+- ✅ `claude-3-5-haiku-20241022` (Claude Haiku 3.5 - 가장 빠름)
 
-### 존재하지 않는 모델
-- ❌ `claude-sonnet-4-20250514` (Claude 4는 아직 출시되지 않음)
-- ❌ `claude-3-5-sonnet-20241022` (이 날짜의 버전 없음)
+### 존재하지 않는/더 이상 사용되지 않는 모델
+- ❌ `claude-3-5-sonnet-20240620` (존재하지 않음)
+- ❌ `claude-sonnet-4-20250514` → ✅ 실제로 존재함! (최신)
 
 ## 예방 방법
 - Anthropic 공식 문서에서 [최신 모델 목록](https://docs.anthropic.com/en/docs/models-overview) 확인
