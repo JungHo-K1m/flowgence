@@ -75,7 +75,7 @@ function HomePageContent() {
   const [chatMessages, setChatMessages] = useState<Message[]>([]);
   
   // 와이어프레임 관련 상태
-  const { wireframe, isGenerating, error: wireframeError, generateWireframe, clearWireframe } = useWireframe();
+  const { wireframe, isGenerating, isApplying, error: wireframeError, generateWireframe, applyEdit, clearWireframe } = useWireframe();
   const hasResumedProject = useRef(false);
   const isProcessingStep1To2 = useRef(false); // 1단계 → 2단계 전환 중복 호출 방지
   
@@ -2993,6 +2993,7 @@ function HomePageContent() {
             projectOverview={overview}
             wireframe={wireframe}
             isGeneratingWireframe={isGenerating}
+            isApplyingEdit={isApplying}
             wireframeError={wireframeError}
             onGenerateWireframe={() => {
               if (savedProjectId) {
@@ -3005,6 +3006,13 @@ function HomePageContent() {
               clearWireframe();
               if (savedProjectId) {
                 generateWireframe(savedProjectId);
+              }
+            }}
+            onApplyEdit={async (prompt: string) => {
+              if (savedProjectId) {
+                await applyEdit(savedProjectId, prompt);
+              } else {
+                alert('프로젝트를 먼저 저장해주세요');
               }
             }}
             savedProjectId={savedProjectId ?? undefined}

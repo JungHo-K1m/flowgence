@@ -303,5 +303,136 @@ ${summary}
       },
     };
   }
+
+  // AI 프롬프트 기반 와이어프레임 수정
+  async applyAIEdit(projectId: string, prompt: string) {
+    console.log('=== AI 편집 시작 ===');
+    console.log('프로젝트 ID:', projectId);
+    console.log('프롬프트:', prompt);
+
+    try {
+      // 1. 현재 와이어프레임 조회
+      const wireframe = await this.getLatestWireframe(projectId);
+      if (!wireframe) {
+        throw new Error('와이어프레임이 존재하지 않습니다');
+      }
+
+      // 2. Claude AI로 수정
+      const updatedSpec = await this.modifyWithAI(wireframe.spec, prompt);
+
+      // 3. 기존 와이어프레임 삭제
+      await this.supabase
+        .from('wireframes')
+        .delete()
+        .eq('project_id', projectId);
+
+      // 4. 수정된 와이어프레임 저장
+      const { data: saved, error: saveError } = await this.supabase
+        .from('wireframes')
+        .insert({
+          project_id: projectId,
+          version: wireframe.version + 1,
+          spec: updatedSpec,
+        })
+        .select()
+        .single();
+
+      if (saveError) {
+        throw new Error(`저장 실패: ${saveError.message}`);
+      }
+
+      console.log('=== AI 편집 완료 ===');
+      return { ok: true, spec: saved.spec };
+    } catch (error) {
+      console.error('AI 편집 실패:', error);
+      throw error;
+    }
+  }
+
+  private async modifyWithAI(currentSpec: any, prompt: string): Promise<any> {
+    const apiKey = this.configService.get<string>('ANTHROPIC_API_KEY');
+    if (!apiKey) {
+      throw new Error('ANTHROPIC_API_KEY is not configured');
+    }
+
+    const systemPrompt = `당신은 와이어프레임 편집 전문가입니다.
+현재 와이어프레임 JSON이 주어지고, 사용자의 수정 요청이 주어집니다.
+
+규칙:
+- 반드시 JSON만 출력합니다 (설명 금지, 코드블록 금지)
+- 기존 구조를 최대한 유지하면서 수정합니다
+- 요청된 부분만 정확하게 수정합니다
+- viewport, screen 구조는 동일하게 유지합니다
+- elements 배열 내 요소만 수정합니다
+
+수정 가능한 내용:
+- 요소 크기 (w, h)
+- 요소 위치 (x, y)
+- 요소 라벨 (label)
+- 요소 추가/삭제
+- 색상 (props에 color 추가)
+
+수정된 전체 JSON을 출력하세요.`;
+
+    const userPrompt = `현재 와이어프레임:
+${JSON.stringify(currentSpec, null, 2)}
+
+사용자 수정 요청: ${prompt}
+
+위 요청에 따라 수정된 전체 JSON을 출력하세요.`;
+
+    try {
+      const response = await fetch(
+        'https://api.anthropic.com/v1/messages',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01',
+          },
+          body: JSON.stringify({
+            model: 'claude-3-5-sonnet-20241022',
+            max_tokens: 4096,
+            messages: [
+              {
+                role: 'user',
+                content: userPrompt,
+              },
+            ],
+            system: systemPrompt,
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Claude API 오류:', errorText);
+        throw new Error(`Claude API 오류: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const jsonText = data.content[0].text;
+
+      console.log('Claude 응답:', jsonText);
+
+      // JSON 파싱
+      let updatedSpec;
+      try {
+        updatedSpec = JSON.parse(jsonText);
+      } catch (parseError) {
+        console.error('JSON 파싱 실패:', parseError);
+        console.error('응답 텍스트:', jsonText);
+        // 폴백: 기존 spec 반환
+        return currentSpec;
+      }
+
+      return updatedSpec;
+    } catch (error) {
+      console.error('AI 수정 중 오류:', error);
+      // 폴백: 기존 spec 반환
+      return currentSpec;
+    }
+  }
 }
 

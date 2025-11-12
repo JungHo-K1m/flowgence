@@ -17,6 +17,7 @@ import { checkNotionSetup } from "@/lib/notionConfig";
 import { getShareOptions, showNotionGuide } from "@/lib/shareAlternatives";
 import { WireframeSpec } from "@/types/wireframe";
 import { LoFiCanvas } from "@/components/wireframe/LoFiCanvas";
+import { WireframeEditor } from "@/components/wireframe/WireframeEditor";
 
 interface ProjectOverview {
   serviceCoreElements: {
@@ -78,9 +79,11 @@ interface ConfirmationPanelProps {
   // 와이어프레임 관련
   wireframe?: WireframeSpec | null;
   isGeneratingWireframe?: boolean;
+  isApplyingEdit?: boolean;
   wireframeError?: string | null;
   onGenerateWireframe?: () => void;
   onRegenerateWireframe?: () => void;
+  onApplyEdit?: (prompt: string) => Promise<void>;
   savedProjectId?: string;
 }
 
@@ -93,9 +96,11 @@ export function ConfirmationPanel({
   projectOverview,
   wireframe,
   isGeneratingWireframe,
+  isApplyingEdit,
   wireframeError,
   onGenerateWireframe,
   onRegenerateWireframe,
+  onApplyEdit,
   savedProjectId,
 }: ConfirmationPanelProps) {
   const [activeTab, setActiveTab] = useState<"requirements" | "estimate" | "wireframe">(
@@ -1247,8 +1252,8 @@ export function ConfirmationPanel({
                 </div>
               )}
 
-              {/* 완료 상태: 와이어프레임 표시 */}
-              {wireframe && !isGeneratingWireframe && (
+              {/* 완료 상태: 와이어프레임 표시 및 편집 */}
+              {wireframe && !isGeneratingWireframe && savedProjectId && onApplyEdit && (
                 <div className="space-y-6">
                   {/* 다시 생성 버튼 */}
                   <div className="flex justify-end">
@@ -1261,10 +1266,13 @@ export function ConfirmationPanel({
                     </button>
                   </div>
 
-                  {/* 와이어프레임 렌더링 */}
-                  <div className="flex justify-center bg-gray-50 rounded-lg p-8 border border-gray-200">
-                    <LoFiCanvas spec={wireframe} scale={0.8} />
-                  </div>
+                  {/* 와이어프레임 편집기 */}
+                  <WireframeEditor
+                    wireframe={wireframe}
+                    projectId={savedProjectId}
+                    isApplying={isApplyingEdit || false}
+                    onApplyEdit={onApplyEdit}
+                  />
 
                   {/* 정보 패널 */}
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">

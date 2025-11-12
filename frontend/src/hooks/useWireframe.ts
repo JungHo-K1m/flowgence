@@ -4,6 +4,7 @@ import { WireframeSpec } from "@/types/wireframe";
 export function useWireframe() {
   const [wireframe, setWireframe] = useState<WireframeSpec | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isApplying, setIsApplying] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const generateWireframe = async (projectId: string) => {
@@ -40,6 +41,40 @@ export function useWireframe() {
     }
   };
 
+  const applyEdit = async (projectId: string, prompt: string) => {
+    setIsApplying(true);
+    setError(null);
+
+    try {
+      console.log("AI 편집 요청:", projectId, prompt);
+
+      const response = await fetch("/api/wireframes/apply-edit", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ projectId, prompt }),
+      });
+
+      const data = await response.json();
+
+      if (data.status === "error") {
+        throw new Error(data.message || "AI 편집 실패");
+      }
+
+      console.log("AI 편집 성공:", data.spec);
+      setWireframe(data.spec);
+      return data;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "알 수 없는 오류";
+      console.error("AI 편집 오류:", errorMessage);
+      setError(errorMessage);
+      throw err;
+    } finally {
+      setIsApplying(false);
+    }
+  };
+
   const clearWireframe = () => {
     setWireframe(null);
     setError(null);
@@ -48,8 +83,10 @@ export function useWireframe() {
   return {
     wireframe,
     isGenerating,
+    isApplying,
     error,
     generateWireframe,
+    applyEdit,
     clearWireframe,
   };
 }
