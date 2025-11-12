@@ -1,3 +1,5 @@
+import { WireframeSpec } from "@/types/wireframe";
+
 // 요구사항 결과 페이지 마크다운 생성 유틸리티
 
 interface RequirementsData {
@@ -43,7 +45,8 @@ export function generateRequirementsMarkdown(
   requirementsData: RequirementsData,
   projectData: ProjectData,
   extractedRequirements?: any,
-  projectOverview?: any
+  projectOverview?: any,
+  wireframe?: WireframeSpec | null
 ): string {
   const currentDate = new Date().toLocaleDateString("ko-KR", {
     year: "numeric",
@@ -205,6 +208,45 @@ ${requirementsData.screenList.map((screen, index) => {
 
 ---
 
+${wireframe && wireframe.screens && wireframe.screens.length > 0 ? `
+## 🖼️ 와이어프레임 미리보기
+
+<div class="wireframe-preview">
+${wireframe.screens.map((screen, index) => {
+  const scale = wireframe.viewport.width > 0 ? Math.min(320 / wireframe.viewport.width, 0.6) : 0.4;
+  const viewportWidth = Math.round(wireframe.viewport.width * scale);
+  const viewportHeight = Math.round(wireframe.viewport.height * scale);
+  const elementsHtml = screen.elements.map((element) => {
+    const left = Math.round(element.x * scale);
+    const top = Math.round(element.y * scale);
+    const width = Math.max(Math.round(element.w * scale), 12);
+    const height = Math.max(Math.round(element.h * scale), 12);
+    const label = element.label ? ` • ${element.label}` : "";
+    return `<div class="wireframe-element type-${element.type}" style="left:${left}px;top:${top}px;width:${width}px;height:${height}px;">
+      <div class="wireframe-element-content">
+        <span class="wireframe-element-icon">${getWireframeIcon(element.type)}</span>
+        <span class="wireframe-element-label">${element.type.toUpperCase()}${label}</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  return `<div class="wireframe-screen">
+    <div class="wireframe-screen-header">
+      <div class="wireframe-screen-title">${String(index + 1).padStart(2, '0')}. ${screen.name}</div>
+      <div class="wireframe-screen-meta">${wireframe.viewport.device.toUpperCase()} • ${wireframe.viewport.width} × ${wireframe.viewport.height}px • ${screen.layout.type.toUpperCase()} LAYOUT</div>
+    </div>
+    <div class="wireframe-canvas-wrapper">
+      <div class="wireframe-canvas" style="width:${viewportWidth}px;height:${viewportHeight}px;">
+        ${elementsHtml}
+      </div>
+    </div>
+  </div>`;
+}).join('')}
+</div>
+
+---
+` : ''}
+
 ## 🛠️ 기술 스택
 
 ${requirementsData.dataModel ? `
@@ -333,4 +375,41 @@ ${projectOverview?.estimation ? `
 `;
 
   return markdown;
+}
+
+function getWireframeIcon(type: string): string {
+  switch (type) {
+    case "navbar":
+      return "≡";
+    case "footer":
+      return "━";
+    case "button":
+      return "⏺";
+    case "input":
+      return "⌨";
+    case "list":
+      return "☰";
+    case "card":
+      return "□";
+    case "text":
+      return "T";
+    case "image":
+      return "🖼";
+    case "chip":
+      return "◎";
+    case "checkbox":
+      return "☑";
+    case "radio":
+      return "◉";
+    case "select":
+      return "▼";
+    case "table":
+      return "⇳";
+    case "divider":
+      return "─";
+    case "icon":
+      return "★";
+    default:
+      return "■";
+  }
 }

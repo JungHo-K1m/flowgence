@@ -250,6 +250,160 @@ function createHTMLDocument(html: string, title: string, author: string, subject
             color: #1f2937;
         }
         
+        .wireframe-preview {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            margin: 24px 0;
+        }
+        
+        .wireframe-screen {
+            border: 1px solid #e5e7eb;
+            border-radius: 16px;
+            padding: 16px;
+            background: linear-gradient(135deg, rgba(238,242,255,0.6), rgba(236,253,245,0.6));
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), 0 8px 24px rgba(15,23,42,0.08);
+            page-break-inside: avoid;
+        }
+        
+        .wireframe-screen-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 12px;
+        }
+        
+        .wireframe-screen-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1f2937;
+            letter-spacing: 0.3px;
+        }
+        
+        .wireframe-screen-meta {
+            font-size: 12px;
+            color: #6b7280;
+            font-weight: 500;
+        }
+        
+        .wireframe-canvas-wrapper {
+            display: flex;
+            justify-content: center;
+            padding: 16px;
+            background: white;
+            border-radius: 12px;
+            border: 1px dashed rgba(99,102,241,0.3);
+        }
+        
+        .wireframe-canvas {
+            position: relative;
+            border: 6px solid #0f172a;
+            border-radius: 24px;
+            background: #fff;
+            box-shadow: 0 12px 35px rgba(15,23,42,0.15);
+            overflow: hidden;
+        }
+        
+        .wireframe-element {
+            position: absolute;
+            border: 2px solid #cbd5f5;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.92);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4px;
+            box-shadow: 0 2px 8px rgba(15,23,42,0.12);
+            transition: transform 0.2s ease;
+        }
+        
+        .wireframe-element .wireframe-element-content {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            color: #1f2937;
+            text-transform: uppercase;
+        }
+        
+        .wireframe-element .wireframe-element-icon {
+            font-size: 10px;
+            opacity: 0.6;
+        }
+        
+        .wireframe-element.type-navbar {
+            background: rgba(99,102,241,0.15);
+            border-color: rgba(79,70,229,0.5);
+        }
+        
+        .wireframe-element.type-footer {
+            background: rgba(15,23,42,0.08);
+            border-color: rgba(15,23,42,0.4);
+        }
+        
+        .wireframe-element.type-button {
+            background: rgba(37,99,235,0.15);
+            border-color: rgba(37,99,235,0.55);
+        }
+        
+        .wireframe-element.type-input,
+        .wireframe-element.type-select,
+        .wireframe-element.type-checkbox,
+        .wireframe-element.type-radio {
+            background: rgba(255,255,255,0.95);
+            border-color: rgba(148,163,184,0.6);
+        }
+        
+        .wireframe-element.type-list,
+        .wireframe-element.type-card,
+        .wireframe-element.type-table {
+            background: rgba(236,254,255,0.8);
+            border-color: rgba(14,165,233,0.5);
+        }
+        
+        .wireframe-element.type-text {
+            background: rgba(226,232,240,0.6);
+            border-color: rgba(148,163,184,0.5);
+        }
+        
+        .wireframe-element.type-image {
+            background: rgba(226,232,240,0.42);
+            border-color: rgba(148,163,184,0.35);
+            border-style: dashed;
+        }
+        
+        .wireframe-element.type-chip,
+        .wireframe-element.type-icon {
+            background: rgba(244,114,182,0.16);
+            border-color: rgba(236,72,153,0.4);
+        }
+        
+        .wireframe-element.type-divider {
+            background: rgba(15,23,42,0.08);
+            border-color: transparent;
+        }
+        
+        .wireframe-element.type-divider .wireframe-element-content {
+            display: none;
+        }
+        
+        .wireframe-element.type-divider::after {
+            content: "";
+            position: absolute;
+            left: 8px;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            height: 2px;
+            background: rgba(15,23,42,0.25);
+        }
+        
+        .wireframe-element:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(79,70,229,0.18);
+        }
+        
         ul {
             margin: 15px 0;
             padding-left: 20px;

@@ -194,7 +194,8 @@ export function RequirementsResultPanel({
         requirementsData,
         projectData,
         extractedRequirements,
-        projectOverview
+        projectOverview,
+        wireframe
       );
 
       await downloadMarkdownAsPDF(markdown, {
@@ -242,13 +243,15 @@ export function RequirementsResultPanel({
               requirementsData,
               projectData,
               extractedRequirements,
-              projectOverview
+              projectOverview,
+              wireframe
             ),
             html: generateRequirementsMarkdown(
               requirementsData,
               projectData,
               extractedRequirements,
-              projectOverview
+              projectOverview,
+              wireframe
             ).replace(/\n/g, "<br>"),
           };
           shareToNotionManually(data);
@@ -278,6 +281,7 @@ export function RequirementsResultPanel({
         projectData,
         extractedRequirements,
         projectOverview,
+        wireframe,
         notionSetup.config!
       );
 
@@ -314,13 +318,15 @@ export function RequirementsResultPanel({
         requirementsData,
         projectData,
         extractedRequirements,
-        projectOverview
+      projectOverview,
+      wireframe
       ),
       html: generateRequirementsMarkdown(
         requirementsData,
         projectData,
         extractedRequirements,
-        projectOverview
+      projectOverview,
+      wireframe
       ).replace(/\n/g, "<br>"),
     };
 

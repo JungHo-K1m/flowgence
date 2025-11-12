@@ -1,3 +1,5 @@
+import { WireframeSpec } from "@/types/wireframe";
+
 // Notion API 서비스
 // Notion API를 사용하여 페이지를 생성하고 콘텐츠를 추가하는 서비스
 
@@ -335,6 +337,7 @@ export async function shareRequirementsToNotion(
   projectData: any,
   extractedRequirements: any,
   projectOverview: any,
+  wireframe: WireframeSpec | null | undefined,
   notionConfig: { apiKey: string; databaseId: string }
 ): Promise<string> {
   try {
@@ -354,7 +357,8 @@ export async function shareRequirementsToNotion(
       requirementsData,
       projectData,
       extractedRequirements,
-      projectOverview
+    projectOverview,
+    wireframe
     );
 
     // 마크다운을 Notion 블록으로 변환
