@@ -54,6 +54,12 @@ export function generateRequirementsMarkdown(
     day: "numeric",
   });
 
+  const functionalMandatoryCount =
+    requirementsData.functionalRequirements.filter(
+      (req) => req.priority === "필수"
+    ).length;
+  const functionalTotalCount = requirementsData.functionalRequirements.length;
+
   const userJourneySteps: Array<{
     title: string;
     description: string;
@@ -80,6 +86,58 @@ export function generateRequirementsMarkdown(
           : undefined,
     })) || [];
 
+  const fallbackJourneyFromWireframe =
+    wireframe?.screens?.map((screen, index) => ({
+      title: screen?.name || `핵심 화면 ${index + 1}`,
+      description:
+        screen?.name
+          ? `${screen.name} 화면에서 사용자가 수행하는 주요 흐름을 정의합니다.`
+          : "핵심 화면에서 사용자 흐름을 정의합니다.",
+      userAction:
+        screen?.elements?.length
+          ? "화면 요소를 기반으로 한 주요 사용자 행동을 설계합니다."
+          : "사용자가 미리 정의된 목표를 달성하기 위해 수행해야 할 행동을 정의합니다.",
+      systemResponse:
+        "시스템은 사용자의 행동에 따라 적절한 데이터를 표시하고 후속 단계를 안내합니다.",
+    })) ||
+    [];
+
+  const fallbackJourneyFromScreens =
+    fallbackJourneyFromWireframe.length > 0
+      ? fallbackJourneyFromWireframe
+      : requirementsData.screenList.map((screen, index) => ({
+          title: `${index + 1}. ${screen}`,
+          description: `${screen} 화면에서 제공해야 할 핵심 가치를 정의합니다.`,
+          userAction: `${screen} 화면에서 사용자가 수행하는 대표적인 액션을 설계합니다.`,
+          systemResponse: `${screen} 화면에서 시스템이 제공해야 하는 응답을 기술합니다.`,
+        }));
+
+  const finalUserJourneySteps =
+    userJourneySteps.length > 0
+      ? userJourneySteps
+      : fallbackJourneyFromScreens.length > 0
+      ? fallbackJourneyFromScreens
+      : [
+          {
+            title: "요구사항 분석",
+            description: "사용자 요구사항을 수집하고 분석합니다.",
+            userAction: "프로젝트 담당자가 요구사항을 입력합니다.",
+            systemResponse: "AI가 요구사항을 분석하고 분류합니다.",
+          },
+          {
+            title: "기능 구성",
+            description: "수집된 요구사항을 기반으로 기능 구성을 확정합니다.",
+            userAction: "담당자가 기능을 검토하고 승인합니다.",
+            systemResponse: "시스템이 기능 목록을 정리하여 제공합니다.",
+          },
+          {
+            title: "견적 산출",
+            description: "확정된 요구사항을 기반으로 견적을 산출합니다.",
+            userAction: "담당자가 견적 결과를 검토합니다.",
+            systemResponse: "시스템이 비용과 일정을 계산하여 제공합니다.",
+          },
+        ];
+
   const estimationData = projectOverview?.estimation
     ? {
         totalCost:
@@ -105,9 +163,63 @@ export function generateRequirementsMarkdown(
       }
     : null;
 
+  const fallbackBaseEstimate = (() => {
+    if (estimationData?.totalCost && estimationData.totalCost !== "예상 비용 정보가 준비되지 않았습니다.") {
+      const numeric = parseInt(
+        estimationData.totalCost.replace(/[^0-9]/g, ""),
+        10
+      );
+      return Number.isFinite(numeric) && numeric > 0 ? numeric : 85000000;
+    }
+
+    if (functionalTotalCount === 0 && wireframe?.screens?.length) {
+      return 65000000 + wireframe.screens.length * 5000000;
+    }
+
+    if (functionalTotalCount > 0) {
+      const base =
+        functionalMandatoryCount * 6000000 +
+        (functionalTotalCount - functionalMandatoryCount) * 3500000;
+      return Math.max(65000000, base);
+    }
+
+    return 85000000;
+  })();
+
+  const fallbackEstimation = estimationData
+    ? estimationData
+    : {
+        totalCost: `${new Intl.NumberFormat("ko-KR").format(
+          fallbackBaseEstimate
+        )}원`,
+        breakdown: {
+          development: `${new Intl.NumberFormat("ko-KR").format(
+            Math.round(fallbackBaseEstimate * 0.5)
+          )}원`,
+          design: `${new Intl.NumberFormat("ko-KR").format(
+            Math.round(fallbackBaseEstimate * 0.2)
+          )}원`,
+          testing: `${new Intl.NumberFormat("ko-KR").format(
+            Math.round(fallbackBaseEstimate * 0.15)
+          )}원`,
+          deployment: `${new Intl.NumberFormat("ko-KR").format(
+            Math.round(fallbackBaseEstimate * 0.15)
+          )}원`,
+        },
+        timeline: {
+          planning: "2주",
+          development: `${Math.max(
+            4,
+            Math.ceil(functionalMandatoryCount * 1.5 || 6)
+          )}주`,
+          testing: "2주",
+          deployment: "2주",
+        },
+      };
+
   const userJourneySection =
-    userJourneySteps.length > 0
-      ? userJourneySteps
+    finalUserJourneySteps.length > 0
+      ? finalUserJourneySteps
           .map((step, index) => {
             const lines = [
               `### ${index + 1}. ${step.title}`,
@@ -135,24 +247,22 @@ export function generateRequirementsMarkdown(
           .join("\n\n")
       : "사용자 여정 정보가 아직 준비되지 않았습니다.";
 
-  const estimationSection = estimationData
-    ? [
+  const estimationSection = [
         "### 총 견적",
-        `**${estimationData.totalCost}**`,
+        `**${fallbackEstimation.totalCost}**`,
         "",
         "### 비용 구성",
-        `- **개발 비용**: ${estimationData.breakdown.development}`,
-        `- **디자인 비용**: ${estimationData.breakdown.design}`,
-        `- **테스트 비용**: ${estimationData.breakdown.testing}`,
-        `- **배포 비용**: ${estimationData.breakdown.deployment}`,
+        `- **개발 비용**: ${fallbackEstimation.breakdown.development}`,
+        `- **디자인 비용**: ${fallbackEstimation.breakdown.design}`,
+        `- **테스트 비용**: ${fallbackEstimation.breakdown.testing}`,
+        `- **배포 비용**: ${fallbackEstimation.breakdown.deployment}`,
         "",
         "### 개발 일정",
-        `- **기획**: ${estimationData.timeline.planning}`,
-        `- **개발**: ${estimationData.timeline.development}`,
-        `- **테스트**: ${estimationData.timeline.testing}`,
-        `- **배포**: ${estimationData.timeline.deployment}`,
-      ].join("\n")
-    : "견적 정보가 아직 준비되지 않았습니다.";
+        `- **기획**: ${fallbackEstimation.timeline.planning}`,
+        `- **개발**: ${fallbackEstimation.timeline.development}`,
+        `- **테스트**: ${fallbackEstimation.timeline.testing}`,
+        `- **배포**: ${fallbackEstimation.timeline.deployment}`,
+      ].join("\n");
 
   const markdown = `# 프로젝트 요구사항 명세서
 
