@@ -337,12 +337,16 @@ export function RequirementsResultPanel({
         // requirements-content 클래스를 가진 스크롤 컨테이너 찾기
         const contentArea = document.querySelector('.requirements-content');
         if (contentArea) {
-          // 요소의 offsetTop을 사용하여 컨테이너 내 상대 위치 계산
-          const elementTop = (element as HTMLElement).offsetTop;
+          // 컨테이너와 요소의 상대 위치를 getBoundingClientRect로 정확히 계산
+          const containerRect = contentArea.getBoundingClientRect();
+          const elementRect = element.getBoundingClientRect();
+          
+          // 현재 스크롤 위치 + 요소와 컨테이너 사이의 거리
+          const scrollTop = contentArea.scrollTop + (elementRect.top - containerRect.top);
           
           // 스크롤 위치 설정 (상단 여백 20px 추가)
           contentArea.scrollTo({
-            top: elementTop - 20,
+            top: scrollTop - 20,
             behavior: "smooth",
           });
         }
