@@ -5,6 +5,12 @@
 
 export type Device = "mobile" | "tablet" | "desktop";
 
+export interface ViewportSpec {
+  width: number;
+  height: number;
+  device: Device;
+}
+
 export type WireElementType =
   | "text"
   | "button"
@@ -36,6 +42,8 @@ export interface WireElement {
 export interface WireframeScreen {
   id: string;
   name: string;
+  device?: Device;
+  viewport?: ViewportSpec;
   layout: {
     type: "free" | "grid";
     columns?: number;
@@ -45,11 +53,7 @@ export interface WireframeScreen {
 }
 
 export interface WireframeSpec {
-  viewport: {
-    width: number;
-    height: number;
-    device: Device;
-  };
+  viewport?: ViewportSpec;
   screens: WireframeScreen[]; // 여러 화면 지원 (이전: screen 단수)
 }
 

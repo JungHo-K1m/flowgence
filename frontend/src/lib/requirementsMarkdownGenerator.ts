@@ -1,4 +1,4 @@
-import { WireframeSpec } from "@/types/wireframe";
+import { Device, ViewportSpec, WireframeSpec } from "@/types/wireframe";
 
 // 요구사항 결과 페이지 마크다운 생성 유틸리티
 
@@ -426,44 +426,7 @@ ${requirementsData.screenList.map((screen, index) => {
 
 ---
 
-${wireframe && wireframe.screens && wireframe.screens.length > 0 ? `
-## 🖼️ 와이어프레임 미리보기
-
-<div class="wireframe-preview">
-${wireframe.screens.map((screen, index) => {
-  const scale = wireframe.viewport.width > 0 ? Math.min(320 / wireframe.viewport.width, 0.6) : 0.4;
-  const viewportWidth = Math.round(wireframe.viewport.width * scale);
-  const viewportHeight = Math.round(wireframe.viewport.height * scale);
-  const elementsHtml = screen.elements.map((element) => {
-    const left = Math.round(element.x * scale);
-    const top = Math.round(element.y * scale);
-    const width = Math.max(Math.round(element.w * scale), 12);
-    const height = Math.max(Math.round(element.h * scale), 12);
-    const label = element.label ? ` • ${element.label}` : "";
-    return `<div class="wireframe-element type-${element.type}" style="left:${left}px;top:${top}px;width:${width}px;height:${height}px;">
-      <div class="wireframe-element-content">
-        <span class="wireframe-element-icon">${getWireframeIcon(element.type)}</span>
-        <span class="wireframe-element-label">${element.type.toUpperCase()}${label}</span>
-      </div>
-    </div>`;
-  }).join('');
-
-  return `<div class="wireframe-screen">
-    <div class="wireframe-screen-header">
-      <div class="wireframe-screen-title">${String(index + 1).padStart(2, '0')}. ${screen.name}</div>
-      <div class="wireframe-screen-meta">${wireframe.viewport.device.toUpperCase()} • ${wireframe.viewport.width} × ${wireframe.viewport.height}px • ${screen.layout.type.toUpperCase()} LAYOUT</div>
-    </div>
-    <div class="wireframe-canvas-wrapper">
-      <div class="wireframe-canvas" style="width:${viewportWidth}px;height:${viewportHeight}px;">
-        ${elementsHtml}
-      </div>
-    </div>
-  </div>`;
-}).join('')}
-</div>
-
----
-` : ''}
+${renderWireframeSection(wireframe)}
 
 ## 🛠️ 기술 스택
 
@@ -598,4 +561,121 @@ function getWireframeIcon(type: string): string {
     default:
       return "■";
   }
+}
+
+function resolveViewportForScreen(
+  screen: { viewport?: ViewportSpec; device?: Device },
+  fallback?: ViewportSpec,
+): ViewportSpec {
+  if (screen.viewport) {
+    return screen.viewport;
+  }
+  if (fallback) {
+    return fallback;
+  }
+  return {
+    width: 390,
+    height: 844,
+    device: screen.device ?? "mobile",
+  };
+}
+
+function formatDeviceLabel(device: Device): string {
+  switch (device) {
+    case "desktop":
+      return "💻 웹";
+    case "tablet":
+      return "📱 태블릿";
+    case "mobile":
+    default:
+      return "📲 모바일";
+  }
+}
+
+function renderWireframeSection(wireframe?: WireframeSpec | null): string {
+  if (!wireframe || !wireframe.screens || wireframe.screens.length === 0) {
+    return "";
+  }
+
+  const defaultViewport = wireframe.viewport;
+  const deviceMap = new Map<
+    Device,
+    Array<{ screen: (typeof wireframe.screens)[number]; index: number }>
+  >();
+
+  wireframe.screens.forEach((screen, index) => {
+    const viewport = resolveViewportForScreen(screen, defaultViewport);
+    const device = viewport.device;
+    if (!deviceMap.has(device)) {
+      deviceMap.set(device, []);
+    }
+    deviceMap.get(device)?.push({ screen, index });
+  });
+
+  const deviceSections = Array.from(deviceMap.entries())
+    .map(([device, screens]) => {
+      const deviceHeading = `<h3 class="wireframe-device-heading">${formatDeviceLabel(
+        device,
+      )} (${screens.length}개 화면)</h3>`;
+
+      const screenItems = screens
+        .map(({ screen, index }) => {
+          const viewport = resolveViewportForScreen(screen, defaultViewport);
+          const scale =
+            viewport.width > 0
+              ? Math.min(320 / viewport.width, 0.6)
+              : 0.4;
+          const viewportWidth = Math.round(viewport.width * scale);
+          const viewportHeight = Math.round(viewport.height * scale);
+
+          const elementsHtml = screen.elements
+            .map((element) => {
+              const left = Math.round(element.x * scale);
+              const top = Math.round(element.y * scale);
+              const width = Math.max(Math.round(element.w * scale), 12);
+              const height = Math.max(Math.round(element.h * scale), 12);
+              const label = element.label ? ` • ${element.label}` : "";
+              return `<div class="wireframe-element type-${element.type}" style="left:${left}px;top:${top}px;width:${width}px;height:${height}px;">
+        <div class="wireframe-element-content">
+          <span class="wireframe-element-icon">${getWireframeIcon(
+            element.type,
+          )}</span>
+          <span class="wireframe-element-label">${element.type.toUpperCase()}${label}</span>
+        </div>
+      </div>`;
+            })
+            .join("");
+
+          return `<div class="wireframe-screen">
+      <div class="wireframe-screen-header">
+        <div class="wireframe-screen-title">${String(index + 1).padStart(
+          2,
+          "0",
+        )}. ${screen.name}</div>
+        <div class="wireframe-screen-meta">${formatDeviceLabel(
+          viewport.device,
+        )} • ${viewport.width} × ${viewport.height}px • ${screen.layout.type.toUpperCase()} LAYOUT</div>
+      </div>
+      <div class="wireframe-canvas-wrapper">
+        <div class="wireframe-canvas" style="width:${viewportWidth}px;height:${viewportHeight}px;">
+          ${elementsHtml}
+        </div>
+      </div>
+    </div>`;
+        })
+        .join("");
+
+      return `<div class="wireframe-device-group">${deviceHeading}${screenItems}</div>`;
+    })
+    .join("");
+
+  return `
+## 🖼️ 와이어프레임 미리보기
+
+<div class="wireframe-preview">
+${deviceSections}
+</div>
+
+---
+`;
 }

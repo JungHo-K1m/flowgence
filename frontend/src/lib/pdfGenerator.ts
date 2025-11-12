@@ -256,6 +256,19 @@ function createHTMLDocument(html: string, title: string, author: string, subject
             gap: 24px;
             margin: 24px 0;
         }
+
+        .wireframe-device-group {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .wireframe-device-heading {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1f2937;
+            margin: 0;
+        }
         
         .wireframe-screen {
             border: 1px solid #e5e7eb;

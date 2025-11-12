@@ -145,15 +145,16 @@ export class WireframesService {
       throw new Error('ANTHROPIC_API_KEY is not configured');
     }
 
-    const systemPrompt = `당신은 제품 디자이너 보조 에이전트입니다. 모바일 기준 저해상도 와이어프레임을 JSON 형태로 출력합니다.
+    const systemPrompt = `당신은 제품 디자이너 보조 에이전트입니다. 저해상도(Lo-Fi) 와이어프레임을 JSON 형태로 출력합니다.
 
 규칙:
 - 반드시 유효한 JSON만 출력합니다. 마크다운 코드블록이나 추가 텍스트 금지.
-- 스키마: { viewport: { width, height, device }, screens: [{ id, name, layout, elements[] }, ...] }
-- 요구사항 분석 후 필요한 주요 화면들을 모두 생성합니다 (보통 3-7개)
+- 스키마: { viewport?: { width, height, device }, screens: [{ id, name, viewport: { width, height, device }, layout, elements[] }, ...] }
+- 모바일과 웹(데스크톱) 화면을 모두 포함합니다. 각 화면의 viewport.device는 "mobile" 또는 "desktop"이어야 하며, viewport.width/height는 해당 디바이스 해상도를 반영합니다.
+- 최소 1개의 모바일 화면과 1개의 데스크톱 화면을 생성하고, 요구사항에 따라 필요한 추가 화면들을 포함합니다 (보통 총 4-8개)
 - elements[].type은 다음 중 하나만: text, button, input, image, card, list, navbar, footer, chip, checkbox, radio, select, table, divider, icon
 - 좌표(x,y), 크기(w,h)는 px 단위 정수. (0,0)은 좌측 상단.
-- 모바일 기본 크기: 390x844 (iPhone 14 기준)
+- 모바일 기본 크기: 390x844 (iPhone 14 기준), 데스크톱 기본 크기: 1440x900
 - 필수 요소: 상단 네비게이션, 핵심 액션(버튼), 입력 필드, 리스트/카드
 - 로파이 디자인: 단순한 박스와 레이블만. 색상/스타일/아이콘 디테일 최소화.
 
@@ -170,8 +171,9 @@ export class WireframesService {
   "viewport": { "width": 390, "height": 844, "device": "mobile" },
   "screens": [
     {
-      "id": "home",
-      "name": "홈 화면",
+      "id": "home_mobile",
+      "name": "모바일 홈 화면",
+      "viewport": { "width": 390, "height": 844, "device": "mobile" },
       "layout": { "type": "free" },
       "elements": [
         { "id": "e1", "type": "navbar", "label": "상단바", "x": 0, "y": 0, "w": 390, "h": 56 },
@@ -180,13 +182,14 @@ export class WireframesService {
       ]
     },
     {
-      "id": "detail",
-      "name": "상세 화면",
+      "id": "dashboard_desktop",
+      "name": "데스크톱 대시보드",
+      "viewport": { "width": 1440, "height": 900, "device": "desktop" },
       "layout": { "type": "free" },
       "elements": [
-        { "id": "e1", "type": "navbar", "label": "상단바", "x": 0, "y": 0, "w": 390, "h": 56 },
-        { "id": "e2", "type": "image", "label": "이미지", "x": 16, "y": 72, "w": 358, "h": 200 },
-        { "id": "e3", "type": "text", "label": "제목", "x": 16, "y": 288, "w": 358, "h": 40 }
+        { "id": "d1", "type": "navbar", "label": "헤더", "x": 0, "y": 0, "w": 1440, "h": 72 },
+        { "id": "d2", "type": "list", "label": "프로젝트 카드 리스트", "x": 24, "y": 120, "w": 1392, "h": 600 },
+        { "id": "d3", "type": "button", "label": "프로젝트 생성", "x": 1200, "y": 60, "w": 200, "h": 48 }
       ]
     }
   ]
@@ -199,15 +202,13 @@ ${summary}
 위 요구사항을 분석하여, 이 프로젝트에 필요한 핵심 화면들 (3-7개)의 와이어프레임 JSON을 생성해주세요.
 
 화면 선정 가이드:
-- 홈/메인 화면 (필수)
-- 목록/검색 화면 (있는 경우)
-- 상세 화면 (있는 경우)
-- 등록/작성 화면 (있는 경우)
-- 마이페이지/프로필 화면 (있는 경우)
-- 로그인 화면 (인증이 필요한 경우)
-- 설정 화면 (있는 경우)
+- 모바일 홈/메인 화면 (필수)
+- 데스크톱 메인/대시보드 화면 (필수)
+- 모바일 상세 화면 (있는 경우)
+- 데스크톱 상세/관리 화면 (있는 경우)
+- 검색/필터 화면, 등록/작성 화면, 마이페이지/프로필, 로그인, 설정 화면 등 요구사항에 맞는 화면
 
-프로젝트 특성에 맞게 필요한 화면만 선택하여 생성하세요.`;
+모바일과 데스크톱 각각에 대해 필요한 화면을 생성하고, 각 화면의 viewport.device를 올바르게 설정하세요.`;
 
     try {
       const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -318,6 +319,10 @@ ${summary}
         spec = this.getFallbackWireframe();
       }
 
+      if (!spec.viewport && spec.screens && spec.screens.length > 0) {
+        spec.viewport = spec.screens[0].viewport ?? { width: 390, height: 844, device: 'mobile' };
+      }
+
       return spec;
     } catch (error) {
       console.error('LLM 호출 실패:', error);
@@ -332,8 +337,9 @@ ${summary}
       viewport: { width: 390, height: 844, device: 'mobile' },
       screens: [
         {
-          id: 'home',
-          name: '홈 화면',
+          id: 'home_mobile',
+          name: '모바일 홈 화면',
+          viewport: { width: 390, height: 844, device: 'mobile' },
           layout: { type: 'free' },
           elements: [
             {
@@ -381,6 +387,50 @@ ${summary}
               y: 784,
               w: 390,
               h: 60,
+            },
+          ],
+        },
+        {
+          id: 'dashboard_desktop',
+          name: '데스크톱 대시보드',
+          viewport: { width: 1440, height: 900, device: 'desktop' },
+          layout: { type: 'free' },
+          elements: [
+            {
+              id: 'd1',
+              type: 'navbar',
+              label: '상단바',
+              x: 0,
+              y: 0,
+              w: 1440,
+              h: 72,
+            },
+            {
+              id: 'd2',
+              type: 'card',
+              label: '요약 카드',
+              x: 24,
+              y: 96,
+              w: 1392,
+              h: 160,
+            },
+            {
+              id: 'd3',
+              type: 'table',
+              label: '프로젝트 리스트',
+              x: 24,
+              y: 280,
+              w: 1392,
+              h: 480,
+            },
+            {
+              id: 'd4',
+              type: 'button',
+              label: '신규 프로젝트',
+              x: 1224,
+              y: 40,
+              w: 192,
+              h: 48,
             },
           ],
         },
@@ -447,6 +497,7 @@ ${summary}
 - 기존 구조를 최대한 유지하면서 수정합니다
 - 요청된 부분만 정확하게 수정합니다
 - viewport, screen 구조는 동일하게 유지합니다
+- 각 screen.viewport.device 값을 유지하거나 적절히 반영합니다 (mobile/desktop 혼합 구조 유지)
 - elements 배열 내 요소만 수정합니다
 
 수정 가능한 내용:
@@ -532,6 +583,9 @@ ${JSON.stringify(currentSpec, null, 2)}
             let updatedSpec;
             try {
               updatedSpec = JSON.parse(retryJsonText);
+              if (!updatedSpec.viewport && updatedSpec.screens && updatedSpec.screens.length > 0) {
+                updatedSpec.viewport = updatedSpec.screens[0].viewport ?? { width: 390, height: 844, device: 'mobile' };
+              }
             } catch (parseError) {
               console.error('JSON 파싱 실패:', parseError);
               console.error('응답 텍스트:', retryJsonText);
@@ -558,6 +612,9 @@ ${JSON.stringify(currentSpec, null, 2)}
       let updatedSpec;
       try {
         updatedSpec = JSON.parse(jsonText);
+        if (!updatedSpec.viewport && updatedSpec.screens && updatedSpec.screens.length > 0) {
+          updatedSpec.viewport = updatedSpec.screens[0].viewport ?? { width: 390, height: 844, device: 'mobile' };
+        }
       } catch (parseError) {
         console.error('JSON 파싱 실패:', parseError);
         console.error('응답 텍스트:', jsonText);
