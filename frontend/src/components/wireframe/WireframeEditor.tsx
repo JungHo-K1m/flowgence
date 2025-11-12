@@ -133,10 +133,10 @@ export function WireframeEditor({
             <span className="font-medium">💡 Tip:</span> 구체적으로 말할수록 정확하게 수정됩니다!
           </p>
           <ul className="mt-2 text-xs text-blue-700 space-y-1 list-disc list-inside">
-            <li>크기 변경: "검색 버튼을 50% 더 크게"</li>
-            <li>위치 이동: "로그인 버튼을 화면 하단으로"</li>
-            <li>요소 추가: "하단에 저장 버튼 추가"</li>
-            <li>색상 변경: "상단바를 파란색으로" (향후 지원)</li>
+            <li>크기 변경: &quot;검색 버튼을 50% 더 크게&quot;</li>
+            <li>위치 이동: &quot;로그인 버튼을 화면 하단으로&quot;</li>
+            <li>요소 추가: &quot;하단에 저장 버튼 추가&quot;</li>
+            <li>색상 변경: &quot;상단바를 파란색으로&quot; (향후 지원)</li>
           </ul>
         </div>
       </div>
