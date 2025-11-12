@@ -233,6 +233,64 @@ ${summary}
       if (!response.ok) {
         const errorText = await response.text();
         console.error('Claude API 오류:', errorText);
+        
+        // 529 (Overloaded) 에러의 경우 재시도
+        if (response.status === 529) {
+          console.log('Claude API 529 (Overloaded) 에러 - 재시도 시도');
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
+          const retryResponse = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-api-key': apiKey,
+              'anthropic-version': '2023-06-01',
+            },
+            body: JSON.stringify({
+              model: 'claude-sonnet-4-20250514',
+              max_tokens: 4000,
+              system: systemPrompt,
+              messages: [
+                {
+                  role: 'user',
+                  content: userPrompt,
+                },
+              ],
+            }),
+          });
+          
+          if (retryResponse.ok) {
+            console.log('재시도 성공');
+            const retryData = await retryResponse.json();
+            const retryContent = retryData.content[0].text;
+            
+            // JSON 파싱
+            let spec;
+            try {
+              const jsonMatch = retryContent.match(/\{[\s\S]*\}/);
+              if (jsonMatch) {
+                spec = JSON.parse(jsonMatch[0]);
+              } else {
+                spec = JSON.parse(retryContent);
+              }
+            } catch (parseError) {
+              console.error('JSON 파싱 실패, 폴백 사용');
+              spec = this.getFallbackWireframe();
+            }
+            
+            // 기본 검증
+            if (!spec.viewport || !spec.screens || !Array.isArray(spec.screens) || spec.screens.length === 0) {
+              console.warn('잘못된 스키마, 폴백 사용');
+              spec = this.getFallbackWireframe();
+            }
+            
+            return spec;
+          } else if (retryResponse.status === 529) {
+            console.error('Claude API 529 (Overloaded) 에러 - 재시도 실패');
+            throw new Error('Claude API is currently overloaded. Please try again later.');
+          }
+        }
+        
         throw new Error(`Claude API error: ${response.status}`);
       }
 
@@ -434,6 +492,60 @@ ${JSON.stringify(currentSpec, null, 2)}
       if (!response.ok) {
         const errorText = await response.text();
         console.error('Claude API 오류:', errorText);
+        
+        // 529 (Overloaded) 에러의 경우 재시도
+        if (response.status === 529) {
+          console.log('Claude API 529 (Overloaded) 에러 - 재시도 시도');
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
+          const retryResponse = await fetch(
+            'https://api.anthropic.com/v1/messages',
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': apiKey,
+                'anthropic-version': '2023-06-01',
+              },
+              body: JSON.stringify({
+                model: 'claude-sonnet-4-20250514',
+                max_tokens: 4096,
+                messages: [
+                  {
+                    role: 'user',
+                    content: userPrompt,
+                  },
+                ],
+                system: systemPrompt,
+              }),
+            },
+          );
+          
+          if (retryResponse.ok) {
+            console.log('재시도 성공');
+            const retryData = await retryResponse.json();
+            const retryJsonText = retryData.content[0].text;
+            
+            console.log('Claude 응답 (재시도):', retryJsonText);
+            
+            // JSON 파싱
+            let updatedSpec;
+            try {
+              updatedSpec = JSON.parse(retryJsonText);
+            } catch (parseError) {
+              console.error('JSON 파싱 실패:', parseError);
+              console.error('응답 텍스트:', retryJsonText);
+              // 폴백: 기존 spec 반환
+              return currentSpec;
+            }
+            
+            return updatedSpec;
+          } else if (retryResponse.status === 529) {
+            console.error('Claude API 529 (Overloaded) 에러 - 재시도 실패');
+            throw new Error('Claude API is currently overloaded. Please try again later.');
+          }
+        }
+        
         throw new Error(`Claude API 오류: ${response.status}`);
       }
 
