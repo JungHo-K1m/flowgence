@@ -60,14 +60,16 @@ export function generateRequirementsMarkdown(
     ).length;
   const functionalTotalCount = requirementsData.functionalRequirements.length;
 
-  const userJourneySteps: Array<{
+  type JourneyStep = {
     title: string;
     description: string;
     userAction: string;
     systemResponse: string;
     estimatedHours?: string;
     requiredSkills?: string[];
-  }> =
+  };
+
+  const userJourneySteps: JourneyStep[] =
     projectOverview?.userJourney?.steps?.map((step: any, index: number) => ({
       title: step?.title || `사용자 여정 단계 ${index + 1}`,
       description:
@@ -86,7 +88,7 @@ export function generateRequirementsMarkdown(
           : undefined,
     })) || [];
 
-  const fallbackJourneyFromWireframe =
+  const fallbackJourneyFromWireframe: JourneyStep[] =
     wireframe?.screens?.map((screen, index) => ({
       title: screen?.name || `핵심 화면 ${index + 1}`,
       description:
@@ -102,7 +104,7 @@ export function generateRequirementsMarkdown(
     })) ||
     [];
 
-  const fallbackJourneyFromScreens =
+  const fallbackJourneyFromScreens: JourneyStep[] =
     fallbackJourneyFromWireframe.length > 0
       ? fallbackJourneyFromWireframe
       : requirementsData.screenList.map((screen, index) => ({
@@ -123,18 +125,24 @@ export function generateRequirementsMarkdown(
             description: "사용자 요구사항을 수집하고 분석합니다.",
             userAction: "프로젝트 담당자가 요구사항을 입력합니다.",
             systemResponse: "AI가 요구사항을 분석하고 분류합니다.",
+            estimatedHours: undefined,
+            requiredSkills: undefined,
           },
           {
             title: "기능 구성",
             description: "수집된 요구사항을 기반으로 기능 구성을 확정합니다.",
             userAction: "담당자가 기능을 검토하고 승인합니다.",
             systemResponse: "시스템이 기능 목록을 정리하여 제공합니다.",
+            estimatedHours: undefined,
+            requiredSkills: undefined,
           },
           {
             title: "견적 산출",
             description: "확정된 요구사항을 기반으로 견적을 산출합니다.",
             userAction: "담당자가 견적 결과를 검토합니다.",
             systemResponse: "시스템이 비용과 일정을 계산하여 제공합니다.",
+            estimatedHours: undefined,
+            requiredSkills: undefined,
           },
         ];
 
