@@ -54,6 +54,106 @@ export function generateRequirementsMarkdown(
     day: "numeric",
   });
 
+  const userJourneySteps: Array<{
+    title: string;
+    description: string;
+    userAction: string;
+    systemResponse: string;
+    estimatedHours?: string;
+    requiredSkills?: string[];
+  }> =
+    projectOverview?.userJourney?.steps?.map((step: any, index: number) => ({
+      title: step?.title || `사용자 여정 단계 ${index + 1}`,
+      description:
+        step?.description?.trim() ||
+        "세부 설명이 아직 준비되지 않았습니다.",
+      userAction:
+        step?.userAction?.trim() ||
+        "사용자 행동 정보가 아직 준비되지 않았습니다.",
+      systemResponse:
+        step?.systemResponse?.trim() ||
+        "시스템 응답 정보가 아직 준비되지 않았습니다.",
+      estimatedHours: step?.estimatedHours || undefined,
+      requiredSkills:
+        step?.requiredSkills && step.requiredSkills.length > 0
+          ? step.requiredSkills
+          : undefined,
+    })) || [];
+
+  const estimationData = projectOverview?.estimation
+    ? {
+        totalCost:
+          projectOverview.estimation.totalCost || "예상 비용 정보가 준비되지 않았습니다.",
+        breakdown: {
+          development:
+            projectOverview.estimation.breakdown?.development || "미정",
+          design: projectOverview.estimation.breakdown?.design || "미정",
+          testing: projectOverview.estimation.breakdown?.testing || "미정",
+          deployment:
+            projectOverview.estimation.breakdown?.deployment || "미정",
+        },
+        timeline: {
+          planning:
+            projectOverview.estimation.timeline?.planning || "미정",
+          development:
+            projectOverview.estimation.timeline?.development || "미정",
+          testing:
+            projectOverview.estimation.timeline?.testing || "미정",
+          deployment:
+            projectOverview.estimation.timeline?.deployment || "미정",
+        },
+      }
+    : null;
+
+  const userJourneySection =
+    userJourneySteps.length > 0
+      ? userJourneySteps
+          .map((step, index) => {
+            const lines = [
+              `### ${index + 1}. ${step.title}`,
+              "",
+              `**설명**: ${step.description}`,
+              "",
+              `**사용자 행동**: ${step.userAction}`,
+              "",
+              `**시스템 응답**: ${step.systemResponse}`,
+            ];
+
+            if (step.estimatedHours) {
+              lines.push("", `**예상 소요시간**: ${step.estimatedHours}`);
+            }
+
+            if (step.requiredSkills && step.requiredSkills.length > 0) {
+              lines.push(
+                "",
+                `**필요 기술**: ${step.requiredSkills.join(", ")}`
+              );
+            }
+
+            return lines.join("\n");
+          })
+          .join("\n\n")
+      : "사용자 여정 정보가 아직 준비되지 않았습니다.";
+
+  const estimationSection = estimationData
+    ? [
+        "### 총 견적",
+        `**${estimationData.totalCost}**`,
+        "",
+        "### 비용 구성",
+        `- **개발 비용**: ${estimationData.breakdown.development}`,
+        `- **디자인 비용**: ${estimationData.breakdown.design}`,
+        `- **테스트 비용**: ${estimationData.breakdown.testing}`,
+        `- **배포 비용**: ${estimationData.breakdown.deployment}`,
+        "",
+        "### 개발 일정",
+        `- **기획**: ${estimationData.timeline.planning}`,
+        `- **개발**: ${estimationData.timeline.development}`,
+        `- **테스트**: ${estimationData.timeline.testing}`,
+        `- **배포**: ${estimationData.timeline.deployment}`,
+      ].join("\n")
+    : "견적 정보가 아직 준비되지 않았습니다.";
+
   const markdown = `# 프로젝트 요구사항 명세서
 
 **생성일**: ${currentDate}  
@@ -305,22 +405,7 @@ ${subCategory.requirements.map((req: any, reqIndex: number) =>
 
 ## 🎨 사용자 여정 (User Journey)
 
-${projectOverview?.userJourney?.steps ? `
-${projectOverview.userJourney.steps.map((step: any, index: number) => `
-### ${index + 1}. ${step.title}
-
-**설명**: ${step.description}
-
-**사용자 행동**: ${step.userAction}
-
-**시스템 응답**: ${step.systemResponse}
-
-${step.estimatedHours ? `**예상 소요시간**: ${step.estimatedHours}` : ''}
-${step.requiredSkills && step.requiredSkills.length > 0 ? `**필요 기술**: ${step.requiredSkills.join(', ')}` : ''}
-`).join('\n')}
-` : `
-사용자 여정 정보가 아직 준비되지 않았습니다.
-`}
+${userJourneySection}
 
 ---
 
@@ -340,24 +425,7 @@ ${projectOverview?.serviceCoreElements ? `
 
 ## 💰 예상 견적 정보
 
-${projectOverview?.estimation ? `
-### 총 견적
-**${projectOverview.estimation.totalCost}**
-
-### 비용 구성
-- **개발 비용**: ${projectOverview.estimation.breakdown.development}
-- **디자인 비용**: ${projectOverview.estimation.breakdown.design}
-- **테스트 비용**: ${projectOverview.estimation.breakdown.testing}
-- **배포 비용**: ${projectOverview.estimation.breakdown.deployment}
-
-### 개발 일정
-- **기획**: ${projectOverview.estimation.timeline.planning}
-- **개발**: ${projectOverview.estimation.timeline.development}
-- **테스트**: ${projectOverview.estimation.timeline.testing}
-- **배포**: ${projectOverview.estimation.timeline.deployment}
-` : `
-견적 정보가 아직 준비되지 않았습니다.
-`}
+${estimationSection}
 
 ---
 
