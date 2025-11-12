@@ -33,11 +33,13 @@ export function WireframeEditor({
     }
   };
 
+  // 예시 프롬프트 (첫 번째 화면 이름 사용)
+  const firstScreenName = wireframe.screens[0]?.name || "홈 화면";
   const examplePrompts = [
-    "검색 버튼을 더 크게",
-    "리스트 높이 늘리기",
-    "상단바를 파란색으로",
-    "하단에 버튼 추가",
+    `${firstScreenName}의 검색 버튼을 더 크게`,
+    `${firstScreenName}의 리스트 높이 늘리기`,
+    `${firstScreenName}의 상단바를 파란색으로`,
+    `${firstScreenName}에 하단 버튼 추가`,
   ];
 
   return (
@@ -61,11 +63,18 @@ export function WireframeEditor({
           </div>
         </div>
 
+        {/* 안내 메시지 */}
+        {wireframe.screens && wireframe.screens.length > 1 && (
+          <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded text-sm text-blue-700">
+            💡 여러 화면이 있습니다. 수정할 화면을 명시하세요. (예: &quot;홈 화면의 검색 버튼을 더 크게&quot;)
+          </div>
+        )}
+
         {/* 프롬프트 입력 */}
         <textarea
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
-          placeholder="예: 검색 버튼을 더 크게 만들어줘, 리스트 높이를 늘려줘"
+          placeholder="예: 홈 화면의 검색 버튼을 더 크게 만들어줘, 상세 화면의 리스트 높이를 늘려줘"
           className="w-full px-4 py-3 border border-gray-300 rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
           rows={3}
           disabled={isApplying}

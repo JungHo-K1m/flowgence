@@ -149,7 +149,8 @@ export class WireframesService {
 
 규칙:
 - 반드시 유효한 JSON만 출력합니다. 마크다운 코드블록이나 추가 텍스트 금지.
-- 스키마: { viewport: { width, height, device }, screen: { id, name, layout, elements[] } }
+- 스키마: { viewport: { width, height, device }, screens: [{ id, name, layout, elements[] }, ...] }
+- 요구사항 분석 후 필요한 주요 화면들을 모두 생성합니다 (보통 3-7개)
 - elements[].type은 다음 중 하나만: text, button, input, image, card, list, navbar, footer, chip, checkbox, radio, select, table, divider, icon
 - 좌표(x,y), 크기(w,h)는 px 단위 정수. (0,0)은 좌측 상단.
 - 모바일 기본 크기: 390x844 (iPhone 14 기준)
@@ -164,26 +165,49 @@ export class WireframesService {
 - 좌우 패딩: 16px
 - 하단 탭바 높이: 60px
 
-예시 JSON:
+예시 JSON (여러 화면):
 {
   "viewport": { "width": 390, "height": 844, "device": "mobile" },
-  "screen": {
-    "id": "home",
-    "name": "홈 화면",
-    "layout": { "type": "free" },
-    "elements": [
-      { "id": "e1", "type": "navbar", "label": "상단바", "x": 0, "y": 0, "w": 390, "h": 56 },
-      { "id": "e2", "type": "input", "label": "검색", "x": 16, "y": 72, "w": 358, "h": 44 },
-      { "id": "e3", "type": "list", "label": "목록", "x": 16, "y": 132, "w": 358, "h": 652 }
-    ]
-  }
+  "screens": [
+    {
+      "id": "home",
+      "name": "홈 화면",
+      "layout": { "type": "free" },
+      "elements": [
+        { "id": "e1", "type": "navbar", "label": "상단바", "x": 0, "y": 0, "w": 390, "h": 56 },
+        { "id": "e2", "type": "input", "label": "검색", "x": 16, "y": 72, "w": 358, "h": 44 },
+        { "id": "e3", "type": "list", "label": "목록", "x": 16, "y": 132, "w": 358, "h": 652 }
+      ]
+    },
+    {
+      "id": "detail",
+      "name": "상세 화면",
+      "layout": { "type": "free" },
+      "elements": [
+        { "id": "e1", "type": "navbar", "label": "상단바", "x": 0, "y": 0, "w": 390, "h": 56 },
+        { "id": "e2", "type": "image", "label": "이미지", "x": 16, "y": 72, "w": 358, "h": 200 },
+        { "id": "e3", "type": "text", "label": "제목", "x": 16, "y": 288, "w": 358, "h": 40 }
+      ]
+    }
+  ]
 }`;
 
-    const userPrompt = `다음 프로젝트의 홈/메인 화면 와이어프레임을 생성해주세요:
+    const userPrompt = `다음 프로젝트의 주요 화면들에 대한 와이어프레임을 생성해주세요:
 
 ${summary}
 
-위 요구사항을 반영하여, 사용자가 가장 먼저 보게 될 메인 화면의 와이어프레임 JSON을 생성해주세요.`;
+위 요구사항을 분석하여, 이 프로젝트에 필요한 핵심 화면들 (3-7개)의 와이어프레임 JSON을 생성해주세요.
+
+화면 선정 가이드:
+- 홈/메인 화면 (필수)
+- 목록/검색 화면 (있는 경우)
+- 상세 화면 (있는 경우)
+- 등록/작성 화면 (있는 경우)
+- 마이페이지/프로필 화면 (있는 경우)
+- 로그인 화면 (인증이 필요한 경우)
+- 설정 화면 (있는 경우)
+
+프로젝트 특성에 맞게 필요한 화면만 선택하여 생성하세요.`;
 
     try {
       const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -231,7 +255,7 @@ ${summary}
       }
 
       // 기본 검증
-      if (!spec.viewport || !spec.screen || !spec.screen.elements) {
+      if (!spec.viewport || !spec.screens || !Array.isArray(spec.screens) || spec.screens.length === 0) {
         console.warn('잘못된 스키마, 폴백 사용');
         spec = this.getFallbackWireframe();
       }
@@ -248,59 +272,61 @@ ${summary}
     // LLM 실패 시 기본 와이어프레임
     return {
       viewport: { width: 390, height: 844, device: 'mobile' },
-      screen: {
-        id: 'home',
-        name: '홈 화면',
-        layout: { type: 'free' },
-        elements: [
-          {
-            id: 'e1',
-            type: 'navbar',
-            label: '상단 네비게이션',
-            x: 0,
-            y: 0,
-            w: 390,
-            h: 56,
-          },
-          {
-            id: 'e2',
-            type: 'input',
-            label: '검색',
-            x: 16,
-            y: 72,
-            w: 270,
-            h: 44,
-          },
-          {
-            id: 'e3',
-            type: 'button',
-            label: '필터',
-            x: 300,
-            y: 72,
-            w: 74,
-            h: 44,
-          },
-          {
-            id: 'e4',
-            type: 'list',
-            label: '목록',
-            x: 16,
-            y: 132,
-            w: 358,
-            h: 652,
-            props: { count: 6 },
-          },
-          {
-            id: 'e5',
-            type: 'navbar',
-            label: '하단 탭',
-            x: 0,
-            y: 784,
-            w: 390,
-            h: 60,
-          },
-        ],
-      },
+      screens: [
+        {
+          id: 'home',
+          name: '홈 화면',
+          layout: { type: 'free' },
+          elements: [
+            {
+              id: 'e1',
+              type: 'navbar',
+              label: '상단 네비게이션',
+              x: 0,
+              y: 0,
+              w: 390,
+              h: 56,
+            },
+            {
+              id: 'e2',
+              type: 'input',
+              label: '검색',
+              x: 16,
+              y: 72,
+              w: 270,
+              h: 44,
+            },
+            {
+              id: 'e3',
+              type: 'button',
+              label: '필터',
+              x: 300,
+              y: 72,
+              w: 74,
+              h: 44,
+            },
+            {
+              id: 'e4',
+              type: 'list',
+              label: '목록',
+              x: 16,
+              y: 132,
+              w: 358,
+              h: 652,
+              props: { count: 6 },
+            },
+            {
+              id: 'e5',
+              type: 'navbar',
+              label: '하단 탭',
+              x: 0,
+              y: 784,
+              w: 390,
+              h: 60,
+            },
+          ],
+        },
+      ],
     };
   }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { WireframeSpec, WireElementType } from "@/types/wireframe";
 
 interface Props {
@@ -47,13 +47,36 @@ const typeIcon: Record<WireElementType, string> = {
 };
 
 export function LoFiCanvas({ spec, scale = 1 }: Props) {
-  const { viewport, screen } = spec;
+  const { viewport, screens } = spec;
+  const [currentScreenIndex, setCurrentScreenIndex] = useState(0);
+  
+  // 현재 선택된 화면
+  const currentScreen = screens[currentScreenIndex];
 
   return (
     <div className="flex flex-col items-center gap-4">
+      {/* 화면 선택 탭 (여러 화면이 있는 경우만 표시) */}
+      {screens.length > 1 && (
+        <div className="flex flex-wrap gap-2 justify-center">
+          {screens.map((screen, index) => (
+            <button
+              key={screen.id}
+              onClick={() => setCurrentScreenIndex(index)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                currentScreenIndex === index
+                  ? "bg-indigo-600 text-white shadow-md"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              {screen.name}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* 화면 정보 */}
       <div className="text-sm text-gray-600">
-        <span className="font-semibold">{screen.name}</span>
+        <span className="font-semibold">{currentScreen.name}</span>
         <span className="mx-2">•</span>
         <span>{viewport.device}</span>
         <span className="mx-2">•</span>
@@ -69,7 +92,7 @@ export function LoFiCanvas({ spec, scale = 1 }: Props) {
         }}
       >
         {/* 요소들 렌더링 */}
-        {screen.elements.map((el) => {
+        {currentScreen.elements.map((el) => {
           const style = typeStyle[el.type] || typeStyle.card;
           const icon = typeIcon[el.type] || "";
 
@@ -105,7 +128,8 @@ export function LoFiCanvas({ spec, scale = 1 }: Props) {
 
       {/* 디바이스 프레임 효과 (선택사항) */}
       <div className="text-xs text-gray-400">
-        요소 {screen.elements.length}개 • {screen.layout.type} 레이아웃
+        {screens.length > 1 && <span>화면 {currentScreenIndex + 1}/{screens.length} • </span>}
+        요소 {currentScreen.elements.length}개 • {currentScreen.layout.type} 레이아웃
       </div>
     </div>
   );

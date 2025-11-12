@@ -50,7 +50,7 @@ export interface WireframeSpec {
     height: number;
     device: Device;
   };
-  screen: WireframeScreen;
+  screens: WireframeScreen[]; // 여러 화면 지원 (이전: screen 단수)
 }
 
 // DB 저장용 타입
