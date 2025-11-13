@@ -2632,6 +2632,8 @@ function HomePageContent() {
     }
   };
 
+  const isStartDisabled = userComment.trim().length === 0;
+
   return (
     <div className="flex-1 bg-white flex flex-col min-h-0 overflow-hidden">
       {/* Progress Bar - Show when any interface is active */}
@@ -2683,8 +2685,16 @@ function HomePageContent() {
                         className="flex-1 px-6 py-4 bg-transparent border-0 focus:outline-none text-gray-700 placeholder-gray-500"
                       />
                       <button
-                        onClick={handleStart}
-                        className="bg-[#6366F1] text-white px-8 hover:bg-[#6366F1] transition-colors duration-200 font-medium m-2 rounded-lg h-[40px] flex items-center justify-center"
+                        onClick={() => {
+                          if (isStartDisabled) {
+                            return;
+                          }
+                          handleStart();
+                        }}
+                        disabled={isStartDisabled}
+                        className={`bg-[#6366F1] text-white px-8 transition-colors duration-200 font-medium m-2 rounded-lg h-[40px] flex items-center justify-center ${
+                          isStartDisabled ? "opacity-60 cursor-not-allowed" : "hover:bg-[#6366F1]"
+                        }`}
                       >
                         시작하기
                       </button>
