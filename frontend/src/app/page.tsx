@@ -2633,6 +2633,16 @@ function HomePageContent() {
   };
 
   const isStartDisabled = userComment.trim().length === 0;
+  const hasLandingExtras =
+    uploadedFiles.length > 0 ||
+    Boolean(fileProcessingMessage) ||
+    Boolean(fileProcessingError) ||
+    isProcessingFiles ||
+    isLoadingRecent ||
+    recentProjects.length > 0;
+  const landingJustifyClass = hasLandingExtras
+    ? "md:justify-start xl:justify-center"
+    : "md:justify-center";
 
   return (
     <div className="flex-1 bg-white flex flex-col min-h-0 overflow-hidden">
@@ -2650,17 +2660,19 @@ function HomePageContent() {
         !showConfirmation &&
         !showFinalResult && (
           <div className="flex-1 flex flex-col min-h-0 overflow-y-auto">
-            <div className="flex flex-col items-center justify-start w-full py-8">
-              <div className="max-w-4xl mx-auto px-4 w-full">
+            <div
+              className={`flex flex-1 flex-col items-center justify-start ${landingJustifyClass} w-full min-h-[calc(100vh-96px)] px-4 pt-24 pb-12 sm:py-12`}
+            >
+              <div className="max-w-4xl mx-auto w-full space-y-8">
                 <div className="text-center">
                 {/* Main Title */}
-                <h1 className="text-[48px] font-bold text-black mb-4">
+                <h1 className="text-3xl sm:text-[40px] md:text-[48px] font-bold text-black mb-4 leading-tight">
                   당신이 만들고 싶은 서비스를 말하거나
                   <br /> 자료를 업로드해보세요!
                 </h1>
 
                 {/* Subtitle */}
-                <p className="text-[16px] text-[#4B5563] mb-8 max-w-2xl mx-auto">
+                <p className="text-base sm:text-lg text-[#4B5563] mb-8 max-w-2xl mx-auto leading-relaxed">
                   사업계획서 없이도 한 문장만 적어도 됩니다.
                   <br />
                   자료가 있다면 더 정확한 초안을 만들어 드려요.
@@ -2757,7 +2769,7 @@ function HomePageContent() {
                     selectedType={selectedServiceType}
                   />
                 </div>
-                </div>
+              </div>
 
                 {/* Separator */}
                 <div className="flex items-center justify-center mb-8">
