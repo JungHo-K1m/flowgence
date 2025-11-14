@@ -272,7 +272,13 @@ export function generateRequirementsMarkdown(
         `- **배포**: ${fallbackEstimation.timeline.deployment}`,
       ].join("\n");
 
-  const markdown = `# 프로젝트 요구사항 명세서
+  // 확장된 요구사항 상세 섹션 렌더링
+  const detailedRequirementsSection = renderDetailedRequirements(extractedRequirements);
+
+  // 추적 매트릭스 섹션 렌더링
+  const traceMatrixSection = renderTraceMatrix(extractedRequirements);
+
+  const markdown = `# ${requirementsData.projectName} — 프로젝트 요구사항 명세서
 
 **생성일**: ${currentDate}  
 **프로젝트명**: ${requirementsData.projectName}  
@@ -280,12 +286,14 @@ export function generateRequirementsMarkdown(
 
 ---
 
-## 📋 프로젝트 개요
+## 📋 1. 프로젝트 개요
 
 ### 프로젝트 정보
 - **프로젝트명**: ${requirementsData.projectName}
 - **서비스 유형**: ${projectData.serviceType}
 - **프로젝트 설명**: ${projectData.description}
+- **총 기능 요구사항**: ${requirementsData.functionalRequirements.length}개
+- **총 화면 수**: ${wireframe?.screens?.length || requirementsData.screenList.length}개
 
 ### 프로젝트 목표
 ${requirementsData.overview.goal}
@@ -295,17 +303,17 @@ ${requirementsData.overview.valueProposition}
 
 ---
 
-## 🎯 프로젝트 범위
+## 🎯 2. 프로젝트 범위 (포함/제외)
 
-### 포함 기능
+### 포함 가정
 ${requirementsData.scope.included.map(item => `- ${item}`).join('\n')}
 
-${requirementsData.scope.excluded.length > 0 ? `### 제외 기능
+${requirementsData.scope.excluded.length > 0 ? `### 범위 밖
 ${requirementsData.scope.excluded.map(item => `- ${item}`).join('\n')}` : ''}
 
 ---
 
-## ⚙️ 기능 요구사항
+## ⚙️ 3. 기능 요구사항 (FR)
 
 ### 📊 요구사항 요약
 - **총 요구사항**: ${requirementsData.functionalRequirements.length}개
@@ -313,7 +321,9 @@ ${requirementsData.scope.excluded.map(item => `- ${item}`).join('\n')}` : ''}
 - **권장 요구사항**: ${requirementsData.functionalRequirements.filter(req => req.priority === "권장").length}개
 - **선택 요구사항**: ${requirementsData.functionalRequirements.filter(req => req.priority === "선택").length}개
 
-### 📋 상세 요구사항 목록
+${detailedRequirementsSection}
+
+### 📋 요약 목록
 
 #### 🔴 필수 요구사항 (${requirementsData.functionalRequirements.filter(req => req.priority === "필수").length}개)
 
@@ -365,35 +375,19 @@ ${requirementsData.functionalRequirements
 
 ---
 
-## 🔧 비기능 요구사항
+## 🔧 4. 비기능 요구사항 (NFR)
 
-${requirementsData.nonFunctionalRequirements.length === 0 ? '비기능 요구사항이 정의되지 않았습니다.' : `| 카테고리 | 설명 | 측정 지표 | 중요도 |
-|----------|------|----------|--------|
-${requirementsData.nonFunctionalRequirements.map((req: any) => {
-  const categoryIcon = req.category === "성능" ? "⚡" : 
-                      req.category === "보안" ? "🔒" : 
-                      req.category === "사용성" ? "👥" : 
-                      req.category === "호환성" ? "🔄" : 
-                      req.category === "확장성" ? "📈" :
-                      req.category === "유지보수성" ? "🛠️" : "📋";
-  
-  const categoryName = `<span class="requirement-name">${categoryIcon} ${req.category}</span>`;
-  const description = `<span class="requirement-description">${req.description}</span>`;
-  const metrics = req.metrics ? `<span class="requirement-description">${req.metrics}</span>` : '-';
-  const priorityText = req.priority === 'high' ? '높음' : req.priority === 'medium' ? '중간' : req.priority === 'low' ? '낮음' : '높음';
-  const priorityClass = req.priority === 'high' ? 'mandatory' : req.priority === 'medium' ? 'recommended' : 'optional';
-  const importance = `<span class="priority-badge ${priorityClass}">${priorityText}</span>`;
-  
-  return `| ${categoryName} | ${description} | ${metrics} | ${importance} |`;
-}).join('\n')}`}
+${renderNonFunctionalRequirements(requirementsData.nonFunctionalRequirements)}
 
 ---
 
-## 📱 화면 목록
+## 📱 5. 화면/와이어프레임
 
 ### 📊 화면 구성 요약
-- **총 화면 수**: ${requirementsData.screenList.length}개
+- **총 화면 수**: ${wireframe?.screens?.length || requirementsData.screenList.length}개
 - **주요 화면**: 메인, 상세, 목록, 관리 화면
+
+${renderWireframeSection(wireframe)}
 
 ### 📋 화면 상세 목록
 
@@ -426,71 +420,21 @@ ${requirementsData.screenList.map((screen, index) => {
 
 ---
 
-${renderWireframeSection(wireframe)}
+## 🛠️ 6. 기술 스택
 
-## 🛠️ 기술 스택
-
-${requirementsData.dataModel ? `
-### 프론트엔드
-${requirementsData.dataModel.frontend.map(tech => `- ${tech}`).join('\n')}
-
-### 백엔드
-${requirementsData.dataModel.backend.map(tech => `- ${tech}`).join('\n')}
-
-### 데이터베이스
-${requirementsData.dataModel.database.map(tech => `- ${tech}`).join('\n')}
-
-### 인프라
-${requirementsData.dataModel.infrastructure.map(tech => `- ${tech}`).join('\n')}
-` : `
-### 기본 기술 스택
-- **프론트엔드**: React, Next.js, TypeScript
-- **백엔드**: Node.js, Express, PostgreSQL
-- **데이터베이스**: PostgreSQL, Redis
-- **인프라**: AWS, Docker, Kubernetes
-`}
+${renderTechStack(requirementsData.dataModel)}
 
 ---
 
-## 📊 상세 요구사항 분석
+${traceMatrixSection}
 
-${extractedRequirements ? `
-### 요구사항 카테고리별 상세 내역
-
-${extractedRequirements.categories.map((category: any, categoryIndex: number) => {
-  const allRequirements = category.subCategories?.flatMap((subCategory: any) => 
-    subCategory.requirements || []
-  ) || [];
-  
-  return `
-#### ${category.majorCategory} (${allRequirements.length}개)
-
-${category.subCategories?.map((subCategory: any, subIndex: number) => {
-  if (!subCategory.requirements || subCategory.requirements.length === 0) return '';
-  
-  return `
-**${subCategory.subCategory}**
-${subCategory.requirements.map((req: any, reqIndex: number) => 
-  `- **${req.title}**: ${req.description} (우선순위: ${req.priority === 'high' ? '높음' : req.priority === 'medium' ? '보통' : '낮음'})`
-).join('\n')}
-`;
-}).join('') || '상세 요구사항이 없습니다.'}
-`;
-}).join('') || ''}
-` : `
-### 요구사항 상세 분석
-요구사항 상세 분석 데이터가 아직 준비되지 않았습니다.
-`}
-
----
-
-## 🎨 사용자 여정 (User Journey)
+## 🎨 7. 사용자 여정 (User Journey)
 
 ${userJourneySection}
 
 ---
 
-## 📈 프로젝트 규모 및 복잡도
+## 📈 8. 프로젝트 규모 및 복잡도
 
 ${projectOverview?.serviceCoreElements ? `
 - **프로젝트 규모**: ${projectOverview.serviceCoreElements.projectScale || '중간 규모'}
@@ -504,7 +448,7 @@ ${projectOverview?.serviceCoreElements ? `
 
 ---
 
-## 💰 예상 견적 정보
+## 💰 9. 예상 견적 정보
 
 ${estimationSection}
 
@@ -515,8 +459,8 @@ ${estimationSection}
 요구사항 명세서에 대한 문의사항이 있으시면 언제든지 연락주시기 바랍니다.
 
 **Flowgence 팀**  
-이메일: contact@flowgence.com  
-전화: 02-1234-5678
+이메일: contact@flowgence.ai  
+전화: 042-123-4567
 
 ---
 
@@ -524,6 +468,192 @@ ${estimationSection}
 `;
 
   return markdown;
+}
+
+// 상세 요구사항 렌더링 (확장된 형식)
+function renderDetailedRequirements(extractedRequirements?: any): string {
+  if (!extractedRequirements || !extractedRequirements.categories) {
+    return `
+### 📝 상세 요구사항 분석
+요구사항 상세 분석 데이터가 아직 준비되지 않았습니다.
+`;
+  }
+
+  const categories = extractedRequirements.categories || [];
+  let output = `
+### 📝 카테고리별 상세 내역
+
+`;
+
+  categories.forEach((category: any, catIndex: number) => {
+    const allRequirements = category.subCategories?.flatMap((subCategory: any) => 
+      subCategory.requirements || []
+    ) || [];
+
+    output += `#### ${catIndex + 1}. ${category.category} (${allRequirements.length}개)\n\n`;
+
+    if (category.subCategories && category.subCategories.length > 0) {
+      category.subCategories.forEach((subCategory: any) => {
+        if (!subCategory.requirements || subCategory.requirements.length === 0) return;
+
+        output += `**${subCategory.subcategory}**\n\n`;
+
+        subCategory.requirements.forEach((req: any) => {
+          const id = req.id || `FR-${catIndex+1}-?`;
+          const priority = req.priority === 'high' ? 'MUST' : req.priority === 'medium' ? 'SHOULD' : 'COULD';
+          const roles = req.roles && Array.isArray(req.roles) ? req.roles.join(', ') : '미정';
+          
+          output += `##### ${id}. ${req.title} (${priority})\n\n`;
+          output += `**설명**: ${req.description || '설명 없음'}\n\n`;
+          
+          if (req.roles && req.roles.length > 0) {
+            output += `- **역할**: ${roles}\n`;
+          }
+          
+          if (req.dataRules && req.dataRules.length > 0) {
+            output += `- **데이터 규칙**: ${req.dataRules.join(' / ')}\n`;
+          }
+          
+          if (req.exceptions && req.exceptions.length > 0) {
+            output += `- **예외 처리**: ${req.exceptions.join(' / ')}\n`;
+          }
+          
+          if (req.trace) {
+            const trace = req.trace;
+            if (trace.screens && trace.screens.length > 0) {
+              output += `- **연관 화면**: ${trace.screens.join(', ')}\n`;
+            }
+            if (trace.apis && trace.apis.length > 0) {
+              output += `- **API**: ${trace.apis.join(', ')}\n`;
+            }
+            if (trace.tables && trace.tables.length > 0) {
+              output += `- **DB 테이블**: ${trace.tables.join(', ')}\n`;
+            }
+          }
+          
+          if (req.ac && req.ac.length > 0) {
+            output += `\n**수용 기준 (AC)**:\n`;
+            req.ac.forEach((ac: any) => {
+              output += `- [${ac.type}] ${ac.text}\n`;
+            });
+          }
+          
+          if (req.source) {
+            output += `\n*출처: ${req.source}*\n`;
+          }
+          
+          output += `\n`;
+        });
+      });
+    } else {
+      output += `상세 요구사항이 없습니다.\n\n`;
+    }
+  });
+
+  return output;
+}
+
+// NFR 렌더링
+function renderNonFunctionalRequirements(nfrs: any[]): string {
+  if (!nfrs || nfrs.length === 0) {
+    return '비기능 요구사항이 정의되지 않았습니다.';
+  }
+
+  let output = `| ID | 카테고리 | 요구사항 | 측정 지표 | 검증 방법 | 중요도 |\n`;
+  output += `|----|----|-------|-------|-------|-------|\n`;
+
+  nfrs.forEach((req: any) => {
+    const categoryIcon = req.category === "성능" || req.category === "performance" ? "⚡" : 
+                        req.category === "보안" || req.category === "security" ? "🔒" : 
+                        req.category === "사용성" || req.category === "usability" ? "👥" : 
+                        req.category === "호환성" || req.category === "compatibility" ? "🔄" : 
+                        req.category === "확장성" || req.category === "scalability" ? "📈" :
+                        req.category === "유지보수성" || req.category === "maintainability" ? "🛠️" : "📋";
+    
+    const id = req.id || '-';
+    const categoryName = `<span class="requirement-name">${categoryIcon} ${req.category}</span>`;
+    const statement = req.statement || req.description || '-';
+    const metric = req.metric || req.metrics || '-';
+    const howToVerify = req.howToVerify || '-';
+    const priorityText = req.priority === 'MUST' || req.priority === 'high' ? '높음' : 
+                         req.priority === 'SHOULD' || req.priority === 'medium' ? '중간' : 
+                         req.priority === 'COULD' || req.priority === 'low' ? '낮음' : '높음';
+    const priorityClass = priorityText === '높음' ? 'mandatory' : priorityText === '중간' ? 'recommended' : 'optional';
+    const importance = `<span class="priority-badge ${priorityClass}">${priorityText}</span>`;
+    
+    output += `| ${id} | ${categoryName} | ${statement} | ${metric} | ${howToVerify} | ${importance} |\n`;
+  });
+
+  return output;
+}
+
+// 추적 매트릭스 렌더링
+function renderTraceMatrix(extractedRequirements?: any): string {
+  if (!extractedRequirements || !extractedRequirements.categories) {
+    return '';
+  }
+
+  const allRequirements: any[] = [];
+  extractedRequirements.categories.forEach((category: any) => {
+    category.subCategories?.forEach((subCategory: any) => {
+      subCategory.requirements?.forEach((req: any) => {
+        if (req.trace) {
+          allRequirements.push(req);
+        }
+      });
+    });
+  });
+
+  if (allRequirements.length === 0) {
+    return '';
+  }
+
+  let output = `## 🔗 추적 매트릭스 (Traceability Matrix)\n\n`;
+  output += `| FR ID | 제목 | 화면 | API/DB | 테스트 |\n`;
+  output += `|-------|------|------|--------|--------|\n`;
+
+  allRequirements.forEach((req) => {
+    const id = req.id || '-';
+    const title = req.title || '-';
+    const screens = req.trace.screens?.join(', ') || '-';
+    const apisAndTables = [
+      ...(req.trace.apis || []),
+      ...(req.trace.tables || []).map((t: string) => `[${t}]`)
+    ].join(', ') || '-';
+    const tests = req.trace.tests?.join(', ') || '-';
+
+    output += `| ${id} | ${title} | ${screens} | ${apisAndTables} | ${tests} |\n`;
+  });
+
+  output += `\n---\n\n`;
+  return output;
+}
+
+// 기술 스택 렌더링 (NestJS 강조)
+function renderTechStack(dataModel?: any): string {
+  if (dataModel) {
+    return `
+### 프론트엔드
+${dataModel.frontend.map((tech: string) => `- ${tech}`).join('\n')}
+
+### 백엔드
+${dataModel.backend.map((tech: string) => `- ${tech}`).join('\n')}
+
+### 데이터베이스
+${dataModel.database.map((tech: string) => `- ${tech}`).join('\n')}
+
+### 인프라
+${dataModel.infrastructure.map((tech: string) => `- ${tech}`).join('\n')}
+`;
+  }
+
+  return `
+### 기본 기술 스택
+- **프론트엔드**: Next.js 14 (App Router), React, TypeScript, Tailwind CSS, shadcn/ui
+- **백엔드**: NestJS, Node.js, Supabase (PostgreSQL), Redis, Socket.io
+- **데이터베이스**: PostgreSQL, Redis
+- **인프라**: Vercel (Frontend), Railway (Backend)
+`;
 }
 
 function getWireframeIcon(type: string): string {

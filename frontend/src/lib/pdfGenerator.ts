@@ -441,6 +441,10 @@ function createHTMLDocument(html: string, title: string, author: string, subject
         }
         
         @media print {
+            @page {
+                margin: 24mm 16mm 20mm;
+            }
+            
             body {
                 margin: 0;
                 padding: 15px;
@@ -448,10 +452,12 @@ function createHTMLDocument(html: string, title: string, author: string, subject
             
             h1 {
                 page-break-after: avoid;
+                break-after: avoid;
             }
             
-            h2, h3 {
+            h2, h3, h4 {
                 page-break-after: avoid;
+                break-after: avoid;
             }
             
             table {
@@ -463,11 +469,20 @@ function createHTMLDocument(html: string, title: string, author: string, subject
                 display: table-header-group;
             }
             
+            tfoot {
+                display: table-footer-group;
+            }
+            
             tbody {
                 display: table-row-group;
             }
             
             tr {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+            
+            .card, .wireframe-screen {
                 page-break-inside: avoid;
                 break-inside: avoid;
             }
@@ -482,6 +497,12 @@ function createHTMLDocument(html: string, title: string, author: string, subject
             .section-break {
                 page-break-before: always;
                 break-before: page;
+            }
+            
+            /* 인쇄 시 헤더/푸터 커스텀 */
+            .header, .footer {
+                font-size: 11px;
+                color: #667085;
             }
         }
     </style>

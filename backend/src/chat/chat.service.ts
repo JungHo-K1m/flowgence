@@ -8,6 +8,10 @@ import { ExtractRequirementsDto } from './dto/extract-requirements.dto';
 import { UpdateRequirementsDto } from './dto/update-requirements.dto';
 import { RecommendationsDto } from './dto/recommendations.dto';
 import { VerifyRequirementsDto } from './dto/verify-requirements.dto';
+import { 
+  validateRequirementsJSON, 
+  convertValidationToOpenIssues 
+} from './validators/requirements-validator';
 
 @Injectable()
 export class ChatService {
@@ -444,34 +448,67 @@ export class ChatService {
       `${msg.role || (msg.type === 'user' ? '사용자' : 'AI')}: ${msg.content || msg.message}`
     ).join('\n');
 
-    const systemPrompt = `당신은 SI 프로젝트 요구사항 분석 전문가입니다.
-대화 내용을 분석하여 기능 요구사항과 비기능 요구사항을 추출하고 계층적으로 분류해주세요.
+    const systemPrompt = `[역할] 당신은 SI 프로젝트 요구사항 분석 전문가이며 기술 문서 작성자입니다.
 
-중요: 응답은 반드시 유효한 JSON 형식이어야 하며, 다른 텍스트나 설명은 포함하지 마세요.
+[목표] 대화 내용을 분석하여 프로젝트 요구사항을 추출하고, 문서만 보고 설계/개발/QA/견적까지 연결 가능한 수준의 상세한 JSON을 생성합니다.
 
-비기능 요구사항 카테고리:
-- 성능 (Performance): 응답시간, 처리속도, 로드시간 등
-- 보안 (Security): 인증, 암호화, 접근제어, 데이터 보호 등
-- 사용성 (Usability): UI/UX, 접근성, 사용자 편의성 등
-- 호환성 (Compatibility): 브라우저, 디바이스, OS 호환성 등
-- 확장성 (Scalability): 사용자 증가, 데이터 증가 대응 등
-- 유지보수성 (Maintainability): 코드 품질, 문서화, 모니터링 등
+[기술 스택 컨텍스트]
+- Frontend: Next.js 14 (App Router), Tailwind CSS, shadcn, Zustand, TanStack Query, Vercel AI SDK
+- Backend: NestJS, Supabase (PostgreSQL), Redis, Socket.io, BullMQ
+- Infrastructure: Vercel (Frontend), Railway (Backend)
+- LLM: Claude, GPT-4
 
-응답 형식:
+[금지 사항 - 매우 중요]
+다음 문자열은 절대 사용 금지. 발견 시 openIssues[]에 "확인 필요: ..."로 기록하고 본문에 노출하지 말 것:
+- "qwe", "asd", "undefined", "미정", "TBD", "TODO"
+
+[정합성 규칙 - 필수]
+1. 백엔드 스택은 반드시 "NestJS"로 표기 (Express 금지)
+2. 화면 수(totalScreens) == screens.length
+3. 일정(scheduleWeeks) == Σ(WBS effortPW) / 5PW per week
+
+[기능 요구사항(FR) 최소 기준 - 각 항목마다]
+- ac (수용기준): 최소 3개. 반드시 functional, accessibility, error/edge 중 최소 1개 포함
+- dataRules: 최소 3개 (형식 검증, 보관 규칙, 마스킹 등)
+- exceptions: 최소 2개 (네트워크 오류, 검증 실패, 권한 부족 등)
+- roles: 명시 (guest, user, admin, agent 등)
+- trace: screens[], apis[], tables[], tests[] 상호 참조
+
+[비기능 요구사항(NFR) 기준]
+- metric: 정량 지표 필수 (예: P95≤1.5s, WCAG 2.1 AA, AES-256)
+- howToVerify: 검증 방법 및 도구 명시
+
+[응답 형식 - JSON only, 설명/주석 금지]
 {
   "categories": [
     {
-      "category": "대분류 (예: 인증, 결제, 관리자)",
+      "category": "대분류 (예: 인증, 결제)",
       "subCategories": [
         {
-          "subcategory": "중분류 (예: 로그인, 회원가입)",
+          "subcategory": "중분류 (예: 로그인)",
           "requirements": [
             {
+              "id": "FR-1-1",
               "title": "소분류 (예: 이메일/비밀번호 로그인)",
-              "description": "상세 설명",
-              "priority": "high|medium|low",
-              "needsClarification": true|false,
-              "clarificationQuestions": ["구체적인 질문1", "구체적인 질문2"]
+              "description": "최소 40자 이상 상세 설명",
+              "priority": "MUST|SHOULD|COULD",
+              "roles": ["guest", "user"],
+              "dataRules": ["이메일 RFC5322 검증", "비밀번호 SHA-256 암호화", "세션 7일 보관"],
+              "exceptions": ["네트워크 타임아웃 5초", "비밀번호 5회 실패 시 잠금", "미등록 이메일 안내"],
+              "ac": [
+                {"id":"AC-1","text":"유효한 이메일/비밀번호 입력 시 2초 이내 로그인","type":"functional"},
+                {"id":"AC-2","text":"Tab 키로 필드 이동 가능","type":"accessibility"},
+                {"id":"AC-3","text":"네트워크 오류 시 재시도 버튼 표시","type":"error"}
+              ],
+              "trace": {
+                "screens": ["M-01-로그인"],
+                "apis": ["POST /auth/login"],
+                "tables": ["users", "sessions"],
+                "tests": ["FT-001"]
+              },
+              "source": "사용자 요청 / 보안 기본 요구",
+              "needsClarification": false,
+              "clarificationQuestions": []
             }
           ]
         }
@@ -480,20 +517,22 @@ export class ChatService {
   ],
   "nonFunctionalRequirements": [
     {
-      "id": "nfr-1",
-      "category": "성능|보안|사용성|호환성|확장성|유지보수성",
-      "description": "구체적이고 측정 가능한 요구사항",
-      "priority": "high|medium|low",
-      "metrics": "측정 가능한 지표 (선택사항)"
+      "id": "NFR-1",
+      "category": "performance|security|usability|availability|compatibility|maintainability",
+      "statement": "측정 가능한 문장",
+      "metric": "예: P95≤1.5s, SLO 99.9%, WCAG 2.1 AA, AES-256, RTO<4h",
+      "howToVerify": "도구(Lighthouse, JMeter) 및 절차",
+      "priority": "MUST|SHOULD|COULD"
     }
-  ]
+  ],
+  "assumptions": ["가정 1", "가정 2"],
+  "outOfScope": ["범위 밖 1"],
+  "risks": ["리스크 1"],
+  "openIssues": ["확인 필요: ..."]
 }
 
-비기능 요구사항 추출 가이드:
-1. 대화에서 명시적으로 언급된 비기능 요구사항을 우선 추출
-2. 프로젝트 특성상 필수적인 비기능 요구사항 추가 (최소 3-5개)
-3. 각 요구사항은 구체적이고 측정 가능해야 함
-4. 우선순위는 프로젝트 중요도에 따라 결정`;
+[불충분 정보 처리]
+임의의 placeholder 금지. 모호하거나 미정인 부분은 openIssues[]에 기록하고 본문에 삽입하지 말 것.`;
 
     try {
       const response = await fetch('https://api.anthropic.com/v1/messages', {

@@ -17,6 +17,8 @@ AI agent를 활용한 SI 전과정 자동화 서비스의 MVP Phase1 개발
 2. AI 기반 요구사항 도출 및 정리
 3. 자동 견적서 생성
 4. 계약서 확인 및 승인
+5. 다중 화면(모바일/데스크톱) 와이어프레임 자동 생성 및 AI 수정
+6. 문서(PDF, Markdown, Notion) 자동 생성 및 공유
 
 ---
 
@@ -92,6 +94,34 @@ Database: Supabase PostgreSQL
 File Storage: AWS S3 / Cloudflare R2 (향후)
 Deployment: Vercel (Frontend) + Railway (Backend)
 ```
+
+## 📄 문서 및 PDF 시스템
+
+### **생성 파이프라인**
+
+- 요구사항 결과 페이지(`RequirementsResultPanel`)에서 `generateRequirementsMarkdown` 호출
+- 생성된 마크다운을 `pdfGenerator`가 HTML 템플릿과 스타일을 적용해 PDF로 변환
+- 동일 마크다운을 Notion 공유(`notionService`)와 대체 공유(이메일 등)에 재활용하여 일관성 유지
+
+### **PDF 출력 포맷**
+
+- `# Flowgence 프로젝트 요구사항 요약` 헤더 아래 고정된 섹션 구조
+  - 프로젝트 개요, 범위, 기능/비기능 요구사항
+  - `## 🖼️ 와이어프레임 미리보기`: 화면별(모바일/데스크톱) 요소를 HTML 캔버스로 렌더링
+  - `## 사용자 여정`, `## 예상 견적 정보`: AI가 값을 반환하지 않은 경우에도 기본 템플릿으로 자동 채움
+- CSS 클래스(`wireframe-preview`, `wireframe-screen`, `wireframe-element-*`)로 요소 유형별 스타일링 및 `page-break-inside: avoid` 적용
+
+### **데이터 보정 로직**
+
+- `requirementsMarkdownGenerator`가 `userJourney`, `estimation` 데이터가 비어 있으면 기본 단계/항목을 생성하여 공백 방지
+- 와이어프레임 데이터는 `screens: WireframeScreen[]` 배열 구조로 저장되어 PDF/Markdown/Notion에 동일 반영
+- Notion 공유 시 동일 마크다운 업로드로 문서 간 내용 차이가 발생하지 않음
+
+### **공유 옵션**
+
+- PDF 다운로드: 브라우저에서 직접 저장
+- Notion 공유: Notion API를 통해 페이지 생성, 와이어프레임 및 견적 정보 포함
+- 대체 공유: Markdown 원본을 복사하거나 외부 채널로 전달하는 링크 제공
 
 ### **배포 아키텍처**
 
@@ -768,7 +798,78 @@ _마지막 업데이트: 2025-01-27 (견적서 상세화, 스크롤 개선, 채�
 
 ## 📋 최근 업데이트 내역
 
-### **2025-01-27 (오늘 업데이트)**
+### **2025-11-14**
+
+- ✅ **다중 화면 와이어프레임 & AI 수정 고도화**
+  
+  - Claude 프롬프트와 폴백 로직을 확장하여 프로젝트 요구사항에 따라 3~7개의 화면(모바일/데스크톱)을 자동 생성
+  - `WireframeSpec`을 `screens: WireframeScreen[]` 구조로 재정의하고 `LoFiCanvas`, `WireframeEditor`에서 화면/디바이스 전환 UI 제공
+  - 529(Overloaded) 오류 시 재시도 로직을 공통화하여 안정성 향상
+
+- ✅ **요구사항 문서 및 PDF 내 와이어프레임/견적 정보 포함**
+  
+  - `generateRequirementsMarkdown`가 와이어프레임, 사용자 여정, 견적 정보를 기본값과 함께 작성
+  - `pdfGenerator`에 wireframe 전용 CSS를 추가하여 PDF에서도 시각적 레이아웃 유지
+  - Notion 공유와 대체 공유 경로가 동일 마크다운을 사용하도록 통합
+
+- ✅ **문의하기 기능 및 SMTP 설정 가이드**
+  
+  - `/api/contact` Next.js API 라우트에 `zod` 검증과 Nodemailer를 적용하여 이메일 발송
+  - `contact/page.tsx`에 `react-hook-form` + `zodResolver` 기반 폼 검증과 성공/오류 피드백 추가
+  - Gmail/Naver SMTP 환경 변수 구성 절차를 정리해 테스트/운영 전환이 용이하도록 문서화
+
+- ✅ **랜딩 페이지 레이아웃 안정화**
+  
+  - 대형 화면에서도 세로 중앙 정렬을 유지하고 최근 프로젝트 섹션이 등장해도 타이틀이 잘리지 않도록 Tailwind 레이아웃 조정
+  - `Start` 버튼 입력 검증 및 비활성화 상태 스타일을 도입하여 UX 개선
+
+### **2025-11-14 (최신 업데이트)**
+
+- ✅ **요구사항 명세서 품질 대폭 향상 완료**
+  
+  - AI 프롬프트 재설계: 문서 품질 가이드라인 통합
+    - 금지어/Placeholder 차단 (qwe, asd, undefined, 미정 등)
+    - 기술 스택 정합성 강제 (NestJS 명시, Express 금지)
+    - FR 최소 기준 적용 (AC≥3, dataRules≥3, exceptions≥2, roles 명시, trace 상호참조)
+    - NFR 정량 지표 및 검증 방법 필수화
+  - Markdown 템플릿 확장: 상세 요구사항 섹션 추가
+    - 카테고리별 상세 내역 (ID, 역할, 데이터 규칙, 예외 처리, 수용 기준, 추적성)
+    - 추적 매트릭스 (FR ↔ 화면 ↔ API/DB ↔ 테스트ID)
+    - 기술 스택 표기 일관성 (NestJS 강조)
+  - PDF 스타일 개선: 프린트 품질 최적화
+    - `@page` 여백 설정 (24mm/16mm/20mm)
+    - 표 머리글 반복 출력 (`thead { display: table-header-group; }`)
+    - 행/카드 단절 방지 (`break-inside: avoid`)
+    - 커스텀 헤더/푸터 스타일
+  - 검증 로직 구현: 생성 후 자동 품질 검사
+    - Placeholder 탐지 및 차단
+    - 기술 스택 검증 (Express → NestJS)
+    - FR/NFR 최소 기준 검증 (AC, dataRules, exceptions, roles, trace)
+    - 정합성 검사 (화면 수, 일정 계산)
+    - 검증 결과를 `openIssues[]`에 자동 기록
+  - 문서화: `PROJECT_OVERVIEW.md`에 문서 생성 파이프라인 및 품질 규칙 정리
+
+- ✅ **문의하기 기능 구현 완료**
+  
+  - Contact 페이지 (`/contact`) 구현
+  - React Hook Form + Zod 검증 적용
+  - Nodemailer 이메일 발송 기능 (`/api/contact`)
+  - SMTP 환경 변수 설정 (Gmail/Naver 지원)
+  - 테스트 완료: `hollydays2580@gmail.com` 수신 확인
+
+- ✅ **다중 와이어프레임 지원 완료**
+  
+  - 모바일/데스크톱 화면 자동 생성 (3-7개)
+  - 디바이스별 그룹화 및 탭 UI
+  - PDF 내 와이어프레임 미리보기 통합
+
+- ✅ **메인 랜딩 페이지 UX 개선 완료**
+  
+  - 빈 입력 시 "Start" 버튼 비활성화
+  - 세로 중앙 정렬 (대형 화면)
+  - 제목 잘림 방지 (모바일)
+
+### **2025-01-27 (이전 업데이트)**
 
 - ✅ **견적서 마크다운 파일 개선 완료**
   
