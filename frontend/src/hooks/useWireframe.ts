@@ -88,6 +88,7 @@ export function useWireframe() {
     generateWireframe,
     applyEdit,
     clearWireframe,
+    setWireframe, // 프로젝트 복원 시 사용
   };
 }
 

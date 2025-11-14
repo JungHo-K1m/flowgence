@@ -16,6 +16,7 @@ export function useProjectRestore() {
         chatMessages?: any[];
         requirements?: any;
         extractedRequirements?: any;
+        wireframe?: any;
       },
       step: number,
       setState: {
@@ -31,6 +32,7 @@ export function useProjectRestore() {
       setOverviewDirectly?: (overview: any) => void;
       updateExtractedRequirements?: (requirements: any) => void;
       setEditableRequirements?: (requirements: any) => void;
+      setWireframe?: (wireframe: any) => void;
       }
     ) => {
       console.log("프로젝트 상태 복원 시작:", { step, hasData: !!projectData });
@@ -117,11 +119,23 @@ export function useProjectRestore() {
         }
       }
 
-      // 5. 단계별 UI 상태 설정
+      // 5. 와이어프레임 복원
+      if (projectData.wireframe && setState.setWireframe) {
+        console.log("와이어프레임 복원:", {
+          hasWireframe: !!projectData.wireframe,
+          screenCount: projectData.wireframe?.screens?.length || 0,
+        });
+        setState.setWireframe(projectData.wireframe);
+      }
+
+      // 6. 단계별 UI 상태 설정
       setState.setCurrentStep(step);
       setUIStateForStep(step, setState);
 
-      console.log("프로젝트 상태 복원 완료:", { step });
+      console.log("프로젝트 상태 복원 완료:", { 
+        step,
+        hasWireframe: !!projectData.wireframe,
+      });
     },
     []
   );

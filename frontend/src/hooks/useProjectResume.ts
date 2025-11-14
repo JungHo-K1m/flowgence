@@ -66,6 +66,27 @@ export function useProjectResume() {
 
       if (requirementsError) throw requirementsError;
 
+      // 와이어프레임 조회
+      const { data: wireframeData, error: wireframeError } = await supabase
+        .from("wireframes")
+        .select("*")
+        .eq("project_id", projectId)
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      if (wireframeError) {
+        console.warn("와이어프레임 조회 실패 (무시):", wireframeError);
+      }
+
+      const latestWireframe = wireframeData && wireframeData.length > 0 ? wireframeData[0] : null;
+
+      console.log("프로젝트 복구 - 와이어프레임 데이터:", {
+        projectId: project.id,
+        hasWireframe: !!latestWireframe,
+        wireframeVersion: latestWireframe?.version,
+        wireframeScreenCount: latestWireframe?.spec?.screens?.length || 0,
+      });
+
       // 프로젝트 개요 확인 및 로깅
       const projectOverview = project.project_overview || project.overview || null;
       console.log("프로젝트 복구 - 개요 데이터:", {
@@ -102,6 +123,7 @@ export function useProjectResume() {
         requirements: project.requirements || {},
         chatMessages: formattedMessages, // 변환된 메시지 사용
         extractedRequirements: requirements || [],
+        wireframe: latestWireframe?.spec || null, // 와이어프레임 데이터 추가
         timestamp: Date.now(),
       };
 

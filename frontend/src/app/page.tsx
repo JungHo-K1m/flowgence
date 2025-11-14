@@ -75,7 +75,7 @@ function HomePageContent() {
   const [chatMessages, setChatMessages] = useState<Message[]>([]);
   
   // 와이어프레임 관련 상태
-  const { wireframe, isGenerating, isApplying, error: wireframeError, generateWireframe, applyEdit, clearWireframe } = useWireframe();
+  const { wireframe, isGenerating, isApplying, error: wireframeError, generateWireframe, applyEdit, clearWireframe, setWireframe } = useWireframe();
   const hasResumedProject = useRef(false);
   const isProcessingStep1To2 = useRef(false); // 1단계 → 2단계 전환 중복 호출 방지
   
@@ -276,6 +276,7 @@ function HomePageContent() {
             setOverviewDirectly,
             updateExtractedRequirements,
             setEditableRequirements,
+            setWireframe, // 와이어프레임 복원 추가
           });
 
           // 프로젝트 개요가 없으면 DB에서 다시 조회
