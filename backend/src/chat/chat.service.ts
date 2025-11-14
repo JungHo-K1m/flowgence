@@ -84,17 +84,31 @@ export class ChatService {
     console.log('응답 텍스트:', responseText.substring(0, 300) + '...');
     console.log('응답 길이:', responseText.length);
     
-    // 마크다운 코드 블록에서 JSON 추출
-    let jsonText = responseText;
+    // 마크다운 코드 블록에서 JSON 추출 (개선된 로직)
+    let jsonText = responseText.trim();
     
-    // ```json ... ``` 형태의 코드 블록에서 JSON 추출
-    const jsonBlockMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/);
-    if (jsonBlockMatch) {
-      jsonText = jsonBlockMatch[1];
-      console.log('코드 블록에서 JSON 추출 성공:', jsonText.substring(0, 200) + '...');
+    // 여러 패턴으로 코드 블록 제거 시도
+    // 패턴 1: ```json\n...\n```
+    if (jsonText.startsWith('```json')) {
+      console.log('패턴 1: ```json 코드 블록 감지');
+      // 시작 부분 제거
+      jsonText = jsonText.replace(/^```json\s*/i, '');
+      // 끝 부분 제거
+      jsonText = jsonText.replace(/\s*```\s*$/i, '');
+      console.log('코드 블록 제거 후 텍스트:', jsonText.substring(0, 200) + '...');
+    }
+    // 패턴 2: ```\n...\n```
+    else if (jsonText.startsWith('```')) {
+      console.log('패턴 2: ``` 코드 블록 감지');
+      jsonText = jsonText.replace(/^```\s*/i, '');
+      jsonText = jsonText.replace(/\s*```\s*$/i, '');
+      console.log('코드 블록 제거 후 텍스트:', jsonText.substring(0, 200) + '...');
     } else {
       console.log('코드 블록 없음, 원본 텍스트 사용');
     }
+    
+    // 추가 정리: 앞뒤 공백 제거
+    jsonText = jsonText.trim();
     
     // JSON 응답 파싱
     try {
