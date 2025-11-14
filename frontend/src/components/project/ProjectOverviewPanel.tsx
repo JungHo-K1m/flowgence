@@ -840,55 +840,56 @@ export function ProjectOverviewPanel({
                     단계별 상세 정보
                   </h3>
                   {displayOverview?.userJourney?.steps?.map(
-                  (
-                    step: {
-                      step: number;
-                      title: string;
-                      description: string;
-                      userAction: string;
-                      systemResponse: string;
-                      estimatedHours?: string;
-                      requiredSkills?: string[];
-                    },
-                    index: number
-                  ) => (
-                    <div key={index} className="bg-gray-50 p-4 rounded-lg">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <span className="text-2xl">🔄</span>
-                        <h3 className="font-semibold text-gray-900">
-                          단계 {step.step}
-                        </h3>
-                      </div>
-                      <h4 className="font-medium text-gray-800 mb-2">
-                        {step.title}
-                      </h4>
-                      <p className="text-sm text-gray-600 mb-2">
-                        {step.description}
-                      </p>
-                      <div className="text-xs text-gray-500 space-y-1">
-                        <p>
-                          <strong>사용자 행동:</strong> {step.userAction}
+                    (
+                      step: {
+                        step: number;
+                        title: string;
+                        description: string;
+                        userAction: string;
+                        systemResponse: string;
+                        estimatedHours?: string;
+                        requiredSkills?: string[];
+                      },
+                      index: number
+                    ) => (
+                      <div key={index} className="bg-gray-50 p-4 rounded-lg">
+                        <div className="flex items-center space-x-3 mb-2">
+                          <span className="text-2xl">🔄</span>
+                          <h3 className="font-semibold text-gray-900">
+                            단계 {step.step}
+                          </h3>
+                        </div>
+                        <h4 className="font-medium text-gray-800 mb-2">
+                          {step.title}
+                        </h4>
+                        <p className="text-sm text-gray-600 mb-2">
+                          {step.description}
                         </p>
-                        <p>
-                          <strong>시스템 응답:</strong> {step.systemResponse}
-                        </p>
-                        {step.estimatedHours && (
+                        <div className="text-xs text-gray-500 space-y-1">
                           <p>
-                            <strong>예상 소요시간:</strong>{" "}
-                            {step.estimatedHours}
+                            <strong>사용자 행동:</strong> {step.userAction}
                           </p>
-                        )}
-                        {step.requiredSkills &&
-                          step.requiredSkills.length > 0 && (
+                          <p>
+                            <strong>시스템 응답:</strong> {step.systemResponse}
+                          </p>
+                          {step.estimatedHours && (
                             <p>
-                              <strong>필요 기술:</strong>{" "}
-                              {step.requiredSkills.join(", ")}
+                              <strong>예상 소요시간:</strong>{" "}
+                              {step.estimatedHours}
                             </p>
                           )}
+                          {step.requiredSkills &&
+                            step.requiredSkills.length > 0 && (
+                              <p>
+                                <strong>필요 기술:</strong>{" "}
+                                {step.requiredSkills.join(", ")}
+                              </p>
+                            )}
+                        </div>
                       </div>
-                    </div>
-                  )
-                )}
+                    )
+                  )}
+                </div>
 
                 {/* 견적 정보 */}
                 {overview?.estimation && (
