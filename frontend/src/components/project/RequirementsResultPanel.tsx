@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { ExtractedRequirements, NonFunctionalRequirement } from "@/types/requirements";
 import { generateRequirementsMarkdown } from "@/lib/requirementsMarkdownGenerator";
 import { downloadMarkdownAsPDF } from "@/lib/pdfGenerator";
@@ -9,7 +9,8 @@ import { checkNotionSetup } from "@/lib/notionConfig";
 import { getShareOptions, showNotionGuide } from "@/lib/shareAlternatives";
 import { ShareOptionsModal } from "@/components/ui/ShareOptionsModal";
 import { WireframeSpec } from "@/types/wireframe";
-import { wireframeToImage } from "@/lib/wireframeImageGenerator";
+import { LoFiCanvas } from "@/components/wireframe/LoFiCanvas";
+import { toPng } from "html-to-image";
 
 interface ProjectOverview {
   serviceCoreElements: {
@@ -80,6 +81,7 @@ export function RequirementsResultPanel({
   const [shareData, setShareData] = useState<any>(null);
   const [wireframeImageUrl, setWireframeImageUrl] = useState<string | null>(null);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const wireframeContainerRef = useRef<HTMLDivElement>(null);
 
   // 실제 데이터 기반 요구사항 결과
   const requirementsData = useMemo(() => {
@@ -180,41 +182,87 @@ export function RequirementsResultPanel({
     };
   }, [projectData, extractedRequirements, projectOverview]);
 
-  // 와이어프레임을 이미지로 변환
+  // 와이어프레임을 이미지로 변환 (실제 렌더링된 컴포넌트 캡처)
   useEffect(() => {
-    if (wireframe && wireframe.screens && wireframe.screens.length > 0) {
+    if (wireframe && wireframe.screens && wireframe.screens.length > 0 && wireframeContainerRef.current) {
       console.log("와이어프레임 이미지 생성 시작:", {
         screenCount: wireframe.screens.length,
         hasWireframe: !!wireframe,
+        hasContainer: !!wireframeContainerRef.current,
       });
+      
       setIsGeneratingImage(true);
       setWireframeImageUrl(null); // 이전 이미지 초기화
       
-      wireframeToImage(wireframe, 2)
-        .then((imageUrl) => {
-          console.log("와이어프레임 이미지 생성 성공:", {
-            imageUrlLength: imageUrl?.length || 0,
-            imageUrlPreview: imageUrl?.substring(0, 100),
-            isValid: imageUrl?.startsWith("data:image/"),
-          });
-          
-          if (imageUrl && imageUrl.startsWith("data:image/")) {
-            setWireframeImageUrl(imageUrl);
-          } else {
-            console.error("생성된 이미지가 올바른 형식이 아닙니다:", imageUrl?.substring(0, 100));
+      // 실제 렌더링된 컴포넌트를 이미지로 변환
+      const captureImage = async () => {
+        try {
+          const container = wireframeContainerRef.current;
+          if (!container) {
+            throw new Error("컨테이너를 찾을 수 없습니다");
           }
-          setIsGeneratingImage(false);
-        })
-        .catch((error) => {
+
+          // DOM이 완전히 렌더링될 때까지 대기
+          await new Promise((resolve) => {
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                  resolve(undefined);
+                });
+              });
+            });
+          });
+
+          // 추가 대기 시간
+          await new Promise((resolve) => setTimeout(resolve, 500));
+
+          // 컨테이너 크기 확인
+          const width = container.scrollWidth || container.offsetWidth || 1200;
+          const height = container.scrollHeight || container.offsetHeight || 800;
+
+          console.log("컨테이너 크기:", {
+            width,
+            height,
+            scrollWidth: container.scrollWidth,
+            scrollHeight: container.scrollHeight,
+          });
+
+          // 이미지로 변환
+          const dataUrl = await toPng(container, {
+            quality: 1.0,
+            pixelRatio: 2, // 2배 해상도
+            backgroundColor: "white",
+            cacheBust: true,
+            width: width,
+            height: height,
+          });
+
+          console.log("와이어프레임 이미지 생성 성공:", {
+            imageUrlLength: dataUrl?.length || 0,
+            imageUrlPreview: dataUrl?.substring(0, 100),
+            isValid: dataUrl?.startsWith("data:image/"),
+          });
+
+          if (dataUrl && dataUrl.startsWith("data:image/")) {
+            setWireframeImageUrl(dataUrl);
+          } else {
+            console.error("생성된 이미지가 올바른 형식이 아닙니다:", dataUrl?.substring(0, 100));
+          }
+        } catch (error) {
           console.error("와이어프레임 이미지 생성 실패:", error);
           setWireframeImageUrl(null);
+        } finally {
           setIsGeneratingImage(false);
-        });
+        }
+      };
+
+      // 약간의 지연 후 캡처 (컴포넌트가 완전히 렌더링된 후)
+      const timeoutId = setTimeout(captureImage, 1000);
+      
+      return () => {
+        clearTimeout(timeoutId);
+      };
     } else {
-      console.log("와이어프레임이 없어서 이미지 생성 건너뜀:", {
-        hasWireframe: !!wireframe,
-        screenCount: wireframe?.screens?.length || 0,
-      });
       setWireframeImageUrl(null);
     }
   }, [wireframe]);
@@ -795,47 +843,54 @@ export function RequirementsResultPanel({
                   </div>
                 </div>
                 <div className="flex justify-center bg-gray-50 rounded-lg p-8 border border-gray-200">
-                  {isGeneratingImage ? (
-                    <div className="flex flex-col items-center justify-center py-12">
-                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-                      <p className="text-gray-600">와이어프레임 이미지 생성 중...</p>
-                    </div>
-                  ) : wireframeImageUrl ? (
-                    <div className="w-full max-w-4xl">
-                      <img
-                        src={wireframeImageUrl}
-                        alt="와이어프레임 미리보기"
-                        className="w-full h-auto border border-gray-300 rounded-lg shadow-lg"
-                        style={{ maxWidth: "100%", height: "auto", display: "block" }}
-                        onLoad={(e) => {
-                          const img = e.currentTarget;
-                          console.log("와이어프레임 이미지 로드 완료:", {
-                            naturalWidth: img.naturalWidth,
-                            naturalHeight: img.naturalHeight,
-                            width: img.width,
-                            height: img.height,
-                          });
-                        }}
-                        onError={(e) => {
-                          console.error("와이어프레임 이미지 로드 실패:", e);
-                          console.error("이미지 URL 길이:", wireframeImageUrl.length);
-                          console.error("이미지 URL 시작:", wireframeImageUrl.substring(0, 100));
-                          // 이미지 로드 실패 시 fallback으로 LoFiCanvas 표시
-                          setWireframeImageUrl(null);
-                        }}
-                      />
-                    </div>
+                  {wireframe ? (
+                    <>
+                      {/* 이미지 생성 중이거나 이미지가 없으면 LoFiCanvas 표시 (ref로 참조하여 캡처) */}
+                      {(!wireframeImageUrl || isGeneratingImage) && (
+                        <div 
+                          ref={wireframeContainerRef}
+                          className="w-full flex justify-center relative"
+                        >
+                          <LoFiCanvas spec={wireframe} scale={0.8} />
+                          {isGeneratingImage && (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-white bg-opacity-75">
+                              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+                              <p className="text-gray-600">이미지 생성 중...</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {/* 이미지가 생성되면 이미지 표시 */}
+                      {wireframeImageUrl && !isGeneratingImage && (
+                        <div className="w-full max-w-4xl">
+                          <img
+                            src={wireframeImageUrl}
+                            alt="와이어프레임 미리보기"
+                            className="w-full h-auto border border-gray-300 rounded-lg shadow-lg"
+                            style={{ maxWidth: "100%", height: "auto", display: "block" }}
+                            onLoad={(e) => {
+                              const img = e.currentTarget;
+                              console.log("와이어프레임 이미지 로드 완료:", {
+                                naturalWidth: img.naturalWidth,
+                                naturalHeight: img.naturalHeight,
+                                width: img.width,
+                                height: img.height,
+                              });
+                            }}
+                            onError={(e) => {
+                              console.error("와이어프레임 이미지 로드 실패:", e);
+                              console.error("이미지 URL 길이:", wireframeImageUrl.length);
+                              console.error("이미지 URL 시작:", wireframeImageUrl.substring(0, 100));
+                              // 이미지 로드 실패 시 fallback으로 LoFiCanvas 표시
+                              setWireframeImageUrl(null);
+                            }}
+                          />
+                        </div>
+                      )}
+                    </>
                   ) : (
                     <div className="text-center py-12 text-gray-500">
                       <p>와이어프레임을 불러올 수 없습니다.</p>
-                      <p className="text-sm mt-2">콘솔을 확인해주세요.</p>
-                      {wireframe && (
-                        <div className="mt-4">
-                          <p className="text-xs text-gray-400">
-                            와이어프레임 데이터는 있지만 이미지 변환에 실패했습니다.
-                          </p>
-                        </div>
-                      )}
                     </div>
                   )}
                 </div>
