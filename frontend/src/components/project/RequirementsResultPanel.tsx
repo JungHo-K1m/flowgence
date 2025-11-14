@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { ExtractedRequirements, NonFunctionalRequirement } from "@/types/requirements";
 import { generateRequirementsMarkdown } from "@/lib/requirementsMarkdownGenerator";
 import { downloadMarkdownAsPDF } from "@/lib/pdfGenerator";
@@ -9,7 +9,6 @@ import { checkNotionSetup } from "@/lib/notionConfig";
 import { getShareOptions, showNotionGuide } from "@/lib/shareAlternatives";
 import { ShareOptionsModal } from "@/components/ui/ShareOptionsModal";
 import { WireframeSpec } from "@/types/wireframe";
-import { LoFiCanvas } from "@/components/wireframe/LoFiCanvas";
 import { wireframeToImage } from "@/lib/wireframeImageGenerator";
 
 interface ProjectOverview {
@@ -79,6 +78,8 @@ export function RequirementsResultPanel({
   const [searchQuery, setSearchQuery] = useState("");
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareData, setShareData] = useState<any>(null);
+  const [wireframeImageUrl, setWireframeImageUrl] = useState<string | null>(null);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
 
   // 실제 데이터 기반 요구사항 결과
   const requirementsData = useMemo(() => {
@@ -179,6 +180,24 @@ export function RequirementsResultPanel({
     };
   }, [projectData, extractedRequirements, projectOverview]);
 
+  // 와이어프레임을 이미지로 변환
+  useEffect(() => {
+    if (wireframe && wireframe.screens && wireframe.screens.length > 0) {
+      setIsGeneratingImage(true);
+      wireframeToImage(wireframe, 2)
+        .then((imageUrl) => {
+          setWireframeImageUrl(imageUrl);
+          setIsGeneratingImage(false);
+        })
+        .catch((error) => {
+          console.error("와이어프레임 이미지 생성 실패:", error);
+          setIsGeneratingImage(false);
+        });
+    } else {
+      setWireframeImageUrl(null);
+    }
+  }, [wireframe]);
+
   const sections = [
     { id: "overview", label: "개요" },
     { id: "scope", label: "범위" },
@@ -192,28 +211,35 @@ export function RequirementsResultPanel({
   const handleExportPDF = async () => {
     try {
       // 와이어프레임이 있으면 고해상도 이미지로 변환
+      // 이미 생성된 이미지가 있으면 재사용, 없으면 새로 생성
       let wireframeImage: string | undefined;
       if (wireframe) {
         try {
-          console.log("와이어프레임을 이미지로 변환 중...", {
-            screenCount: wireframe.screens?.length || 0,
-          });
-          wireframeImage = await wireframeToImage(wireframe, 2); // 2배 해상도
-          
-          // Base64 이미지 유효성 검사
-          if (wireframeImage && !wireframeImage.startsWith('data:image/')) {
-            console.warn("이미지가 올바른 Base64 형식이 아닙니다:", wireframeImage.substring(0, 50));
-            wireframeImage = undefined;
-          } else if (wireframeImage && wireframeImage.length > 10 * 1024 * 1024) {
-            // 10MB 이상인 경우 경고
-            console.warn("이미지가 너무 큽니다:", wireframeImage.length, "bytes");
+          // 이미 생성된 이미지가 있으면 재사용
+          if (wireframeImageUrl) {
+            wireframeImage = wireframeImageUrl;
+            console.log("기존 와이어프레임 이미지 재사용");
+          } else {
+            console.log("와이어프레임을 이미지로 변환 중...", {
+              screenCount: wireframe.screens?.length || 0,
+            });
+            wireframeImage = await wireframeToImage(wireframe, 2); // 2배 해상도
+            
+            // Base64 이미지 유효성 검사
+            if (wireframeImage && !wireframeImage.startsWith('data:image/')) {
+              console.warn("이미지가 올바른 Base64 형식이 아닙니다:", wireframeImage.substring(0, 50));
+              wireframeImage = undefined;
+            } else if (wireframeImage && wireframeImage.length > 10 * 1024 * 1024) {
+              // 10MB 이상인 경우 경고
+              console.warn("이미지가 너무 큽니다:", wireframeImage.length, "bytes");
+            }
+            
+            console.log("와이어프레임 이미지 변환 완료", {
+              imageLength: wireframeImage?.length || 0,
+              imagePreview: wireframeImage?.substring(0, 100) + "...",
+              isValidBase64: wireframeImage?.startsWith('data:image/'),
+            });
           }
-          
-          console.log("와이어프레임 이미지 변환 완료", {
-            imageLength: wireframeImage?.length || 0,
-            imagePreview: wireframeImage?.substring(0, 100) + "...",
-            isValidBase64: wireframeImage?.startsWith('data:image/'),
-          });
         } catch (imageError) {
           console.error("와이어프레임 이미지 변환 실패, HTML 렌더링 사용:", imageError);
           // 이미지 변환 실패 시 기존 HTML 렌더링 사용
@@ -742,12 +768,31 @@ export function RequirementsResultPanel({
                         <li>이것은 <strong>로파이(저해상도) 와이어프레임</strong>입니다</li>
                         <li>화면 구조와 주요 요소 배치를 확인할 수 있습니다</li>
                         <li>실제 디자인은 개발 단계에서 세부적으로 진행됩니다</li>
+                        <li>PDF 다운로드 시 동일한 이미지가 포함됩니다</li>
                       </ul>
                     </div>
                   </div>
                 </div>
                 <div className="flex justify-center bg-gray-50 rounded-lg p-8 border border-gray-200">
-                  <LoFiCanvas spec={wireframe} scale={0.8} />
+                  {isGeneratingImage ? (
+                    <div className="flex flex-col items-center justify-center py-12">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+                      <p className="text-gray-600">와이어프레임 이미지 생성 중...</p>
+                    </div>
+                  ) : wireframeImageUrl ? (
+                    <div className="w-full max-w-4xl">
+                      <img
+                        src={wireframeImageUrl}
+                        alt="와이어프레임 미리보기"
+                        className="w-full h-auto border border-gray-300 rounded-lg shadow-lg"
+                        style={{ maxWidth: "100%", height: "auto" }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="text-center py-12 text-gray-500">
+                      <p>와이어프레임을 불러올 수 없습니다.</p>
+                    </div>
+                  )}
                 </div>
               </section>
             )}
