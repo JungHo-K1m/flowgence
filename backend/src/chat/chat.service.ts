@@ -251,7 +251,7 @@ export class ChatService {
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
-          max_tokens: 4000,
+          max_tokens: 16000,
           system: systemPrompt,
           messages: messages
         })
@@ -282,7 +282,7 @@ export class ChatService {
             },
             body: JSON.stringify({
               model: 'claude-sonnet-4-20250514',
-              max_tokens: 4000,
+              max_tokens: 16000,
               system: systemPrompt,
               messages: messages
             })
@@ -558,7 +558,7 @@ export class ChatService {
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
-          max_tokens: 4000,
+          max_tokens: 16000,
           system: systemPrompt,
           messages: [
             {
@@ -592,7 +592,7 @@ export class ChatService {
             },
             body: JSON.stringify({
               model: 'claude-sonnet-4-20250514',
-              max_tokens: 4000,
+              max_tokens: 16000,
               system: systemPrompt,
               messages: [
                 {
@@ -704,7 +704,7 @@ ${conversationText}
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
-          max_tokens: 4000,
+          max_tokens: 16000,
           system: systemPrompt,
           messages: [
             {
@@ -905,7 +905,7 @@ ${existingRequirementsText}
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
-          max_tokens: 4000,
+          max_tokens: 16000,
           stream: true, // 스트리밍 활성화
           system: systemPrompt,
           messages: [
@@ -1131,7 +1131,7 @@ ${JSON.stringify(verifyRequirementsDto.requirements, null, 2)}
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
-          max_tokens: 4000,
+          max_tokens: 16000,
           system: systemPrompt,
           messages: [
             {
@@ -1160,7 +1160,7 @@ ${JSON.stringify(verifyRequirementsDto.requirements, null, 2)}
             },
             body: JSON.stringify({
               model: 'claude-sonnet-4-20250514',
-              max_tokens: 4000,
+              max_tokens: 16000,
               system: systemPrompt,
               messages: [
                 {
