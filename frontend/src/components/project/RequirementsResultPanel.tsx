@@ -11,6 +11,9 @@ import { ShareOptionsModal } from "@/components/ui/ShareOptionsModal";
 import { WireframeSpec } from "@/types/wireframe";
 import { LoFiCanvas } from "@/components/wireframe/LoFiCanvas";
 import { toPng } from "html-to-image";
+import { UserJourneyMermaidDiagram } from "./UserJourneyMermaidDiagram";
+import { mermaidToImage } from "@/lib/mermaidImageGenerator";
+import { generateUserJourneyMermaidDefault } from "@/lib/mermaidGenerator";
 
 interface ProjectOverview {
   serviceCoreElements: {
@@ -302,6 +305,11 @@ export function RequirementsResultPanel({
     { id: "functional", label: "기능 요구사항" },
     { id: "non-functional", label: "비기능 요구사항" },
     { id: "screens", label: "화면 목록" },
+    { 
+      id: "user-journey", 
+      label: "사용자 여정", 
+      hidden: !projectOverview?.userJourney?.steps || projectOverview.userJourney.steps.length === 0 
+    },
     { id: "wireframe", label: "화면 미리보기", hidden: !wireframe },
     { id: "data-model", label: "데이터 모델" },
   ];
@@ -318,13 +326,32 @@ export function RequirementsResultPanel({
         // 이미지가 없으면 기존 HTML 렌더링 사용
       }
 
+      // Mermaid 다이어그램 이미지 변환
+      let mermaidImage: string | undefined;
+      if (projectOverview?.userJourney?.steps && projectOverview.userJourney.steps.length > 0) {
+        try {
+          console.log("PDF 생성 - Mermaid 다이어그램 이미지 변환 시작");
+          const mermaidCode = generateUserJourneyMermaidDefault(projectOverview.userJourney.steps);
+          mermaidImage = await mermaidToImage(mermaidCode, {
+            theme: "default",
+            backgroundColor: "white",
+            scale: 2, // 고해상도
+          });
+          console.log("PDF 생성 - Mermaid 다이어그램 이미지 변환 완료");
+        } catch (mermaidError) {
+          console.warn("PDF 생성 - Mermaid 다이어그램 이미지 변환 실패, 코드 블록 사용:", mermaidError);
+          // 이미지 변환 실패 시 기존 Mermaid 코드 블록 사용
+        }
+      }
+
       const markdown = generateRequirementsMarkdown(
         requirementsData,
         projectData,
         extractedRequirements,
         projectOverview,
         wireframe,
-        wireframeImage // 고해상도 이미지 전달
+        wireframeImage, // 고해상도 이미지 전달
+        mermaidImage // Mermaid 다이어그램 이미지 전달
       );
 
       // 디버깅: 마크다운에 이미지가 포함되었는지 확인
@@ -824,6 +851,72 @@ export function RequirementsResultPanel({
                 ))}
               </div>
             </section>
+
+            {/* User Journey Section */}
+            {projectOverview?.userJourney?.steps && projectOverview.userJourney.steps.length > 0 && (
+              <section id="user-journey" className="mb-8">
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                  🗺️ 사용자 여정 (User Journey)
+                </h2>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                  <div className="flex items-start gap-3">
+                    <span className="text-blue-600 text-xl">💡</span>
+                    <div className="flex-1 text-sm text-blue-800">
+                      <p className="font-medium mb-1">사용자 여정 다이어그램</p>
+                      <ul className="list-disc list-inside space-y-1 text-blue-700">
+                        <li>사용자가 서비스를 이용하는 전체 흐름을 시각화합니다</li>
+                        <li>각 단계별 사용자 행동과 시스템 응답을 확인할 수 있습니다</li>
+                        <li>PDF 다운로드 시 다이어그램이 포함됩니다</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-white rounded-lg p-6 border border-gray-200 mb-6">
+                  <UserJourneyMermaidDiagram
+                    steps={projectOverview.userJourney.steps}
+                  />
+                </div>
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-gray-900 text-lg mb-4">
+                    단계별 상세 정보
+                  </h3>
+                  {projectOverview.userJourney.steps.map((step, index) => (
+                    <div key={index} className="bg-gray-50 p-4 rounded-lg">
+                      <div className="flex items-center space-x-3 mb-2">
+                        <span className="text-2xl">🔄</span>
+                        <h3 className="font-semibold text-gray-900">
+                          단계 {step.step}
+                        </h3>
+                      </div>
+                      <h4 className="font-medium text-gray-800 mb-2">
+                        {step.title}
+                      </h4>
+                      <p className="text-sm text-gray-600 mb-2">
+                        {step.description}
+                      </p>
+                      <div className="text-xs text-gray-500 space-y-1">
+                        <p>
+                          <strong>사용자 행동:</strong> {step.userAction}
+                        </p>
+                        <p>
+                          <strong>시스템 응답:</strong> {step.systemResponse}
+                        </p>
+                        {step.estimatedHours && (
+                          <p>
+                            <strong>예상 소요시간:</strong> {step.estimatedHours}
+                          </p>
+                        )}
+                        {step.requiredSkills && step.requiredSkills.length > 0 && (
+                          <p>
+                            <strong>필요 기술:</strong> {step.requiredSkills.join(", ")}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
 
             {/* Wireframe Section */}
             {wireframe && (

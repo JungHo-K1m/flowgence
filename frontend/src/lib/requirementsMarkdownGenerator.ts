@@ -1,4 +1,5 @@
 import { Device, ViewportSpec, WireframeSpec } from "@/types/wireframe";
+import { generateUserJourneyMermaidDefault } from "./mermaidGenerator";
 
 // 요구사항 결과 페이지 마크다운 생성 유틸리티
 
@@ -47,7 +48,8 @@ export function generateRequirementsMarkdown(
   extractedRequirements?: any,
   projectOverview?: any,
   wireframe?: WireframeSpec | null,
-  wireframeImage?: string // Base64 인코딩된 와이어프레임 이미지
+  wireframeImage?: string, // Base64 인코딩된 와이어프레임 이미지
+  mermaidImage?: string // Base64 인코딩된 Mermaid 다이어그램 이미지
 ): string {
   const currentDate = new Date().toLocaleDateString("ko-KR", {
     year: "numeric",
@@ -226,34 +228,62 @@ export function generateRequirementsMarkdown(
         },
       };
 
+  // Mermaid 다이어그램 생성
+  const mermaidDiagramCode = finalUserJourneySteps.length > 0
+    ? generateUserJourneyMermaidDefault(finalUserJourneySteps)
+    : "";
+
   const userJourneySection =
     finalUserJourneySteps.length > 0
-      ? finalUserJourneySteps
-          .map((step, index) => {
-            const lines = [
-              `### ${index + 1}. ${step.title}`,
-              "",
-              `**설명**: ${step.description}`,
-              "",
-              `**사용자 행동**: ${step.userAction}`,
-              "",
-              `**시스템 응답**: ${step.systemResponse}`,
-            ];
-
-            if (step.estimatedHours) {
-              lines.push("", `**예상 소요시간**: ${step.estimatedHours}`);
-            }
-
-            if (step.requiredSkills && step.requiredSkills.length > 0) {
-              lines.push(
+      ? [
+          // Mermaid 다이어그램 (이미지가 있으면 이미지 사용, 없으면 코드 블록)
+          mermaidImage
+            ? [
+                "### 사용자 여정 다이어그램",
                 "",
-                `**필요 기술**: ${step.requiredSkills.join(", ")}`
-              );
-            }
+                '<div class="mermaid-preview" style="text-align: center; page-break-inside: avoid;">',
+                `<img src="${mermaidImage}" alt="사용자 여정 다이어그램" style="max-width: 100%; height: auto; border: 1px solid #e5e7eb; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" />`,
+                "</div>",
+                "",
+              ].join("\n")
+            : mermaidDiagramCode
+            ? [
+                "### 사용자 여정 다이어그램",
+                "",
+                "```mermaid",
+                mermaidDiagramCode,
+                "```",
+                "",
+              ].join("\n")
+            : "",
+          // 단계별 상세 정보
+          finalUserJourneySteps
+            .map((step, index) => {
+              const lines = [
+                `### ${index + 1}. ${step.title}`,
+                "",
+                `**설명**: ${step.description}`,
+                "",
+                `**사용자 행동**: ${step.userAction}`,
+                "",
+                `**시스템 응답**: ${step.systemResponse}`,
+              ];
 
-            return lines.join("\n");
-          })
-          .join("\n\n")
+              if (step.estimatedHours) {
+                lines.push("", `**예상 소요시간**: ${step.estimatedHours}`);
+              }
+
+              if (step.requiredSkills && step.requiredSkills.length > 0) {
+                lines.push(
+                  "",
+                  `**필요 기술**: ${step.requiredSkills.join(", ")}`
+                );
+              }
+
+              return lines.join("\n");
+            })
+            .join("\n\n"),
+        ].filter(Boolean).join("\n\n")
       : "사용자 여정 정보가 아직 준비되지 않았습니다.";
 
   const estimationSection = [

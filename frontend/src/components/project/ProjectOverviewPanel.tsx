@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import { useProjectOverview } from "@/hooks/useProjectOverview";
 import React from "react";
+import { UserJourneyMermaidDiagram } from "./UserJourneyMermaidDiagram";
 
 interface ChatMessage {
   type: "user" | "ai" | "system";
@@ -820,7 +821,25 @@ export function ProjectOverviewPanel({
             ) : displayOverview?.userJourney?.steps &&
               displayOverview.userJourney.steps.length > 0 ? (
               <>
-                {displayOverview?.userJourney?.steps?.map(
+                {/* Mermaid 다이어그램 */}
+                <div className="bg-white p-6 rounded-lg border border-gray-200 mb-6">
+                  <div className="flex items-center space-x-3 mb-4">
+                    <span className="text-2xl">📊</span>
+                    <h3 className="font-semibold text-gray-900">
+                      사용자 여정 다이어그램
+                    </h3>
+                  </div>
+                  <UserJourneyMermaidDiagram
+                    steps={displayOverview.userJourney.steps}
+                  />
+                </div>
+
+                {/* 사용자 여정 단계별 상세 정보 */}
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-gray-900 text-lg mb-4">
+                    단계별 상세 정보
+                  </h3>
+                  {displayOverview?.userJourney?.steps?.map(
                   (
                     step: {
                       step: number;

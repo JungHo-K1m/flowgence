@@ -295,14 +295,16 @@ function createHTMLDocument(html: string, title: string, author: string, subject
             margin: 24px 0;
         }
         
-        .wireframe-preview {
+        .wireframe-preview,
+        .mermaid-preview {
             text-align: center;
             margin: 24px 0;
             page-break-inside: avoid;
             break-inside: avoid;
         }
         
-        .wireframe-preview img {
+        .wireframe-preview img,
+        .mermaid-preview img {
             max-width: 100% !important;
             width: auto !important;
             height: auto !important;
@@ -546,7 +548,8 @@ function createHTMLDocument(html: string, title: string, author: string, subject
                 break-inside: avoid;
             }
             
-            .wireframe-preview img {
+            .wireframe-preview img,
+            .mermaid-preview img {
                 max-width: 100% !important;
                 height: auto !important;
                 page-break-inside: avoid;
