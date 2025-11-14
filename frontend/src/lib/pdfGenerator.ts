@@ -36,8 +36,30 @@ export async function downloadMarkdownAsPDF(
 
 // 마크다운을 HTML로 변환
 function markdownToHtml(markdown: string): string {
-  // 먼저 테이블을 처리
+  // HTML 태그가 포함된 부분을 먼저 추출 (이미지, div 등)
+  const htmlBlocks: string[] = [];
   let html = markdown;
+  
+  // HTML 블록을 임시 플레이스홀더로 교체 (중첩된 태그 처리)
+  // 여러 줄에 걸친 HTML 블록을 정확히 매칭 (div, img 등)
+  // 먼저 닫는 태그가 있는 블록 처리
+  html = html.replace(/<([a-zA-Z][a-zA-Z0-9]*)[^>]*>[\s\S]*?<\/\1>/gim, (match) => {
+    const placeholder = `__HTML_BLOCK_${htmlBlocks.length}__`;
+    htmlBlocks.push(match);
+    return placeholder;
+  });
+  
+  // 자체 닫는 태그도 처리 (img, br 등) - 플레이스홀더가 아닌 경우만
+  html = html.replace(/<([a-zA-Z][a-zA-Z0-9]*)[^>]*\/?>/gim, (match, tagName) => {
+    // 플레이스홀더가 아니고, 자체 닫는 태그인 경우
+    if (!match.includes('__HTML_BLOCK_') && 
+        (match.endsWith('/>') || ['img', 'br', 'hr', 'input', 'meta', 'link'].includes(tagName.toLowerCase()))) {
+      const placeholder = `__HTML_BLOCK_${htmlBlocks.length}__`;
+      htmlBlocks.push(match);
+      return placeholder;
+    }
+    return match;
+  });
   
   // 테이블 영역을 찾아서 처리
   html = html.replace(/(\|.*\|(?:\s*\|.*\|)*)/gim, (tableMatch) => {
@@ -88,11 +110,16 @@ function markdownToHtml(markdown: string): string {
     // 리스트 변환
     .replace(/^\- (.*$)/gim, '<li>$1</li>')
     
-    // 줄바꿈
+    // 줄바꿈 (HTML 블록 플레이스홀더는 제외)
     .replace(/\n/gim, '<br>');
 
   // 리스트 래핑
   html = html.replace(/(<li>.*<\/li>)/gim, '<ul>$1</ul>');
+  
+  // HTML 블록을 다시 삽입
+  htmlBlocks.forEach((block, index) => {
+    html = html.replace(`__HTML_BLOCK_${index}__`, block);
+  });
   
   return html;
 }
@@ -255,6 +282,18 @@ function createHTMLDocument(html: string, title: string, author: string, subject
             flex-direction: column;
             gap: 24px;
             margin: 24px 0;
+        }
+        
+        .wireframe-preview img {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            display: block;
+            margin: 0 auto;
+            page-break-inside: avoid;
+            break-inside: avoid;
         }
 
         .wireframe-device-group {
@@ -483,6 +522,13 @@ function createHTMLDocument(html: string, title: string, author: string, subject
             }
             
             .card, .wireframe-screen {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+            
+            .wireframe-preview img {
+                max-width: 100% !important;
+                height: auto !important;
                 page-break-inside: avoid;
                 break-inside: avoid;
             }

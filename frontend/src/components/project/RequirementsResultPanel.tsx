@@ -195,11 +195,16 @@ export function RequirementsResultPanel({
       let wireframeImage: string | undefined;
       if (wireframe) {
         try {
-          console.log("와이어프레임을 이미지로 변환 중...");
+          console.log("와이어프레임을 이미지로 변환 중...", {
+            screenCount: wireframe.screens?.length || 0,
+          });
           wireframeImage = await wireframeToImage(wireframe, 2); // 2배 해상도
-          console.log("와이어프레임 이미지 변환 완료");
+          console.log("와이어프레임 이미지 변환 완료", {
+            imageLength: wireframeImage?.length || 0,
+            imagePreview: wireframeImage?.substring(0, 100) + "...",
+          });
         } catch (imageError) {
-          console.warn("와이어프레임 이미지 변환 실패, HTML 렌더링 사용:", imageError);
+          console.error("와이어프레임 이미지 변환 실패, HTML 렌더링 사용:", imageError);
           // 이미지 변환 실패 시 기존 HTML 렌더링 사용
         }
       }
@@ -212,6 +217,16 @@ export function RequirementsResultPanel({
         wireframe,
         wireframeImage // 고해상도 이미지 전달
       );
+
+      // 디버깅: 마크다운에 이미지가 포함되었는지 확인
+      if (wireframeImage) {
+        const hasImageInMarkdown = markdown.includes(wireframeImage.substring(0, 50));
+        console.log("마크다운에 이미지 포함 여부:", {
+          hasImage: hasImageInMarkdown,
+          markdownLength: markdown.length,
+          imageInMarkdown: markdown.includes('<img'),
+        });
+      }
 
       await downloadMarkdownAsPDF(markdown, {
         filename: `요구사항명세서_${projectData.serviceType}_${
