@@ -121,13 +121,14 @@ export function generateRequirementsMarkdown(
           systemResponse: `${screen} 화면에서 시스템이 제공해야 하는 응답을 기술합니다.`,
         }));
 
-  const finalUserJourneySteps =
+  const finalUserJourneySteps: JourneyStep[] =
     userJourneySteps.length > 0
       ? userJourneySteps
       : fallbackJourneyFromScreens.length > 0
       ? fallbackJourneyFromScreens
       : [
           {
+            step: 1,
             title: "요구사항 분석",
             description: "사용자 요구사항을 수집하고 분석합니다.",
             userAction: "프로젝트 담당자가 요구사항을 입력합니다.",
@@ -136,6 +137,7 @@ export function generateRequirementsMarkdown(
             requiredSkills: undefined,
           },
           {
+            step: 2,
             title: "기능 구성",
             description: "수집된 요구사항을 기반으로 기능 구성을 확정합니다.",
             userAction: "담당자가 기능을 검토하고 승인합니다.",
@@ -144,6 +146,7 @@ export function generateRequirementsMarkdown(
             requiredSkills: undefined,
           },
           {
+            step: 3,
             title: "견적 산출",
             description: "확정된 요구사항을 기반으로 견적을 산출합니다.",
             userAction: "담당자가 견적 결과를 검토합니다.",
