@@ -250,14 +250,18 @@ export async function wireframeToImage(
 
     // 임시 DOM 요소 생성
     const container = document.createElement("div");
-    container.style.position = "absolute";
-    container.style.left = "-9999px";
-    container.style.top = "-9999px";
+    container.style.position = "fixed";
+    container.style.left = "0";
+    container.style.top = "0";
     container.style.width = "1200px"; // 충분한 너비 (고해상도용)
     container.style.maxWidth = "1200px";
     container.style.backgroundColor = "white";
     container.style.padding = "24px";
     container.style.boxSizing = "border-box";
+    container.style.zIndex = "-9999"; // 뒤로 보내기
+    container.style.opacity = "0"; // 투명하게
+    container.style.pointerEvents = "none"; // 클릭 방지
+    container.style.overflow = "visible"; // 내용이 잘리지 않도록
     container.innerHTML = wireframeHTML;
 
     // DOM에 추가 (렌더링을 위해 필요)
@@ -314,20 +318,39 @@ export async function wireframeToImage(
     
     // 컨테이너가 실제로 렌더링되었는지 확인
     const hasContent = container.scrollHeight > 0 && container.scrollWidth > 0;
+    console.log("렌더링 확인:", {
+      hasContent,
+      scrollHeight: container.scrollHeight,
+      scrollWidth: container.scrollWidth,
+      offsetHeight: container.offsetHeight,
+      offsetWidth: container.offsetWidth,
+      innerHTML: container.innerHTML.substring(0, 200),
+    });
+
     if (!hasContent) {
       console.warn("컨테이너에 콘텐츠가 없습니다. 강제로 크기 설정...");
       container.style.minHeight = "800px";
       container.style.minWidth = "1200px";
       // 다시 한 번 렌더링 대기
-      await new Promise((resolve) => setTimeout(resolve, 200));
+      await new Promise((resolve) => setTimeout(resolve, 500));
     }
+
+    // 실제 렌더링된 크기 사용
+    const finalWidth = Math.max(container.scrollWidth, container.offsetWidth, 1200);
+    const finalHeight = Math.max(container.scrollHeight, container.offsetHeight, 800);
+
+    console.log("최종 이미지 크기:", {
+      width: finalWidth,
+      height: finalHeight,
+    });
 
     const dataUrl = await toPng(container, {
       quality: 1.0,
       pixelRatio: Math.max(scale, 2), // 최소 2배 해상도 (고해상도)
       backgroundColor: "white",
       cacheBust: true, // 캐시 무효화
-      // width와 height를 지정하지 않으면 컨테이너의 자연스러운 크기 사용
+      width: finalWidth,
+      height: finalHeight,
     });
 
     console.log("이미지 변환 완료:", {

@@ -806,13 +806,22 @@ export function RequirementsResultPanel({
                         src={wireframeImageUrl}
                         alt="와이어프레임 미리보기"
                         className="w-full h-auto border border-gray-300 rounded-lg shadow-lg"
-                        style={{ maxWidth: "100%", height: "auto" }}
-                        onLoad={() => {
-                          console.log("와이어프레임 이미지 로드 완료");
+                        style={{ maxWidth: "100%", height: "auto", display: "block" }}
+                        onLoad={(e) => {
+                          const img = e.currentTarget;
+                          console.log("와이어프레임 이미지 로드 완료:", {
+                            naturalWidth: img.naturalWidth,
+                            naturalHeight: img.naturalHeight,
+                            width: img.width,
+                            height: img.height,
+                          });
                         }}
                         onError={(e) => {
                           console.error("와이어프레임 이미지 로드 실패:", e);
-                          console.error("이미지 URL:", wireframeImageUrl.substring(0, 100));
+                          console.error("이미지 URL 길이:", wireframeImageUrl.length);
+                          console.error("이미지 URL 시작:", wireframeImageUrl.substring(0, 100));
+                          // 이미지 로드 실패 시 fallback으로 LoFiCanvas 표시
+                          setWireframeImageUrl(null);
                         }}
                       />
                     </div>
@@ -820,6 +829,13 @@ export function RequirementsResultPanel({
                     <div className="text-center py-12 text-gray-500">
                       <p>와이어프레임을 불러올 수 없습니다.</p>
                       <p className="text-sm mt-2">콘솔을 확인해주세요.</p>
+                      {wireframe && (
+                        <div className="mt-4">
+                          <p className="text-xs text-gray-400">
+                            와이어프레임 데이터는 있지만 이미지 변환에 실패했습니다.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
