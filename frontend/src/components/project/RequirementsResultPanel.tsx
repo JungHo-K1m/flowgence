@@ -279,40 +279,14 @@ export function RequirementsResultPanel({
 
   const handleExportPDF = async () => {
     try {
-      // 와이어프레임이 있으면 고해상도 이미지로 변환
-      // 이미 생성된 이미지가 있으면 재사용, 없으면 새로 생성
+      // 와이어프레임 이미지 사용 (이미 생성된 이미지가 있으면 재사용)
       let wireframeImage: string | undefined;
-      if (wireframe) {
-        try {
-          // 이미 생성된 이미지가 있으면 재사용
-          if (wireframeImageUrl) {
-            wireframeImage = wireframeImageUrl;
-            console.log("기존 와이어프레임 이미지 재사용");
-          } else {
-            console.log("와이어프레임을 이미지로 변환 중...", {
-              screenCount: wireframe.screens?.length || 0,
-            });
-            wireframeImage = await wireframeToImage(wireframe, 2); // 2배 해상도
-            
-            // Base64 이미지 유효성 검사
-            if (wireframeImage && !wireframeImage.startsWith('data:image/')) {
-              console.warn("이미지가 올바른 Base64 형식이 아닙니다:", wireframeImage.substring(0, 50));
-              wireframeImage = undefined;
-            } else if (wireframeImage && wireframeImage.length > 10 * 1024 * 1024) {
-              // 10MB 이상인 경우 경고
-              console.warn("이미지가 너무 큽니다:", wireframeImage.length, "bytes");
-            }
-            
-            console.log("와이어프레임 이미지 변환 완료", {
-              imageLength: wireframeImage?.length || 0,
-              imagePreview: wireframeImage?.substring(0, 100) + "...",
-              isValidBase64: wireframeImage?.startsWith('data:image/'),
-            });
-          }
-        } catch (imageError) {
-          console.error("와이어프레임 이미지 변환 실패, HTML 렌더링 사용:", imageError);
-          // 이미지 변환 실패 시 기존 HTML 렌더링 사용
-        }
+      if (wireframe && wireframeImageUrl) {
+        wireframeImage = wireframeImageUrl;
+        console.log("PDF 생성 - 기존 와이어프레임 이미지 재사용");
+      } else if (wireframe) {
+        console.warn("PDF 생성 - 와이어프레임 이미지가 아직 생성되지 않았습니다. HTML 렌더링 사용");
+        // 이미지가 없으면 기존 HTML 렌더링 사용
       }
 
       const markdown = generateRequirementsMarkdown(
