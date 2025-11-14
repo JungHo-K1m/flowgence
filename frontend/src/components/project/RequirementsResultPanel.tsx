@@ -183,17 +183,38 @@ export function RequirementsResultPanel({
   // 와이어프레임을 이미지로 변환
   useEffect(() => {
     if (wireframe && wireframe.screens && wireframe.screens.length > 0) {
+      console.log("와이어프레임 이미지 생성 시작:", {
+        screenCount: wireframe.screens.length,
+        hasWireframe: !!wireframe,
+      });
       setIsGeneratingImage(true);
+      setWireframeImageUrl(null); // 이전 이미지 초기화
+      
       wireframeToImage(wireframe, 2)
         .then((imageUrl) => {
-          setWireframeImageUrl(imageUrl);
+          console.log("와이어프레임 이미지 생성 성공:", {
+            imageUrlLength: imageUrl?.length || 0,
+            imageUrlPreview: imageUrl?.substring(0, 100),
+            isValid: imageUrl?.startsWith("data:image/"),
+          });
+          
+          if (imageUrl && imageUrl.startsWith("data:image/")) {
+            setWireframeImageUrl(imageUrl);
+          } else {
+            console.error("생성된 이미지가 올바른 형식이 아닙니다:", imageUrl?.substring(0, 100));
+          }
           setIsGeneratingImage(false);
         })
         .catch((error) => {
           console.error("와이어프레임 이미지 생성 실패:", error);
+          setWireframeImageUrl(null);
           setIsGeneratingImage(false);
         });
     } else {
+      console.log("와이어프레임이 없어서 이미지 생성 건너뜀:", {
+        hasWireframe: !!wireframe,
+        screenCount: wireframe?.screens?.length || 0,
+      });
       setWireframeImageUrl(null);
     }
   }, [wireframe]);
@@ -786,11 +807,19 @@ export function RequirementsResultPanel({
                         alt="와이어프레임 미리보기"
                         className="w-full h-auto border border-gray-300 rounded-lg shadow-lg"
                         style={{ maxWidth: "100%", height: "auto" }}
+                        onLoad={() => {
+                          console.log("와이어프레임 이미지 로드 완료");
+                        }}
+                        onError={(e) => {
+                          console.error("와이어프레임 이미지 로드 실패:", e);
+                          console.error("이미지 URL:", wireframeImageUrl.substring(0, 100));
+                        }}
                       />
                     </div>
                   ) : (
                     <div className="text-center py-12 text-gray-500">
                       <p>와이어프레임을 불러올 수 없습니다.</p>
+                      <p className="text-sm mt-2">콘솔을 확인해주세요.</p>
                     </div>
                   )}
                 </div>

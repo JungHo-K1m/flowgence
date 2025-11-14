@@ -236,8 +236,17 @@ export async function wireframeToImage(
   scale: number = 2,
 ): Promise<string> {
   try {
+    console.log("와이어프레임 이미지 변환 시작:", {
+      screenCount: wireframe.screens?.length || 0,
+      scale,
+    });
+
     // 와이어프레임을 HTML로 렌더링
     const wireframeHTML = renderWireframeToHTML(wireframe, scale);
+    console.log("와이어프레임 HTML 생성 완료:", {
+      htmlLength: wireframeHTML.length,
+      htmlPreview: wireframeHTML.substring(0, 200),
+    });
 
     // 임시 DOM 요소 생성
     const container = document.createElement("div");
@@ -253,27 +262,94 @@ export async function wireframeToImage(
 
     // DOM에 추가 (렌더링을 위해 필요)
     document.body.appendChild(container);
+    console.log("DOM 컨테이너 추가 완료");
 
     // DOM이 완전히 렌더링될 때까지 대기
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    // requestAnimationFrame을 여러 번 호출하여 렌더링 완료 보장
+    await new Promise((resolve) => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            resolve(undefined);
+          });
+        });
+      });
+    });
+
+    // 추가 대기 시간 (폰트 및 스타일 적용)
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    // 컨테이너 크기 확인 및 최소 크기 보장
+    const computedStyle = window.getComputedStyle(container);
+    let containerWidth = container.scrollWidth || container.offsetWidth || 1200;
+    let containerHeight = container.scrollHeight || container.offsetHeight || 800;
+
+    // 최소 크기 보장
+    if (containerWidth < 100) {
+      containerWidth = 1200;
+      container.style.width = `${containerWidth}px`;
+    }
+    if (containerHeight < 100) {
+      containerHeight = 800;
+      container.style.height = `${containerHeight}px`;
+    }
+
+    console.log("컨테이너 크기:", {
+      width: containerWidth,
+      height: containerHeight,
+      scrollWidth: container.scrollWidth,
+      scrollHeight: container.scrollHeight,
+      offsetWidth: container.offsetWidth,
+      offsetHeight: container.offsetHeight,
+      computedWidth: computedStyle.width,
+      computedHeight: computedStyle.height,
+    });
+
+    // 컨테이너 내부 요소 확인
+    const childElements = container.querySelectorAll('*');
+    console.log("컨테이너 내부 요소 개수:", childElements.length);
 
     // 이미지로 변환 (고해상도)
+    console.log("이미지 변환 시작...");
+    
+    // 컨테이너가 실제로 렌더링되었는지 확인
+    const hasContent = container.scrollHeight > 0 && container.scrollWidth > 0;
+    if (!hasContent) {
+      console.warn("컨테이너에 콘텐츠가 없습니다. 강제로 크기 설정...");
+      container.style.minHeight = "800px";
+      container.style.minWidth = "1200px";
+      // 다시 한 번 렌더링 대기
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+
     const dataUrl = await toPng(container, {
       quality: 1.0,
       pixelRatio: Math.max(scale, 2), // 최소 2배 해상도 (고해상도)
       backgroundColor: "white",
-      width: container.scrollWidth,
-      height: container.scrollHeight,
       cacheBust: true, // 캐시 무효화
+      useCORS: true, // CORS 사용
+      // width와 height를 지정하지 않으면 컨테이너의 자연스러운 크기 사용
+    });
+
+    console.log("이미지 변환 완료:", {
+      dataUrlLength: dataUrl.length,
+      dataUrlPreview: dataUrl.substring(0, 100),
+      isValid: dataUrl.startsWith("data:image/png"),
     });
 
     // DOM에서 제거
-    document.body.removeChild(container);
+    if (container.parentNode) {
+      document.body.removeChild(container);
+    }
+
+    if (!dataUrl || !dataUrl.startsWith("data:image/")) {
+      throw new Error("이미지 변환 결과가 올바르지 않습니다.");
+    }
 
     return dataUrl;
   } catch (error) {
     console.error("와이어프레임 이미지 변환 실패:", error);
-    throw new Error("와이어프레임을 이미지로 변환하는데 실패했습니다.");
+    throw new Error(`와이어프레임을 이미지로 변환하는데 실패했습니다: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
