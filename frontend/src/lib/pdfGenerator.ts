@@ -40,20 +40,31 @@ function markdownToHtml(markdown: string): string {
   const htmlBlocks: string[] = [];
   let html = markdown;
   
-  // HTML 블록을 임시 플레이스홀더로 교체 (중첩된 태그 처리)
-  // 여러 줄에 걸친 HTML 블록을 정확히 매칭 (div, img 등)
-  // 먼저 닫는 태그가 있는 블록 처리
-  html = html.replace(/<([a-zA-Z][a-zA-Z0-9]*)[^>]*>[\s\S]*?<\/\1>/gim, (match) => {
+  // img 태그를 먼저 처리 (Base64 데이터 URL이 매우 길 수 있음)
+  html = html.replace(/<img[^>]*>/gim, (match) => {
     const placeholder = `__HTML_BLOCK_${htmlBlocks.length}__`;
     htmlBlocks.push(match);
     return placeholder;
   });
   
-  // 자체 닫는 태그도 처리 (img, br 등) - 플레이스홀더가 아닌 경우만
+  // HTML 블록을 임시 플레이스홀더로 교체 (중첩된 태그 처리)
+  // 여러 줄에 걸친 HTML 블록을 정확히 매칭 (div 등)
+  // 먼저 닫는 태그가 있는 블록 처리
+  html = html.replace(/<([a-zA-Z][a-zA-Z0-9]*)[^>]*>[\s\S]*?<\/\1>/gim, (match) => {
+    // 이미 플레이스홀더인 경우 건너뛰기
+    if (match.includes('__HTML_BLOCK_')) {
+      return match;
+    }
+    const placeholder = `__HTML_BLOCK_${htmlBlocks.length}__`;
+    htmlBlocks.push(match);
+    return placeholder;
+  });
+  
+  // 자체 닫는 태그도 처리 (br, hr, input, meta, link 등) - img는 이미 처리됨
   html = html.replace(/<([a-zA-Z][a-zA-Z0-9]*)[^>]*\/?>/gim, (match, tagName) => {
     // 플레이스홀더가 아니고, 자체 닫는 태그인 경우
     if (!match.includes('__HTML_BLOCK_') && 
-        (match.endsWith('/>') || ['img', 'br', 'hr', 'input', 'meta', 'link'].includes(tagName.toLowerCase()))) {
+        (match.endsWith('/>') || ['br', 'hr', 'input', 'meta', 'link'].includes(tagName.toLowerCase()))) {
       const placeholder = `__HTML_BLOCK_${htmlBlocks.length}__`;
       htmlBlocks.push(match);
       return placeholder;
@@ -284,16 +295,25 @@ function createHTMLDocument(html: string, title: string, author: string, subject
             margin: 24px 0;
         }
         
+        .wireframe-preview {
+            text-align: center;
+            margin: 24px 0;
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+        
         .wireframe-preview img {
-            max-width: 100%;
-            height: auto;
+            max-width: 100% !important;
+            width: auto !important;
+            height: auto !important;
             border: 1px solid #e5e7eb;
             border-radius: 8px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            display: block;
+            display: block !important;
             margin: 0 auto;
             page-break-inside: avoid;
             break-inside: avoid;
+            object-fit: contain;
         }
 
         .wireframe-device-group {
@@ -574,17 +594,95 @@ async function printToPDF(htmlDocument: string, filename: string): Promise<void>
       printWindow.document.write(htmlDocument);
       printWindow.document.close();
 
-      // 문서 로드 완료 후 인쇄
-      printWindow.onload = () => {
-        setTimeout(() => {
-          printWindow.print();
-          
-          // 인쇄 완료 후 창 닫기
+      // 이미지 로드 완료 대기 함수
+      const waitForImages = (): Promise<void> => {
+        return new Promise((imgResolve) => {
+          const images = printWindow.document.querySelectorAll('img');
+          if (images.length === 0) {
+            imgResolve();
+            return;
+          }
+
+          let loadedCount = 0;
+          const totalImages = images.length;
+
+          const checkComplete = () => {
+            loadedCount++;
+            if (loadedCount === totalImages) {
+              imgResolve();
+            }
+          };
+
+          images.forEach((img) => {
+            // Base64 이미지는 이미 로드되어 있음
+            if (img.src.startsWith('data:')) {
+              checkComplete();
+            } else {
+              if (img.complete) {
+                checkComplete();
+              } else {
+                img.onload = checkComplete;
+                img.onerror = checkComplete; // 에러가 나도 계속 진행
+              }
+            }
+          });
+        });
+      };
+
+      // 문서 로드 완료 후 이미지 로드 대기
+      printWindow.onload = async () => {
+        try {
+          // 이미지 요소 확인 및 디버깅
+          const images = printWindow.document.querySelectorAll('img');
+          console.log('PDF 생성 - 이미지 개수:', images.length);
+          images.forEach((img, index) => {
+            console.log(`이미지 ${index + 1}:`, {
+              srcLength: img.src.length,
+              srcPreview: img.src.substring(0, 100),
+              isBase64: img.src.startsWith('data:'),
+              naturalWidth: img.naturalWidth,
+              naturalHeight: img.naturalHeight,
+              complete: img.complete,
+            });
+          });
+
+          // 이미지 로드 완료 대기 (최대 5초)
+          await Promise.race([
+            waitForImages(),
+            new Promise((resolve) => setTimeout(resolve, 5000))
+          ]);
+
+          // 이미지 로드 후 다시 확인
+          images.forEach((img, index) => {
+            if (img.complete) {
+              console.log(`이미지 ${index + 1} 로드 완료:`, {
+                naturalWidth: img.naturalWidth,
+                naturalHeight: img.naturalHeight,
+              });
+            }
+          });
+
+          // 추가 대기 시간 (렌더링 완료 보장)
           setTimeout(() => {
-            printWindow.close();
-            resolve();
-          }, 1000);
-        }, 500);
+            printWindow.print();
+            
+            // 인쇄 완료 후 창 닫기
+            setTimeout(() => {
+              printWindow.close();
+              resolve();
+            }, 1000);
+          }, 500);
+        } catch (error) {
+          console.error('이미지 로드 대기 중 오류:', error);
+          // 오류가 나도 인쇄 진행
+          setTimeout(() => {
+            printWindow.print();
+            setTimeout(() => {
+              printWindow.close();
+              resolve();
+            }, 1000);
+          }, 500);
+        }
       };
 
       printWindow.onerror = () => {

@@ -199,9 +199,20 @@ export function RequirementsResultPanel({
             screenCount: wireframe.screens?.length || 0,
           });
           wireframeImage = await wireframeToImage(wireframe, 2); // 2배 해상도
+          
+          // Base64 이미지 유효성 검사
+          if (wireframeImage && !wireframeImage.startsWith('data:image/')) {
+            console.warn("이미지가 올바른 Base64 형식이 아닙니다:", wireframeImage.substring(0, 50));
+            wireframeImage = undefined;
+          } else if (wireframeImage && wireframeImage.length > 10 * 1024 * 1024) {
+            // 10MB 이상인 경우 경고
+            console.warn("이미지가 너무 큽니다:", wireframeImage.length, "bytes");
+          }
+          
           console.log("와이어프레임 이미지 변환 완료", {
             imageLength: wireframeImage?.length || 0,
             imagePreview: wireframeImage?.substring(0, 100) + "...",
+            isValidBase64: wireframeImage?.startsWith('data:image/'),
           });
         } catch (imageError) {
           console.error("와이어프레임 이미지 변환 실패, HTML 렌더링 사용:", imageError);
