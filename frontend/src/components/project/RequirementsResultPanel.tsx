@@ -10,6 +10,7 @@ import { getShareOptions, showNotionGuide } from "@/lib/shareAlternatives";
 import { ShareOptionsModal } from "@/components/ui/ShareOptionsModal";
 import { WireframeSpec } from "@/types/wireframe";
 import { LoFiCanvas } from "@/components/wireframe/LoFiCanvas";
+import { wireframeToImage } from "@/lib/wireframeImageGenerator";
 
 interface ProjectOverview {
   serviceCoreElements: {
@@ -190,12 +191,26 @@ export function RequirementsResultPanel({
 
   const handleExportPDF = async () => {
     try {
+      // 와이어프레임이 있으면 고해상도 이미지로 변환
+      let wireframeImage: string | undefined;
+      if (wireframe) {
+        try {
+          console.log("와이어프레임을 이미지로 변환 중...");
+          wireframeImage = await wireframeToImage(wireframe, 2); // 2배 해상도
+          console.log("와이어프레임 이미지 변환 완료");
+        } catch (imageError) {
+          console.warn("와이어프레임 이미지 변환 실패, HTML 렌더링 사용:", imageError);
+          // 이미지 변환 실패 시 기존 HTML 렌더링 사용
+        }
+      }
+
       const markdown = generateRequirementsMarkdown(
         requirementsData,
         projectData,
         extractedRequirements,
         projectOverview,
-        wireframe
+        wireframe,
+        wireframeImage // 고해상도 이미지 전달
       );
 
       await downloadMarkdownAsPDF(markdown, {

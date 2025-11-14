@@ -46,7 +46,8 @@ export function generateRequirementsMarkdown(
   projectData: ProjectData,
   extractedRequirements?: any,
   projectOverview?: any,
-  wireframe?: WireframeSpec | null
+  wireframe?: WireframeSpec | null,
+  wireframeImage?: string // Base64 인코딩된 와이어프레임 이미지
 ): string {
   const currentDate = new Date().toLocaleDateString("ko-KR", {
     year: "numeric",
@@ -387,7 +388,7 @@ ${renderNonFunctionalRequirements(requirementsData.nonFunctionalRequirements)}
 - **총 화면 수**: ${wireframe?.screens?.length || requirementsData.screenList.length}개
 - **주요 화면**: 메인, 상세, 목록, 관리 화면
 
-${renderWireframeSection(wireframe)}
+${renderWireframeSection(wireframe, wireframeImage)}
 
 ### 📋 화면 상세 목록
 
@@ -722,7 +723,21 @@ function formatDeviceLabel(device: Device): string {
   }
 }
 
-function renderWireframeSection(wireframe?: WireframeSpec | null): string {
+function renderWireframeSection(wireframe?: WireframeSpec | null, wireframeImage?: string): string {
+  // 이미지가 제공되면 이미지 사용 (고품질)
+  if (wireframeImage) {
+    return `
+## 🖼️ 와이어프레임 미리보기
+
+<div class="wireframe-preview" style="text-align: center;">
+  <img src="${wireframeImage}" alt="와이어프레임" style="max-width: 100%; height: auto; border: 1px solid #e5e7eb; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" />
+</div>
+
+---
+`;
+  }
+
+  // 이미지가 없으면 기존 HTML 렌더링 사용
   if (!wireframe || !wireframe.screens || wireframe.screens.length === 0) {
     return "";
   }
