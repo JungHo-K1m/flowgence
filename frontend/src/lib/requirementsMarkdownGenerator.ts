@@ -64,6 +64,7 @@ export function generateRequirementsMarkdown(
   const functionalTotalCount = requirementsData.functionalRequirements.length;
 
   type JourneyStep = {
+    step: number;
     title: string;
     description: string;
     userAction: string;
@@ -74,6 +75,7 @@ export function generateRequirementsMarkdown(
 
   const userJourneySteps: JourneyStep[] =
     projectOverview?.userJourney?.steps?.map((step: any, index: number) => ({
+      step: step?.step || index + 1,
       title: step?.title || `사용자 여정 단계 ${index + 1}`,
       description:
         step?.description?.trim() ||
@@ -93,6 +95,7 @@ export function generateRequirementsMarkdown(
 
   const fallbackJourneyFromWireframe: JourneyStep[] =
     wireframe?.screens?.map((screen, index) => ({
+      step: index + 1,
       title: screen?.name || `핵심 화면 ${index + 1}`,
       description:
         screen?.name
@@ -111,6 +114,7 @@ export function generateRequirementsMarkdown(
     fallbackJourneyFromWireframe.length > 0
       ? fallbackJourneyFromWireframe
       : requirementsData.screenList.map((screen, index) => ({
+          step: index + 1,
           title: `${index + 1}. ${screen}`,
           description: `${screen} 화면에서 제공해야 할 핵심 가치를 정의합니다.`,
           userAction: `${screen} 화면에서 사용자가 수행하는 대표적인 액션을 설계합니다.`,
