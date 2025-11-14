@@ -327,7 +327,6 @@ export async function wireframeToImage(
       pixelRatio: Math.max(scale, 2), // 최소 2배 해상도 (고해상도)
       backgroundColor: "white",
       cacheBust: true, // 캐시 무효화
-      useCORS: true, // CORS 사용
       // width와 height를 지정하지 않으면 컨테이너의 자연스러운 크기 사용
     });
 
