@@ -210,6 +210,7 @@ export function RequirementsResultPanel({
       
       // 실제 렌더링된 컴포넌트를 이미지로 변환
       const captureImage = async () => {
+        let loadingOverlay: HTMLElement | null = null;
         try {
           const container = wireframeContainerRef.current;
           if (!container) {
@@ -229,6 +230,12 @@ export function RequirementsResultPanel({
 
           // 추가 대기 시간 (모든 화면이 렌더링될 때까지)
           await new Promise((resolve) => setTimeout(resolve, 800));
+
+          // 로딩 오버레이 제거 (이미지 캡처 전)
+          loadingOverlay = container.parentElement?.querySelector('.loading-overlay') as HTMLElement | null;
+          if (loadingOverlay) {
+            loadingOverlay.style.display = 'none';
+          }
 
           // 컨테이너 크기 확인
           const width = container.scrollWidth || container.offsetWidth || 1200;
@@ -257,6 +264,11 @@ export function RequirementsResultPanel({
             isValid: dataUrl?.startsWith("data:image/"),
           });
 
+          // 로딩 오버레이 복원 (캡처 후)
+          if (loadingOverlay) {
+            loadingOverlay.style.display = '';
+          }
+
           if (dataUrl && dataUrl.startsWith("data:image/")) {
             setWireframeImageUrl(dataUrl);
             setIsGeneratingImage(false); // 성공 시 즉시 false로 설정
@@ -268,6 +280,11 @@ export function RequirementsResultPanel({
           console.error("와이어프레임 이미지 생성 실패:", error);
           setWireframeImageUrl(null);
           setIsGeneratingImage(false);
+          
+          // 에러 발생 시에도 로딩 오버레이 복원
+          if (loadingOverlay) {
+            loadingOverlay.style.display = '';
+          }
         }
       };
 
@@ -828,99 +845,103 @@ export function RequirementsResultPanel({
                     </div>
                   </div>
                 </div>
-                <div className="flex justify-center bg-gray-50 rounded-lg p-8 border border-gray-200">
+                <div className="flex justify-center bg-gray-50 rounded-lg p-8 border border-gray-200 relative">
                   {wireframe ? (
                     <>
                       {/* 모든 화면을 한 번에 렌더링 (ref로 참조하여 캡처) */}
                       {(!wireframeImageUrl || isGeneratingImage) && (
-                        <div 
-                          ref={wireframeContainerRef}
-                          className="w-full flex flex-col items-center gap-8 relative"
-                        >
-                          {/* 모든 화면을 세로로 나열 */}
-                          {wireframe.screens?.map((screen, index) => {
-                            const viewport = screen.viewport || wireframe.viewport || { width: 390, height: 844, device: "mobile" as const };
-                            const deviceLabel = viewport.device === "mobile" ? "📲 모바일" : 
-                                               viewport.device === "tablet" ? "📱 태블릿" : "💻 웹";
-                            
-                            return (
-                              <div key={screen.id || index} className="flex flex-col items-center gap-2">
-                                <div className="text-sm text-gray-600 font-medium">
-                                  {index + 1}. {screen.name} • {deviceLabel} • {viewport.width} × {viewport.height}px
-                                </div>
-                                <div
-                                  className="relative border-4 border-gray-800 rounded-2xl shadow-2xl bg-white overflow-hidden"
-                                  style={{
-                                    width: viewport.width * 0.8,
-                                    height: viewport.height * 0.8,
-                                  }}
-                                >
-                                  {(screen.elements || []).map((el) => {
-                                    const style = {
-                                      navbar: { bg: "#e0e7ff", border: "#a5b4fc", text: "#3730a3" },
-                                      footer: { bg: "#f3f4f6", border: "#d1d5db", text: "#374151" },
-                                      button: { bg: "#dbeafe", border: "#93c5fd", text: "#1e40af" },
-                                      input: { bg: "#ffffff", border: "#9ca3af", text: "#4b5563" },
-                                      list: { bg: "#f9fafb", border: "#d1d5db", text: "#4b5563" },
-                                      card: { bg: "#ffffff", border: "#d1d5db", text: "#374151" },
-                                      text: { bg: "transparent", border: "transparent", text: "#1f2937" },
-                                      image: { bg: "#e5e7eb", border: "#9ca3af", text: "#6b7280" },
-                                      chip: { bg: "#fce7f3", border: "#f9a8d4", text: "#9f1239" },
-                                      checkbox: { bg: "#ffffff", border: "#9ca3af", text: "#4b5563" },
-                                      radio: { bg: "#ffffff", border: "#9ca3af", text: "#4b5563" },
-                                      select: { bg: "#ffffff", border: "#9ca3af", text: "#4b5563" },
-                                      table: { bg: "#ffffff", border: "#9ca3af", text: "#374151" },
-                                      divider: { bg: "#d1d5db", border: "transparent", text: "transparent" },
-                                      icon: { bg: "#f3f4f6", border: "#d1d5db", text: "#4b5563" },
-                                    }[el.type] || { bg: "#ffffff", border: "#d1d5db", text: "#374151" };
-                                    
-                                    const icon = {
-                                      navbar: "≡", footer: "━", button: "▶", input: "⌨", list: "☰",
-                                      card: "□", text: "T", image: "🖼", chip: "◎", checkbox: "☐",
-                                      radio: "○", select: "▼", table: "⊞", divider: "─", icon: "★",
-                                    }[el.type] || "■";
+                        <>
+                          {/* 와이어프레임 컨테이너 (캡처 대상) */}
+                          <div 
+                            ref={wireframeContainerRef}
+                            className="w-full flex flex-col items-center gap-8"
+                          >
+                            {/* 모든 화면을 세로로 나열 */}
+                            {wireframe.screens?.map((screen, index) => {
+                              const viewport = screen.viewport || wireframe.viewport || { width: 390, height: 844, device: "mobile" as const };
+                              const deviceLabel = viewport.device === "mobile" ? "📲 모바일" : 
+                                                 viewport.device === "tablet" ? "📱 태블릿" : "💻 웹";
+                              
+                              return (
+                                <div key={screen.id || index} className="flex flex-col items-center gap-2">
+                                  <div className="text-sm text-gray-600 font-medium">
+                                    {index + 1}. {screen.name} • {deviceLabel} • {viewport.width} × {viewport.height}px
+                                  </div>
+                                  <div
+                                    className="relative border-4 border-gray-800 rounded-2xl shadow-2xl bg-white overflow-hidden"
+                                    style={{
+                                      width: viewport.width * 0.8,
+                                      height: viewport.height * 0.8,
+                                    }}
+                                  >
+                                    {(screen.elements || []).map((el) => {
+                                      const style = {
+                                        navbar: { bg: "#e0e7ff", border: "#a5b4fc", text: "#3730a3" },
+                                        footer: { bg: "#f3f4f6", border: "#d1d5db", text: "#374151" },
+                                        button: { bg: "#dbeafe", border: "#93c5fd", text: "#1e40af" },
+                                        input: { bg: "#ffffff", border: "#9ca3af", text: "#4b5563" },
+                                        list: { bg: "#f9fafb", border: "#d1d5db", text: "#4b5563" },
+                                        card: { bg: "#ffffff", border: "#d1d5db", text: "#374151" },
+                                        text: { bg: "transparent", border: "transparent", text: "#1f2937" },
+                                        image: { bg: "#e5e7eb", border: "#9ca3af", text: "#6b7280" },
+                                        chip: { bg: "#fce7f3", border: "#f9a8d4", text: "#9f1239" },
+                                        checkbox: { bg: "#ffffff", border: "#9ca3af", text: "#4b5563" },
+                                        radio: { bg: "#ffffff", border: "#9ca3af", text: "#4b5563" },
+                                        select: { bg: "#ffffff", border: "#9ca3af", text: "#4b5563" },
+                                        table: { bg: "#ffffff", border: "#9ca3af", text: "#374151" },
+                                        divider: { bg: "#d1d5db", border: "transparent", text: "transparent" },
+                                        icon: { bg: "#f3f4f6", border: "#d1d5db", text: "#4b5563" },
+                                      }[el.type] || { bg: "#ffffff", border: "#d1d5db", text: "#374151" };
+                                      
+                                      const icon = {
+                                        navbar: "≡", footer: "━", button: "▶", input: "⌨", list: "☰",
+                                        card: "□", text: "T", image: "🖼", chip: "◎", checkbox: "☐",
+                                        radio: "○", select: "▼", table: "⊞", divider: "─", icon: "★",
+                                      }[el.type] || "■";
 
-                                    return (
-                                      <div
-                                        key={el.id}
-                                        className="absolute flex items-center justify-center border-2 rounded-lg"
-                                        style={{
-                                          left: el.x * 0.8,
-                                          top: el.y * 0.8,
-                                          width: Math.max(el.w * 0.8, 12),
-                                          height: Math.max(el.h * 0.8, 12),
-                                          backgroundColor: style.bg,
-                                          borderColor: style.border,
-                                          color: style.text,
-                                          fontSize: Math.max(10, 12 * 0.8),
-                                          padding: "4px",
-                                        }}
-                                      >
-                                        <div className="flex items-center gap-1 text-center truncate">
-                                          <span className="text-xs opacity-60">{icon}</span>
-                                          <span className="font-medium uppercase text-[10px]">{el.type}</span>
-                                          {el.label && (
-                                            <>
-                                              <span className="opacity-50">·</span>
-                                              <span className="text-xs">{el.label}</span>
-                                            </>
-                                          )}
+                                      return (
+                                        <div
+                                          key={el.id}
+                                          className="absolute flex items-center justify-center border-2 rounded-lg"
+                                          style={{
+                                            left: el.x * 0.8,
+                                            top: el.y * 0.8,
+                                            width: Math.max(el.w * 0.8, 12),
+                                            height: Math.max(el.h * 0.8, 12),
+                                            backgroundColor: style.bg,
+                                            borderColor: style.border,
+                                            color: style.text,
+                                            fontSize: Math.max(10, 12 * 0.8),
+                                            padding: "4px",
+                                          }}
+                                        >
+                                          <div className="flex items-center gap-1 text-center truncate">
+                                            <span className="text-xs opacity-60">{icon}</span>
+                                            <span className="font-medium uppercase text-[10px]">{el.type}</span>
+                                            {el.label && (
+                                              <>
+                                                <span className="opacity-50">·</span>
+                                                <span className="text-xs">{el.label}</span>
+                                              </>
+                                            )}
+                                          </div>
                                         </div>
-                                      </div>
-                                    );
-                                  })}
+                                      );
+                                    })}
+                                  </div>
                                 </div>
-                              </div>
-                            );
-                          })}
+                              );
+                            })}
+                          </div>
+                          {/* 로딩 오버레이 (캡처 대상에서 제외) */}
                           {isGeneratingImage && (
-                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-white bg-opacity-90 rounded-lg">
+                            <div className="loading-overlay absolute inset-0 flex flex-col items-center justify-center bg-white bg-opacity-90 rounded-lg pointer-events-none">
                               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
                               <p className="text-gray-600 font-medium">이미지 생성 중...</p>
                               <p className="text-sm text-gray-500 mt-1">잠시만 기다려 주세요.</p>
                             </div>
                           )}
-                        </div>
+                        </>
                       )}
                       {/* 이미지가 생성되면 이미지 표시 */}
                       {wireframeImageUrl && !isGeneratingImage && (
