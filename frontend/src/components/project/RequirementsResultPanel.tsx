@@ -199,7 +199,6 @@ export function RequirementsResultPanel({
       }
 
       // ref가 설정되었으면 이미지 생성 시작
-      if (wireframe && wireframe.screens && wireframe.screens.length > 0) {
       console.log("와이어프레임 이미지 생성 시작:", {
         screenCount: wireframe.screens.length,
         hasWireframe: !!wireframe,
@@ -268,7 +267,6 @@ export function RequirementsResultPanel({
         } catch (error) {
           console.error("와이어프레임 이미지 생성 실패:", error);
           setWireframeImageUrl(null);
-        } finally {
           setIsGeneratingImage(false);
         }
       };
