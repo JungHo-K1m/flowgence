@@ -220,7 +220,7 @@ ${summary}
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
-          max_tokens: 4000,
+          max_tokens: 16000,
           system: systemPrompt,
           messages: [
             {
@@ -265,23 +265,45 @@ ${summary}
             const retryData = await retryResponse.json();
             const retryContent = retryData.content[0].text;
             
-            // JSON 파싱
+            // JSON 파싱 (개선된 로직)
             let spec;
             try {
-              const jsonMatch = retryContent.match(/\{[\s\S]*\}/);
-              if (jsonMatch) {
-                spec = JSON.parse(jsonMatch[0]);
+              let jsonText = retryContent.trim();
+              
+              // 마크다운 코드 블록에서 JSON 추출
+              if (jsonText.startsWith('```json')) {
+                console.log('재시도 - 패턴 1: ```json 코드 블록 감지');
+                jsonText = jsonText.replace(/^```json\s*/i, '');
+                jsonText = jsonText.replace(/\s*```\s*$/i, '');
+              } else if (jsonText.startsWith('```')) {
+                console.log('재시도 - 패턴 2: ``` 코드 블록 감지');
+                jsonText = jsonText.replace(/^```\s*/i, '');
+                jsonText = jsonText.replace(/\s*```\s*$/i, '');
               } else {
-                spec = JSON.parse(retryContent);
+                const jsonBlockMatch = jsonText.match(/```json\s*([\s\S]*?)\s*```/);
+                if (jsonBlockMatch) {
+                  console.log('재시도 - 패턴 3: 정규식으로 코드 블록 추출');
+                  jsonText = jsonBlockMatch[1];
+                }
               }
-            } catch (parseError) {
-              console.error('JSON 파싱 실패, 폴백 사용');
+              
+              jsonText = jsonText.trim();
+              spec = JSON.parse(jsonText);
+              console.log('✅ 재시도 - JSON 파싱 성공');
+            } catch (parseError: any) {
+              console.error('❌ 재시도 - JSON 파싱 실패:', parseError.message);
+              console.error('재시도 응답 텍스트 처음 500자:', retryContent.substring(0, 500));
+              console.error('폴백 와이어프레임 사용');
               spec = this.getFallbackWireframe();
             }
             
             // 기본 검증
             if (!spec.viewport || !spec.screens || !Array.isArray(spec.screens) || spec.screens.length === 0) {
-              console.warn('잘못된 스키마, 폴백 사용');
+              console.warn('⚠️ 재시도 - 잘못된 스키마, 폴백 사용');
+              console.warn('재시도 - spec.viewport:', spec.viewport);
+              console.warn('재시도 - spec.screens:', spec.screens);
+              console.warn('재시도 - spec.screens가 배열인가?', Array.isArray(spec.screens));
+              console.warn('재시도 - spec.screens 길이:', spec.screens?.length);
               spec = this.getFallbackWireframe();
             }
             
@@ -298,24 +320,62 @@ ${summary}
       const data = await response.json();
       const content = data.content[0].text;
 
-      // JSON 파싱
+      console.log('=== 와이어프레임 생성 API 응답 디버깅 ===');
+      console.log('응답 텍스트 처음 500자:', content.substring(0, 500));
+      console.log('응답 길이:', content.length);
+
+      // JSON 파싱 (개선된 로직)
       let spec;
       try {
-        // 코드블록 제거 시도
-        const jsonMatch = content.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          spec = JSON.parse(jsonMatch[0]);
-        } else {
-          spec = JSON.parse(content);
+        let jsonText = content.trim();
+        
+        // 마크다운 코드 블록에서 JSON 추출
+        // 패턴 1: ```json\n...\n```
+        if (jsonText.startsWith('```json')) {
+          console.log('패턴 1: ```json 코드 블록 감지');
+          jsonText = jsonText.replace(/^```json\s*/i, '');
+          jsonText = jsonText.replace(/\s*```\s*$/i, '');
+          console.log('코드 블록 제거 후 텍스트 처음 300자:', jsonText.substring(0, 300));
         }
-      } catch (parseError) {
-        console.error('JSON 파싱 실패, 폴백 사용');
+        // 패턴 2: ```\n...\n```
+        else if (jsonText.startsWith('```')) {
+          console.log('패턴 2: ``` 코드 블록 감지');
+          jsonText = jsonText.replace(/^```\s*/i, '');
+          jsonText = jsonText.replace(/\s*```\s*$/i, '');
+          console.log('코드 블록 제거 후 텍스트 처음 300자:', jsonText.substring(0, 300));
+        }
+        // 패턴 3: 정규식으로 코드 블록 추출
+        else {
+          const jsonBlockMatch = jsonText.match(/```json\s*([\s\S]*?)\s*```/);
+          if (jsonBlockMatch) {
+            console.log('패턴 3: 정규식으로 코드 블록 추출');
+            jsonText = jsonBlockMatch[1];
+            console.log('추출된 JSON 텍스트 처음 300자:', jsonText.substring(0, 300));
+          } else {
+            console.log('코드 블록 없음, 원본 텍스트 사용');
+          }
+        }
+        
+        // 추가 정리: 앞뒤 공백 제거
+        jsonText = jsonText.trim();
+        
+        // JSON 파싱 시도
+        spec = JSON.parse(jsonText);
+        console.log('✅ JSON 파싱 성공');
+      } catch (parseError: any) {
+        console.error('❌ JSON 파싱 실패:', parseError.message);
+        console.error('파싱 시도한 텍스트 처음 500자:', content.substring(0, 500));
+        console.error('폴백 와이어프레임 사용');
         spec = this.getFallbackWireframe();
       }
 
       // 기본 검증
       if (!spec.viewport || !spec.screens || !Array.isArray(spec.screens) || spec.screens.length === 0) {
-        console.warn('잘못된 스키마, 폴백 사용');
+        console.warn('⚠️ 잘못된 스키마, 폴백 사용');
+        console.warn('spec.viewport:', spec.viewport);
+        console.warn('spec.screens:', spec.screens);
+        console.warn('spec.screens가 배열인가?', Array.isArray(spec.screens));
+        console.warn('spec.screens 길이:', spec.screens?.length);
         spec = this.getFallbackWireframe();
       }
 
