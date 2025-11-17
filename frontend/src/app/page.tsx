@@ -2446,7 +2446,7 @@ function HomePageContent() {
                           handleStart();
                         }}
                         disabled={isStartDisabled}
-                        className={`bg-[#6366F1] text-white px-8 transition-colors duration-200 font-medium m-2 rounded-lg h-[40px] flex items-center justify-center ${
+                        className={`bg-[#6366F1] text-white px-8 transition-colors duration-200 font-medium m-2 rounded-lg h-[40px] flex items-center justify-center whitespace-nowrap ${
                           isStartDisabled ? "opacity-60 cursor-not-allowed" : "hover:bg-[#6366F1]"
                         }`}
                       >

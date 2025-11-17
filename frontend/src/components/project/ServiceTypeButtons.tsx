@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-
 interface ServiceType {
   id: string;
   name: string;
@@ -52,13 +50,13 @@ export function ServiceTypeButtons({
   selectedType,
 }: ServiceTypeButtonsProps) {
   return (
-    <div className="flex flex-wrap gap-3 justify-center">
+    <div className="flex flex-wrap gap-2 sm:gap-3 justify-center">
       {serviceTypes.map((service) => (
         <button
           key={service.id}
           onClick={() => onSelect(service.id)}
           className={`
-            px-2 rounded-full border-2 transition-all duration-200 hover:shadow-md h-[42px]
+            px-3 sm:px-4 rounded-full border-2 transition-all duration-200 hover:shadow-md min-h-[38px] sm:min-h-[42px]
             ${
               selectedType === service.id
                 ? `${service.color} border-current shadow-md`
@@ -66,9 +64,11 @@ export function ServiceTypeButtons({
             }
           `}
         >
-          <div className="flex items-center space-x-2">
-            <span className="text-[16px]">{service.icon}</span>
-            <span className="font-medium text-[16px]">{service.name}</span>
+          <div className="flex items-center space-x-1.5 sm:space-x-2">
+            <span className="text-[15px] sm:text-[16px]">{service.icon}</span>
+            <span className="font-medium text-[14px] sm:text-[16px]">
+              {service.name}
+            </span>
           </div>
         </button>
       ))}
