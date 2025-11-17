@@ -24,11 +24,11 @@ export class NotionController {
 
   /**
    * Notion OAuth 인증 시작
-   * 사용자를 Notion OAuth 인증 페이지로 리디렉션
+   * OAuth URL을 반환 (프론트엔드에서 직접 리디렉션)
    */
   @Get('oauth/authorize')
   @UseGuards(SupabaseAuthGuard)
-  async authorize(@Res() res: Response, @Req() req: Request) {
+  async authorize(@Req() req: Request) {
     try {
       const userId = (req as any).user?.id; // 인증 미들웨어에서 주입된 사용자 ID
       
@@ -37,7 +37,10 @@ export class NotionController {
       }
 
       const redirectUrl = await this.notionService.getAuthorizationUrl(userId);
-      return res.redirect(redirectUrl);
+      return {
+        success: true,
+        redirectUrl,
+      };
     } catch (error) {
       throw new HttpException(
         error.message || 'OAuth 인증 시작 실패',

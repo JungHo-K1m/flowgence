@@ -68,16 +68,20 @@ export async function startNotionOAuth(): Promise<void> {
       method: 'GET',
       credentials: 'include',
       headers,
-      redirect: 'follow', // 리디렉션을 따라감
     });
 
     if (!response.ok) {
-      throw new Error('OAuth 인증 시작 실패');
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || 'OAuth 인증 시작 실패');
     }
 
-    // 리디렉션 URL로 이동
-    if (response.redirected) {
-      window.location.href = response.url;
+    const data = await response.json();
+    
+    // 백엔드에서 받은 OAuth URL로 직접 리디렉션
+    if (data.redirectUrl) {
+      window.location.href = data.redirectUrl;
+    } else {
+      throw new Error('OAuth URL을 받지 못했습니다.');
     }
   } catch (error) {
     console.error('Notion OAuth 시작 실패:', error);
