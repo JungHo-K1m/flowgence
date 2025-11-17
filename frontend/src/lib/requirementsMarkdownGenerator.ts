@@ -435,7 +435,8 @@ ${renderNonFunctionalRequirements(requirementsData.nonFunctionalRequirements)}
 
 ---
 
-## 📱 5. 화면/와이어프레임
+<!-- TODO: 나중에 다시 확인 - PDF에서 와이어프레임 관련 섹션 주석처리 -->
+<!-- ## 📱 5. 화면/와이어프레임
 
 ### 📊 화면 구성 요약
 - **총 화면 수**: ${wireframe?.screens?.length || requirementsData.screenList.length}개
@@ -471,6 +472,8 @@ ${requirementsData.screenList.map((screen, index) => {
   
   return `| ${String(index + 1).padStart(2, '0')} | ${screenName} | ${screenType} | ${importance} |`;
 }).join('\n')}
+
+--- -->
 
 ---
 
