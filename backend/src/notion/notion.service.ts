@@ -178,6 +178,40 @@ export class NotionService {
   }
 
   /**
+   * 데이터베이스 ID 정제 (URL에서 UUID만 추출)
+   * Notion URL 형식: https://notion.so/workspace/2ae5e4a9-cdbe-8092-91a9-fb7b396dc631?v=...
+   * 또는: 2ae5e4a9cdbe809291a9fb7b396dc631?v=...
+   */
+  sanitizeDatabaseId(input: string): string | null {
+    if (!input) {
+      return null;
+    }
+
+    // 쿼리 파라미터 제거
+    const withoutQuery = input.split('?')[0].split('#')[0].trim();
+
+    // UUID 패턴 매칭 (하이픈 포함 또는 없음)
+    // 형식: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx (36자) 또는 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx (32자)
+    const uuidPattern = /([0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12})/i;
+    const match = withoutQuery.match(uuidPattern);
+
+    if (!match) {
+      return null;
+    }
+
+    let uuid = match[1];
+
+    // 하이픈 제거 후 다시 추가 (Notion API는 하이픈 포함 UUID를 요구)
+    uuid = uuid.replace(/-/g, '');
+    if (uuid.length !== 32) {
+      return null;
+    }
+
+    // 하이픈 포함 형식으로 변환: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+    return `${uuid.slice(0, 8)}-${uuid.slice(8, 12)}-${uuid.slice(12, 16)}-${uuid.slice(16, 20)}-${uuid.slice(20, 32)}`;
+  }
+
+  /**
    * state 암호화 (간단한 예시, 실제로는 더 강력한 암호화 사용 권장)
    */
   private encryptState(userId: string): string {
@@ -274,11 +308,21 @@ export class NotionService {
 
     // 연결 정보에서 데이터베이스 ID 가져오기 (없으면 기본값 사용)
     const connection = await this.getConnectionByUserId(userId);
-    const targetDatabaseId = databaseId || connection?.databaseId;
+    const rawDatabaseId = databaseId || connection?.databaseId;
 
-    if (!targetDatabaseId) {
+    if (!rawDatabaseId) {
       throw new HttpException(
         'Notion 데이터베이스 ID가 설정되지 않았습니다. 설정 페이지에서 데이터베이스를 생성하고 ID를 입력해주세요.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // 데이터베이스 ID 정제 (URL에서 UUID만 추출)
+    const targetDatabaseId = this.sanitizeDatabaseId(rawDatabaseId);
+    
+    if (!targetDatabaseId) {
+      throw new HttpException(
+        '데이터베이스 ID 형식이 올바르지 않습니다. UUID 형식(예: 2ae5e4a9-cdbe-8092-91a9-fb7b396dc631)을 확인해주세요.',
         HttpStatus.BAD_REQUEST,
       );
     }

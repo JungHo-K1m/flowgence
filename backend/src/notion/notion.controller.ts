@@ -140,7 +140,19 @@ export class NotionController {
         throw new HttpException('Notion 계정이 연결되지 않았습니다.', HttpStatus.BAD_REQUEST);
       }
 
-      connection.databaseId = dto.databaseId || null;
+      // 데이터베이스 ID 정제 (URL에서 UUID만 추출)
+      const sanitizedDatabaseId = dto.databaseId 
+        ? this.notionService.sanitizeDatabaseId(dto.databaseId)
+        : null;
+
+      if (dto.databaseId && !sanitizedDatabaseId) {
+        throw new HttpException(
+          '데이터베이스 ID 형식이 올바르지 않습니다. UUID 형식(예: 2ae5e4a9-cdbe-8092-91a9-fb7b396dc631)을 확인해주세요.',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      connection.databaseId = sanitizedDatabaseId;
       await this.notionService.updateConnection(connection);
 
       return {
