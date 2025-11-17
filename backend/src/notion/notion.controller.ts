@@ -16,6 +16,7 @@ import { NotionService } from './notion.service';
 import { NotionOAuthCallbackDto } from './dto/notion-oauth-callback.dto';
 import { ShareRequirementsDto } from './dto/share-requirements.dto';
 import { ShareEstimateDto } from './dto/share-estimate.dto';
+import { SupabaseAuthGuard } from './guards/supabase-auth.guard';
 
 @Controller('notion')
 export class NotionController {
@@ -26,6 +27,7 @@ export class NotionController {
    * 사용자를 Notion OAuth 인증 페이지로 리디렉션
    */
   @Get('oauth/authorize')
+  @UseGuards(SupabaseAuthGuard)
   async authorize(@Res() res: Response, @Req() req: Request) {
     try {
       const userId = (req as any).user?.id; // 인증 미들웨어에서 주입된 사용자 ID
@@ -83,6 +85,7 @@ export class NotionController {
    * 현재 사용자의 Notion 연결 정보 조회
    */
   @Get('connection')
+  @UseGuards(SupabaseAuthGuard)
   async getConnection(@Req() req: Request) {
     try {
       const userId = (req as any).user?.id;
@@ -118,6 +121,7 @@ export class NotionController {
    * Notion 연결 해제
    */
   @Delete('connection')
+  @UseGuards(SupabaseAuthGuard)
   async disconnect(@Req() req: Request) {
     try {
       const userId = (req as any).user?.id;
@@ -144,6 +148,7 @@ export class NotionController {
    * 요구사항을 Notion에 공유
    */
   @Post('share/requirements')
+  @UseGuards(SupabaseAuthGuard)
   async shareRequirements(@Body() dto: ShareRequirementsDto, @Req() req: Request) {
     try {
       const userId = (req as any).user?.id;
@@ -181,6 +186,7 @@ export class NotionController {
    * 견적서를 Notion에 공유
    */
   @Post('share/estimate')
+  @UseGuards(SupabaseAuthGuard)
   async shareEstimate(@Body() dto: ShareEstimateDto, @Req() req: Request) {
     try {
       const userId = (req as any).user?.id;

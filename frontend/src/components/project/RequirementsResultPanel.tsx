@@ -536,13 +536,22 @@ export function RequirementsResultPanel({
       );
 
       // 백엔드 API를 통해 Notion에 공유
+      const { supabase } = await import('@/lib/supabase');
+      const { data: { session } } = await supabase.auth.getSession();
+      
       const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+      
       const response = await fetch(`${API_BASE_URL}/notion/share/requirements`, {
         method: 'POST',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({
           title: `${requirementsData.projectName} - 요구사항 명세서`,
           description: `프로젝트 요구사항 명세서 (${projectData.serviceType})`,

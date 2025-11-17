@@ -1,5 +1,7 @@
 // Notion OAuth 관련 유틸리티 함수
 
+import { supabase } from './supabase';
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 export interface NotionConnection {
@@ -11,16 +13,31 @@ export interface NotionConnection {
 }
 
 /**
+ * Authorization 헤더 가져오기
+ */
+async function getAuthHeaders(): Promise<HeadersInit> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+  };
+  
+  if (session?.access_token) {
+    headers['Authorization'] = `Bearer ${session.access_token}`;
+  }
+  
+  return headers;
+}
+
+/**
  * 현재 사용자의 Notion 연결 정보 조회
  */
 export async function getNotionConnection(): Promise<NotionConnection> {
   try {
+    const headers = await getAuthHeaders();
     const response = await fetch(`${API_BASE_URL}/notion/connection`, {
       method: 'GET',
       credentials: 'include', // 쿠키 포함
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
     });
 
     if (!response.ok) {
@@ -46,9 +63,11 @@ export async function getNotionConnection(): Promise<NotionConnection> {
  */
 export async function startNotionOAuth(): Promise<void> {
   try {
+    const headers = await getAuthHeaders();
     const response = await fetch(`${API_BASE_URL}/notion/oauth/authorize`, {
       method: 'GET',
       credentials: 'include',
+      headers,
       redirect: 'follow', // 리디렉션을 따라감
     });
 
@@ -71,12 +90,11 @@ export async function startNotionOAuth(): Promise<void> {
  */
 export async function disconnectNotion(): Promise<void> {
   try {
+    const headers = await getAuthHeaders();
     const response = await fetch(`${API_BASE_URL}/notion/connection`, {
       method: 'DELETE',
       credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
     });
 
     if (!response.ok) {
