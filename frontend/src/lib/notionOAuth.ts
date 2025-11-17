@@ -111,22 +111,25 @@ export async function disconnectNotion(): Promise<void> {
 }
 
 /**
- * 사용자의 Notion 액세스 토큰 조회 (백엔드에서 처리)
- * 실제로는 백엔드 API를 통해 Notion API를 호출해야 함
+ * 데이터베이스 ID 업데이트
  */
-export async function getNotionAccessToken(): Promise<string | null> {
+export async function updateDatabaseId(databaseId: string): Promise<void> {
   try {
-    const connection = await getNotionConnection();
-    if (!connection.connected) {
-      return null;
-    }
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${API_BASE_URL}/notion/connection/database`, {
+      method: 'POST',
+      credentials: 'include',
+      headers,
+      body: JSON.stringify({ databaseId }),
+    });
 
-    // 백엔드에서 토큰을 사용하여 Notion API를 호출하도록 수정 필요
-    // 현재는 프론트엔드에서 직접 토큰을 사용하지 않음
-    return null;
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || '데이터베이스 ID 업데이트 실패');
+    }
   } catch (error) {
-    console.error('Notion 액세스 토큰 조회 실패:', error);
-    return null;
+    console.error('데이터베이스 ID 업데이트 실패:', error);
+    throw error;
   }
 }
 

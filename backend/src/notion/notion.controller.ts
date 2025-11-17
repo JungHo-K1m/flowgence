@@ -16,6 +16,7 @@ import { NotionService } from './notion.service';
 import { NotionOAuthCallbackDto } from './dto/notion-oauth-callback.dto';
 import { ShareRequirementsDto } from './dto/share-requirements.dto';
 import { ShareEstimateDto } from './dto/share-estimate.dto';
+import { UpdateDatabaseIdDto } from './dto/update-database-id.dto';
 import { SupabaseAuthGuard } from './guards/supabase-auth.guard';
 
 @Controller('notion')
@@ -115,6 +116,44 @@ export class NotionController {
     } catch (error) {
       throw new HttpException(
         error.message || '연결 정보 조회 실패',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  /**
+   * 데이터베이스 ID 업데이트
+   */
+  @Post('connection/database')
+  @UseGuards(SupabaseAuthGuard)
+  async updateDatabaseId(@Body() dto: UpdateDatabaseIdDto, @Req() req: Request) {
+    try {
+      const userId = (req as any).user?.id;
+
+      if (!userId) {
+        throw new HttpException('인증이 필요합니다.', HttpStatus.UNAUTHORIZED);
+      }
+
+      const connection = await this.notionService.getConnectionByUserId(userId);
+      
+      if (!connection) {
+        throw new HttpException('Notion 계정이 연결되지 않았습니다.', HttpStatus.BAD_REQUEST);
+      }
+
+      connection.databaseId = dto.databaseId || null;
+      await this.notionService.updateConnection(connection);
+
+      return {
+        success: true,
+        message: '데이터베이스 ID가 업데이트되었습니다.',
+        databaseId: connection.databaseId,
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        error.message || '데이터베이스 ID 업데이트 실패',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }

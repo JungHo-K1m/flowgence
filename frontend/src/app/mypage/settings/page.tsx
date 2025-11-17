@@ -2,9 +2,10 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useAuthContext } from "@/components/providers/AuthProvider";
-import { getNotionConnection, startNotionOAuth, disconnectNotion } from "@/lib/notionOAuth";
+import { getNotionConnection, startNotionOAuth, disconnectNotion, updateDatabaseId } from "@/lib/notionOAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { useSearchParams } from "next/navigation";
 
 function SettingsContent() {
@@ -21,6 +22,8 @@ function SettingsContent() {
   const [disconnecting, setDisconnecting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [messageType, setMessageType] = useState<"success" | "error" | null>(null);
+  const [databaseId, setDatabaseId] = useState("");
+  const [updatingDatabase, setUpdatingDatabase] = useState(false);
 
   // URL 파라미터에서 연결 상태 확인
   useEffect(() => {
@@ -52,6 +55,9 @@ function SettingsContent() {
       setLoading(true);
       const data = await getNotionConnection();
       setConnection(data);
+      if (data.databaseId) {
+        setDatabaseId(data.databaseId);
+      }
     } catch (error) {
       console.error("연결 정보 조회 실패:", error);
       setConnection({ connected: false });
@@ -82,6 +88,28 @@ function SettingsContent() {
       setMessage(error instanceof Error ? error.message : "Notion 연결에 실패했습니다.");
       setMessageType("error");
       setConnecting(false);
+    }
+  };
+
+  // 데이터베이스 ID 업데이트
+  const handleUpdateDatabaseId = async () => {
+    if (!user || !connection?.connected) {
+      return;
+    }
+
+    try {
+      setUpdatingDatabase(true);
+      setMessage(null);
+      await updateDatabaseId(databaseId);
+      setMessage("데이터베이스 ID가 업데이트되었습니다.");
+      setMessageType("success");
+      await loadConnection();
+    } catch (error) {
+      console.error("데이터베이스 ID 업데이트 실패:", error);
+      setMessage(error instanceof Error ? error.message : "데이터베이스 ID 업데이트에 실패했습니다.");
+      setMessageType("error");
+    } finally {
+      setUpdatingDatabase(false);
     }
   };
 
@@ -184,6 +212,42 @@ function SettingsContent() {
                 >
                   {disconnecting ? "해제 중..." : "연결 해제"}
                 </Button>
+              </div>
+
+              {/* 데이터베이스 ID 설정 */}
+              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-900 mb-2">
+                      Notion 데이터베이스 ID
+                    </label>
+                    <p className="text-xs text-gray-600 mb-2">
+                      Notion에서 데이터베이스를 생성하고, 데이터베이스 URL에서 ID를 복사하여 입력하세요.
+                      <br />
+                      예: <code className="bg-gray-100 px-1 rounded">https://notion.so/workspace/abc123def456</code> → <code className="bg-gray-100 px-1 rounded">abc123def456</code>
+                    </p>
+                    <div className="flex gap-2">
+                      <Input
+                        type="text"
+                        placeholder="데이터베이스 ID 입력"
+                        value={databaseId}
+                        onChange={(e) => setDatabaseId(e.target.value)}
+                        className="flex-1"
+                      />
+                      <Button
+                        onClick={handleUpdateDatabaseId}
+                        disabled={updatingDatabase || !databaseId}
+                      >
+                        {updatingDatabase ? "저장 중..." : "저장"}
+                      </Button>
+                    </div>
+                    {!connection.databaseId && (
+                      <p className="text-xs text-red-600 mt-2">
+                        ⚠️ 데이터베이스 ID를 설정해야 Notion으로 공유할 수 있습니다.
+                      </p>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           ) : (

@@ -171,6 +171,13 @@ export class NotionService {
   }
 
   /**
+   * 연결 정보 업데이트
+   */
+  async updateConnection(connection: NotionConnection): Promise<NotionConnection> {
+    return await this.notionConnectionRepository.save(connection);
+  }
+
+  /**
    * state 암호화 (간단한 예시, 실제로는 더 강력한 암호화 사용 권장)
    */
   private encryptState(userId: string): string {
@@ -270,7 +277,10 @@ export class NotionService {
     const targetDatabaseId = databaseId || connection?.databaseId;
 
     if (!targetDatabaseId) {
-      throw new HttpException('Notion 데이터베이스 ID가 설정되지 않았습니다.', HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        'Notion 데이터베이스 ID가 설정되지 않았습니다. 설정 페이지에서 데이터베이스를 생성하고 ID를 입력해주세요.',
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     // 마크다운을 블록으로 변환
