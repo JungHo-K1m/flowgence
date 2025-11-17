@@ -3,6 +3,7 @@
  */
 
 import mermaid from "mermaid";
+import { toPng } from "html-to-image";
 
 /**
  * Mermaid 코드를 이미지(Base64 PNG)로 변환
@@ -29,6 +30,12 @@ export async function mermaidToImage(
   }
 
   try {
+    console.log("Mermaid 이미지 변환 시작:", {
+      codeLength: mermaidCode.length,
+      theme,
+      scale,
+    });
+
     // Mermaid 초기화
     mermaid.initialize({
       startOnLoad: false,
@@ -63,16 +70,80 @@ export async function mermaidToImage(
     // 고유 ID 생성
     const diagramId = `mermaid-diagram-${Date.now()}-${Math.random().toString(36).substring(7)}`;
 
+    // 임시 DOM 컨테이너 생성
+    const container = document.createElement("div");
+    container.style.position = "fixed";
+    container.style.left = "0";
+    container.style.top = "0";
+    container.style.width = "1200px"; // 충분한 너비
+    container.style.maxWidth = "1200px";
+    container.style.backgroundColor = backgroundColor;
+    container.style.padding = "24px";
+    container.style.boxSizing = "border-box";
+    container.style.zIndex = "-9999"; // 뒤로 보내기
+    container.style.opacity = "0"; // 투명하게
+    container.style.pointerEvents = "none"; // 클릭 방지
+    container.style.overflow = "visible";
+    container.id = diagramId;
+
+    // DOM에 추가 (렌더링을 위해 필요)
+    document.body.appendChild(container);
+
     // Mermaid를 SVG로 렌더링
     const { svg } = await mermaid.render(diagramId, mermaidCode);
+    
+    // SVG를 컨테이너에 삽입
+    container.innerHTML = svg;
 
-    // SVG를 이미지로 변환
-    const imageDataUrl = await svgToImage(svg, {
-      backgroundColor,
-      scale,
+    // DOM이 완전히 렌더링될 때까지 대기
+    await new Promise((resolve) => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            resolve(undefined);
+          });
+        });
+      });
     });
 
-    return imageDataUrl;
+    // 추가 대기 시간 (폰트 및 스타일 적용)
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    // 실제 렌더링된 크기 사용
+    const finalWidth = Math.max(container.scrollWidth, container.offsetWidth, 1200);
+    const finalHeight = Math.max(container.scrollHeight, container.offsetHeight, 600);
+
+    console.log("Mermaid 다이어그램 크기:", {
+      width: finalWidth,
+      height: finalHeight,
+    });
+
+    // html-to-image로 이미지 변환 (와이어프레임과 동일한 방식)
+    const dataUrl = await toPng(container, {
+      quality: 1.0,
+      pixelRatio: Math.max(scale, 2), // 최소 2배 해상도
+      backgroundColor: backgroundColor,
+      cacheBust: true,
+      width: finalWidth,
+      height: finalHeight,
+    });
+
+    console.log("Mermaid 이미지 변환 완료:", {
+      dataUrlLength: dataUrl.length,
+      dataUrlPreview: dataUrl.substring(0, 100),
+      isValid: dataUrl.startsWith("data:image/png"),
+    });
+
+    // DOM에서 제거
+    if (container.parentNode) {
+      document.body.removeChild(container);
+    }
+
+    if (!dataUrl || !dataUrl.startsWith("data:image/")) {
+      throw new Error("이미지 변환 결과가 올바르지 않습니다.");
+    }
+
+    return dataUrl;
   } catch (error) {
     console.error("Mermaid 이미지 변환 오류:", error);
     throw new Error(

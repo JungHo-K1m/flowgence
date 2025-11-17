@@ -150,15 +150,29 @@ export function ConfirmationPanel({
       };
     }
 
-    const totalCount = extractedRequirements.totalCount;
+    // 실제 요구사항 개수를 직접 계산
+    const calculatedTotal = extractedRequirements.categories.reduce(
+      (acc, category) =>
+        acc +
+        category.subCategories.reduce(
+          (subAcc, subCategory) =>
+            subAcc + (subCategory.requirements?.length || 0),
+          0
+        ),
+      0
+    );
+    
+    // totalCount가 있으면 사용하고, 없으면 계산된 값 사용
+    const totalCount = extractedRequirements.totalCount || calculatedTotal;
+    
     const mandatory = extractedRequirements.categories.reduce(
       (acc, category) =>
         acc +
         category.subCategories.reduce(
           (subAcc, subCategory) =>
             subAcc +
-            subCategory.requirements.filter((req) => req.priority === "high")
-              .length,
+            (subCategory.requirements?.filter((req) => req.priority === "high")
+              .length || 0),
           0
         ),
       0
@@ -169,8 +183,8 @@ export function ConfirmationPanel({
         category.subCategories.reduce(
           (subAcc, subCategory) =>
             subAcc +
-            subCategory.requirements.filter((req) => req.priority === "medium")
-              .length,
+            (subCategory.requirements?.filter((req) => req.priority === "medium")
+              .length || 0),
           0
         ),
       0
@@ -181,8 +195,8 @@ export function ConfirmationPanel({
         category.subCategories.reduce(
           (subAcc, subCategory) =>
             subAcc +
-            subCategory.requirements.filter((req) => req.priority === "low")
-              .length,
+            (subCategory.requirements?.filter((req) => req.priority === "low")
+              .length || 0),
           0
         ),
       0
@@ -228,7 +242,14 @@ export function ConfirmationPanel({
 
     // 디버깅 로그 (개발 환경에서만)
     if (process.env.NODE_ENV === 'development') {
-      console.log('ConfirmationPanel - 프로젝트 개요 데이터:', {
+      console.log('ConfirmationPanel - 요구사항 데이터:', {
+        hasExtractedRequirements: !!extractedRequirements,
+        totalCountFromData: extractedRequirements.totalCount,
+        calculatedTotal,
+        finalTotalCount: totalCount,
+        mandatory,
+        recommended,
+        optional,
         hasProjectOverview: !!projectOverview,
         targetUsers,
         estimatedDuration,
@@ -753,7 +774,7 @@ export function ConfirmationPanel({
                     총 요구사항
                   </h3>
                   <div className="text-2xl font-bold text-blue-600">
-                    {requirementsData.total}개
+                    {requirementsData.total || 0}개
                   </div>
                   <div className="text-sm text-gray-500 mt-1">
                     필수 {requirementsData.mandatory} · 권장{" "}
