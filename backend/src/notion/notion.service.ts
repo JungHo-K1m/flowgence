@@ -286,7 +286,12 @@ export class NotionService {
     // 마크다운을 블록으로 변환
     const blocks = this.convertMarkdownToBlocks(markdown);
 
-    // 페이지 생성
+    // Notion API 제한: 한 번에 최대 100개 블록만 전송 가능
+    const MAX_BLOCKS_PER_REQUEST = 100;
+    const initialBlocks = blocks.slice(0, MAX_BLOCKS_PER_REQUEST);
+    const remainingBlocks = blocks.slice(MAX_BLOCKS_PER_REQUEST);
+
+    // 페이지 생성 (첫 100개 블록 포함)
     const response = await fetch(`${this.notionApiUrl}/pages`, {
       method: 'POST',
       headers: {
@@ -314,7 +319,7 @@ export class NotionService {
             date: { start: new Date().toISOString().split('T')[0] },
           },
         },
-        children: blocks,
+        children: initialBlocks,
       }),
     });
 
@@ -327,7 +332,36 @@ export class NotionService {
     }
 
     const page = await response.json();
-    return `https://notion.so/${page.id.replace(/-/g, '')}`;
+    const pageId = page.id;
+
+    // 나머지 블록들을 청크로 나누어 추가
+    if (remainingBlocks.length > 0) {
+      for (let i = 0; i < remainingBlocks.length; i += MAX_BLOCKS_PER_REQUEST) {
+        const chunk = remainingBlocks.slice(i, i + MAX_BLOCKS_PER_REQUEST);
+        
+        const appendResponse = await fetch(`${this.notionApiUrl}/blocks/${pageId}/children`, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+            'Notion-Version': '2022-06-28',
+          },
+          body: JSON.stringify({
+            children: chunk,
+          }),
+        });
+
+        if (!appendResponse.ok) {
+          const errorData = await appendResponse.json().catch(() => ({}));
+          // 페이지는 이미 생성되었으므로 경고만 로그하고 계속 진행
+          console.warn(
+            `Notion 블록 추가 실패 (청크 ${i / MAX_BLOCKS_PER_REQUEST + 1}): ${appendResponse.status} - ${JSON.stringify(errorData)}`,
+          );
+        }
+      }
+    }
+
+    return `https://notion.so/${pageId.replace(/-/g, '')}`;
   }
 }
 
