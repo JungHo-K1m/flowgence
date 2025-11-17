@@ -15,7 +15,7 @@ interface MessageBubbleProps {
 export function MessageBubble({ message, onOptionSelect }: MessageBubbleProps) {
   if (message.type === "system") {
     return (
-      <div className="flex items-start space-x-3 p-4 bg-blue-50 rounded-lg max-w-[80%]">
+      <div className="flex items-start space-x-3 p-4 bg-blue-50 rounded-lg max-w-[90%]">
         <span className="text-2xl">{message.icon}</span>
         <div>
           <h3 className="font-semibold text-blue-900">{message.content}</h3>
@@ -33,7 +33,7 @@ export function MessageBubble({ message, onOptionSelect }: MessageBubbleProps) {
         </div>
         <div className="flex-1">
           <div
-            className="p-4 rounded-lg shadow-sm border inline-block max-w-[60%]"
+            className="p-4 rounded-lg shadow-sm border inline-block max-w-[90%]"
             style={{ backgroundColor: "#EAEBFA", borderColor: "#E5E7EB" }}
           >
             <p className="text-gray-900 break-words">{message.content}</p>
@@ -67,7 +67,7 @@ export function MessageBubble({ message, onOptionSelect }: MessageBubbleProps) {
     return (
       <div className="flex items-end justify-end space-x-2">
         <div
-          className="px-4 py-2 rounded-lg border inline-block max-w-[60%]"
+          className="px-4 py-2 rounded-lg border inline-block max-w-[90%]"
           style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E7EB" }}
         >
           <span className="text-gray-900 break-words">{message.content}</span>
