@@ -325,6 +325,16 @@ export class NotionService {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
+      
+      // 404 에러인 경우 더 명확한 메시지 제공
+      if (response.status === 404) {
+        const errorMessage = errorData.message || '데이터베이스를 찾을 수 없습니다.';
+        throw new HttpException(
+          `데이터베이스를 찾을 수 없습니다. 데이터베이스 ID가 올바른지 확인하고, Notion에서 데이터베이스를 통합(Flowgence)과 공유했는지 확인해주세요. (${errorMessage})`,
+          HttpStatus.NOT_FOUND,
+        );
+      }
+      
       throw new HttpException(
         `Notion API 오류: ${response.status} - ${JSON.stringify(errorData)}`,
         HttpStatus.BAD_REQUEST,

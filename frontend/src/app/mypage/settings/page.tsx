@@ -222,9 +222,15 @@ function SettingsContent() {
                       Notion 데이터베이스 ID
                     </label>
                     <p className="text-xs text-gray-600 mb-2">
-                      Notion에서 데이터베이스를 생성하고, 데이터베이스 URL에서 ID를 복사하여 입력하세요.
+                      <strong>1단계:</strong> Notion에서 데이터베이스를 생성하세요.
+                      <br />
+                      <strong>2단계:</strong> 데이터베이스 페이지에서 우측 상단의 <strong>"연결"</strong> 또는 <strong>"Connect"</strong> 버튼을 클릭하고, <strong>"Flowgence"</strong> 통합을 선택하여 공유하세요.
+                      <br />
+                      <strong>3단계:</strong> 데이터베이스 URL에서 ID를 복사하여 입력하세요.
                       <br />
                       예: <code className="bg-gray-100 px-1 rounded">https://notion.so/workspace/abc123def456</code> → <code className="bg-gray-100 px-1 rounded">abc123def456</code>
+                      <br />
+                      <span className="text-red-600 font-medium">⚠️ 중요:</span> 데이터베이스를 통합과 공유하지 않으면 404 에러가 발생합니다.
                     </p>
                     <div className="flex gap-2">
                       <Input
