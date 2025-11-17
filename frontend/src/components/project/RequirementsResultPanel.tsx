@@ -424,58 +424,60 @@ export function RequirementsResultPanel({
         });
       }
 
+      // TODO: 나중에 다시 확인 - PDF에 이미지 표시 부분 주석처리
       const markdown = generateRequirementsMarkdown(
         requirementsData,
         projectData,
         extractedRequirements,
         projectOverview,
         wireframe,
-        wireframeImage, // 고해상도 이미지 전달
-        mermaidImage // Mermaid 다이어그램 이미지 전달
+        undefined, // wireframeImage - PDF 표시 주석처리 (나중에 다시 확인)
+        undefined // mermaidImage - PDF 표시 주석처리 (나중에 다시 확인)
       );
 
+      // TODO: 나중에 다시 확인 - 이미지 디버깅 로그 주석처리
       // 디버깅: 마크다운에 이미지가 포함되었는지 확인
-      if (wireframeImage) {
-        const hasImageInMarkdown = markdown.includes(wireframeImage.substring(0, 50));
-        console.log("마크다운에 와이어프레임 이미지 포함 여부:", {
-          hasImage: hasImageInMarkdown,
-          markdownLength: markdown.length,
-          imageInMarkdown: markdown.includes('<img'),
-        });
-      }
+      // if (wireframeImage) {
+      //   const hasImageInMarkdown = markdown.includes(wireframeImage.substring(0, 50));
+      //   console.log("마크다운에 와이어프레임 이미지 포함 여부:", {
+      //     hasImage: hasImageInMarkdown,
+      //     markdownLength: markdown.length,
+      //     imageInMarkdown: markdown.includes('<img'),
+      //   });
+      // }
       
-      if (mermaidImage) {
-        // 이미지가 마크다운에 포함되었는지 여러 방법으로 확인
-        const imageStart = mermaidImage.substring(0, 50);
-        const imageEnd = mermaidImage.substring(mermaidImage.length - 50);
-        const hasMermaidImageInMarkdown = markdown.includes(imageStart) || markdown.includes(imageEnd);
-        const hasImgTag = markdown.includes('<img');
-        const hasMermaidPreview = markdown.includes('mermaid-preview');
-        const hasDataImage = markdown.includes('data:image');
+      // if (mermaidImage) {
+      //   // 이미지가 마크다운에 포함되었는지 여러 방법으로 확인
+      //   const imageStart = mermaidImage.substring(0, 50);
+      //   const imageEnd = mermaidImage.substring(mermaidImage.length - 50);
+      //   const hasMermaidImageInMarkdown = markdown.includes(imageStart) || markdown.includes(imageEnd);
+      //   const hasImgTag = markdown.includes('<img');
+      //   const hasMermaidPreview = markdown.includes('mermaid-preview');
+      //   const hasDataImage = markdown.includes('data:image');
         
-        console.log("마크다운에 Mermaid 이미지 포함 여부:", {
-          hasImage: hasMermaidImageInMarkdown,
-          hasImgTag,
-          hasMermaidPreview,
-          hasDataImage,
-          imageInMarkdown: hasMermaidImageInMarkdown || hasImgTag || hasDataImage,
-          mermaidImageLength: mermaidImage.length,
-          markdownLength: markdown.length,
-          imageStartInMarkdown: markdown.includes(imageStart),
-          imageEndInMarkdown: markdown.includes(imageEnd),
-        });
+      //   console.log("마크다운에 Mermaid 이미지 포함 여부:", {
+      //     hasImage: hasMermaidImageInMarkdown,
+      //     hasImgTag,
+      //     hasMermaidPreview,
+      //     hasDataImage,
+      //     imageInMarkdown: hasMermaidImageInMarkdown || hasImgTag || hasDataImage,
+      //     mermaidImageLength: mermaidImage.length,
+      //     markdownLength: markdown.length,
+      //     imageStartInMarkdown: markdown.includes(imageStart),
+      //     imageEndInMarkdown: markdown.includes(imageEnd),
+      //   });
         
-        // 이미지가 포함되지 않았다면 경고
-        if (!hasMermaidImageInMarkdown && !hasImgTag && !hasDataImage) {
-          console.error("⚠️ Mermaid 이미지가 마크다운에 포함되지 않았습니다!");
-          console.log("마크다운 샘플:", markdown.substring(markdown.indexOf('사용자 여정'), markdown.indexOf('사용자 여정') + 500));
-        }
-      } else {
-        console.log("마크다운에 Mermaid 코드 블록 포함 여부:", {
-          hasMermaidCode: markdown.includes('```mermaid'),
-          hasMermaidPreview: markdown.includes('mermaid-preview'),
-        });
-      }
+      //   // 이미지가 포함되지 않았다면 경고
+      //   if (!hasMermaidImageInMarkdown && !hasImgTag && !hasDataImage) {
+      //     console.error("⚠️ Mermaid 이미지가 마크다운에 포함되지 않았습니다!");
+      //     console.log("마크다운 샘플:", markdown.substring(markdown.indexOf('사용자 여정'), markdown.indexOf('사용자 여정') + 500));
+      //   }
+      // } else {
+      //   console.log("마크다운에 Mermaid 코드 블록 포함 여부:", {
+      //     hasMermaidCode: markdown.includes('```mermaid'),
+      //     hasMermaidPreview: markdown.includes('mermaid-preview'),
+      //   });
+      // }
 
       await downloadMarkdownAsPDF(markdown, {
         filename: `요구사항명세서_${projectData.serviceType}_${
