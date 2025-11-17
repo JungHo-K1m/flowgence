@@ -143,7 +143,7 @@ export function useSessionManager() {
     const sessionData = getActiveSession();
     if (sessionData) {
       sessionIdRef.current = sessionData.sessionId;
-      console.log("세션 복원:", sessionData.sessionId);
+      // console.log("세션 복원:", sessionData.sessionId);
     }
     return sessionData;
   }, [getActiveSession]);
