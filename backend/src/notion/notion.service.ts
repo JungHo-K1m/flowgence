@@ -335,6 +335,15 @@ export class NotionService {
     const initialBlocks = blocks.slice(0, MAX_BLOCKS_PER_REQUEST);
     const remainingBlocks = blocks.slice(MAX_BLOCKS_PER_REQUEST);
 
+    // properties 객체 구성 (title은 필수, 나머지는 선택적)
+    // Notion API는 존재하지 않는 속성을 전송하면 에러를 반환하므로,
+    // title만 전송 (사용자가 필요하면 데이터베이스에 속성을 추가하도록 안내)
+    const properties: any = {
+      title: {
+        title: [{ text: { content: title } }],
+      },
+    };
+
     // 페이지 생성 (첫 100개 블록 포함)
     const response = await fetch(`${this.notionApiUrl}/pages`, {
       method: 'POST',
@@ -345,24 +354,7 @@ export class NotionService {
       },
       body: JSON.stringify({
         parent: { database_id: targetDatabaseId },
-        properties: {
-          title: {
-            title: [{ text: { content: title } }],
-          },
-          ...(description && {
-            description: {
-              rich_text: [{ text: { content: description } }],
-            },
-          }),
-          ...(projectType && {
-            projectType: {
-              select: { name: projectType },
-            },
-          }),
-          createdAt: {
-            date: { start: new Date().toISOString().split('T')[0] },
-          },
-        },
+        properties,
         children: initialBlocks,
       }),
     });
