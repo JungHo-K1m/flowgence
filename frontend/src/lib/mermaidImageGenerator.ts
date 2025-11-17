@@ -68,7 +68,7 @@ export async function mermaidToImage(
     });
 
     // 고유 ID 생성 (에러 핸들러에서도 사용 가능하도록 함수 스코프에 선언)
-    let diagramId = `mermaid-diagram-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+    const diagramId = `mermaid-diagram-${Date.now()}-${Math.random().toString(36).substring(7)}`;
     let container: HTMLDivElement | null = null;
 
     // 임시 DOM 컨테이너 생성
