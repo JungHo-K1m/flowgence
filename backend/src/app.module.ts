@@ -12,12 +12,14 @@ import { ChatMessage } from './entities/chat-message.entity';
 import { Requirement } from './entities/requirement.entity';
 import { Estimation } from './entities/estimation.entity';
 import { File } from './entities/file.entity';
+import { NotionConnection } from './entities/notion-connection.entity';
 
 // Modules
 import { ChatModule } from './chat/chat.module';
 import { ProjectsModule } from './projects/projects.module';
 import { SupabaseModule } from './supabase/supabase.module';
 import { WireframesModule } from './wireframes/wireframes.module';
+import { NotionModule } from './notion/notion.module';
 
 @Module({
   imports: [
@@ -41,12 +43,14 @@ import { WireframesModule } from './wireframes/wireframes.module';
       Requirement,
       Estimation,
       File,
+      NotionConnection,
     ]),
 
     ChatModule,
     ProjectsModule,
     SupabaseModule,
     WireframesModule,
+    NotionModule,
   ],
   controllers: [AppController],
   providers: [AppService],

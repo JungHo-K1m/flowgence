@@ -30,8 +30,8 @@ class NotionService {
     this.databaseId = config.databaseId;
   }
 
-  // Notion 페이지 생성
-  async createPage(properties: NotionPageProperties, content: NotionBlock[]): Promise<string> {
+  // Notion 페이지 생성 (Notion 공식 문서에 따라 children을 직접 포함)
+  async createPage(properties: NotionPageProperties, children: NotionBlock[]): Promise<string> {
     try {
       const response = await fetch(`${this.baseUrl}/pages`, {
         method: 'POST',
@@ -80,11 +80,14 @@ class NotionService {
               },
             }),
           },
+          // Notion 공식 문서에 따라 children을 페이지 생성 시 직접 포함
+          children: children && children.length > 0 ? children : undefined,
         }),
       });
 
       if (!response.ok) {
-        throw new Error(`Notion API error: ${response.status} ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(`Notion API error: ${response.status} ${response.statusText} - ${JSON.stringify(errorData)}`);
       }
 
       const page = await response.json();
@@ -364,11 +367,8 @@ export async function shareRequirementsToNotion(
     // 마크다운을 Notion 블록으로 변환
     const blocks = notionService.convertMarkdownToBlocks(markdown);
 
-    // 페이지 생성
+    // 페이지 생성 (Notion 공식 문서에 따라 children을 직접 포함하여 1번의 API 호출로 처리)
     const pageId = await notionService.createPage(pageProperties, blocks);
-
-    // 페이지에 콘텐츠 추가
-    await notionService.addBlocksToPage(pageId, blocks);
 
     // 페이지 URL 반환
     return await notionService.makePagePublic(pageId);
@@ -411,11 +411,8 @@ export async function shareEstimateToNotion(
     // 마크다운을 Notion 블록으로 변환
     const blocks = notionService.convertMarkdownToBlocks(markdown);
 
-    // 페이지 생성
+    // 페이지 생성 (Notion 공식 문서에 따라 children을 직접 포함하여 1번의 API 호출로 처리)
     const pageId = await notionService.createPage(pageProperties, blocks);
-
-    // 페이지에 콘텐츠 추가
-    await notionService.addBlocksToPage(pageId, blocks);
 
     // 페이지 URL 반환
     return await notionService.makePagePublic(pageId);

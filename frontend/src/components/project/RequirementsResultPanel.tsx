@@ -7,6 +7,7 @@ import { downloadMarkdownAsPDF } from "@/lib/pdfGenerator";
 import { shareRequirementsToNotion } from "@/lib/notionService";
 import { checkNotionSetup } from "@/lib/notionConfig";
 import { getShareOptions, showNotionGuide } from "@/lib/shareAlternatives";
+import { getNotionConnection, startNotionOAuth } from "@/lib/notionOAuth";
 import { ShareOptionsModal } from "@/components/ui/ShareOptionsModal";
 import { WireframeSpec } from "@/types/wireframe";
 import { LoFiCanvas } from "@/components/wireframe/LoFiCanvas";
@@ -495,59 +496,28 @@ export function RequirementsResultPanel({
 
   const handleShareNotion = async () => {
     try {
-      // Notion 설정 확인
-      const notionSetup = checkNotionSetup();
+      // 사용자별 Notion 연결 확인
+      const connection = await getNotionConnection();
 
-      if (!notionSetup.isConfigured) {
-        // Notion 설정이 안 되어 있는 경우 대안 제공
-        const choice = prompt(
-          `Notion 공유를 위해서는 설정이 필요합니다.\n\n` +
-            `다음 중 선택하세요:\n\n` +
-            `1. Notion 사용 가이드 보기\n` +
-            `2. 수동으로 Notion에 공유 (클립보드 복사)\n` +
-            `3. 다른 방법으로 공유\n\n` +
-            `번호를 입력하세요 (1-3):`
+      if (!connection.connected) {
+        // Notion 계정이 연결되지 않은 경우
+        const shouldConnect = confirm(
+          "Notion 계정이 연결되지 않았습니다.\n\n" +
+          "Notion 계정을 연결하시겠습니까?\n\n" +
+          "확인: Notion 계정 연결하기\n" +
+          "취소: 취소"
         );
 
-        if (choice === "1") {
-          showNotionGuide();
-          return;
-        } else if (choice === "2") {
-          // 수동 Notion 공유
-          const { shareToNotionManually } = await import(
-            "@/lib/shareAlternatives"
-          );
-          const data = {
-            title: `${requirementsData.projectName} - 요구사항 명세서`,
-            content: `프로젝트: ${requirementsData.projectName}\n서비스 유형: ${projectData.serviceType}\n\n${requirementsData.overview.goal}`,
-            markdown: generateRequirementsMarkdown(
-              requirementsData,
-              projectData,
-              extractedRequirements,
-              projectOverview,
-              wireframe
-            ),
-            html: generateRequirementsMarkdown(
-              requirementsData,
-              projectData,
-              extractedRequirements,
-              projectOverview,
-              wireframe
-            ).replace(/\n/g, "<br>"),
-          };
-          shareToNotionManually(data);
-          return;
-        } else if (choice === "3") {
-          // 대안 공유 방법 제공
-          handleAlternativeShare();
-          return;
+        if (shouldConnect) {
+          // OAuth 인증 시작
+          await startNotionOAuth();
+          return; // 리디렉션되므로 여기까지 도달하지 않음
         } else {
           return; // 취소
         }
       }
 
       // 로딩 상태 표시
-      const originalText = "Notion으로 공유";
       const button = document.querySelector(
         "[data-notion-share]"
       ) as HTMLButtonElement;
@@ -556,28 +526,50 @@ export function RequirementsResultPanel({
         button.disabled = true;
       }
 
-      // Notion에 공유
-      const notionUrl = await shareRequirementsToNotion(
+      // 마크다운 생성
+      const markdown = generateRequirementsMarkdown(
         requirementsData,
         projectData,
         extractedRequirements,
         projectOverview,
-        wireframe,
-        notionSetup.config!
+        wireframe
       );
+
+      // 백엔드 API를 통해 Notion에 공유
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${API_BASE_URL}/notion/share/requirements`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: `${requirementsData.projectName} - 요구사항 명세서`,
+          description: `프로젝트 요구사항 명세서 (${projectData.serviceType})`,
+          projectType: projectData.serviceType,
+          markdown: markdown,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Notion 공유 실패');
+      }
+
+      const result = await response.json();
 
       // 성공 메시지 표시
       alert(
-        `Notion에 성공적으로 공유되었습니다!\n\n페이지 URL: ${notionUrl}\n\n브라우저에서 열어보시겠습니까?`
+        `Notion에 성공적으로 공유되었습니다!\n\n페이지 URL: ${result.pageUrl}\n\n브라우저에서 열어보시겠습니까?`
       );
 
       // 브라우저에서 열기
       if (confirm("브라우저에서 Notion 페이지를 열어보시겠습니까?")) {
-        window.open(notionUrl, "_blank");
+        window.open(result.pageUrl, "_blank");
       }
     } catch (error) {
       console.error("Notion 공유 실패:", error);
-      alert("Notion 공유에 실패했습니다. 다시 시도해주세요.");
+      alert(error instanceof Error ? error.message : "Notion 공유에 실패했습니다. 다시 시도해주세요.");
     } finally {
       // 버튼 상태 복원
       const button = document.querySelector(
