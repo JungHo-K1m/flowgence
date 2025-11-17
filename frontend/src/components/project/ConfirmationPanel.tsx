@@ -1010,7 +1010,6 @@ export function ConfirmationPanel({
                       )}
                     </div>
                   </div>
-                </div>
 
                 {/* 단가 설정 패널 */}
                 {showRateSettings && (
