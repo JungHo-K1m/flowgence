@@ -224,7 +224,7 @@ function SettingsContent() {
                     <p className="text-xs text-gray-600 mb-2">
                       <strong>1단계:</strong> Notion에서 데이터베이스를 생성하세요.
                       <br />
-                      <strong>2단계:</strong> 데이터베이스 페이지에서 우측 상단의 <strong>"연결"</strong> 또는 <strong>"Connect"</strong> 버튼을 클릭하고, <strong>"Flowgence"</strong> 통합을 선택하여 공유하세요.
+                      <strong>2단계:</strong> 데이터베이스 페이지에서 우측 상단의 <strong>&quot;연결&quot;</strong> 또는 <strong>&quot;Connect&quot;</strong> 버튼을 클릭하고, <strong>&quot;Flowgence&quot;</strong> 통합을 선택하여 공유하세요.
                       <br />
                       <strong>3단계:</strong> 데이터베이스 URL에서 ID를 복사하여 입력하세요.
                       <br />
