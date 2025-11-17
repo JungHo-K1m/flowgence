@@ -67,11 +67,12 @@ export async function mermaidToImage(
       },
     });
 
-    // 고유 ID 생성
-    const diagramId = `mermaid-diagram-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+    // 고유 ID 생성 (에러 핸들러에서도 사용 가능하도록 함수 스코프에 선언)
+    let diagramId = `mermaid-diagram-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+    let container: HTMLDivElement | null = null;
 
     // 임시 DOM 컨테이너 생성
-    const container = document.createElement("div");
+    container = document.createElement("div");
     container.style.position = "fixed";
     container.style.left = "0";
     container.style.top = "0";
@@ -107,12 +108,17 @@ export async function mermaidToImage(
     } catch (renderError) {
       console.error("Mermaid SVG 렌더링 실패:", renderError);
       // DOM 정리
-      if (container.parentNode) {
+      if (container && container.parentNode) {
         document.body.removeChild(container);
       }
       throw new Error(`Mermaid SVG 렌더링 실패: ${renderError instanceof Error ? renderError.message : String(renderError)}`);
     }
     
+    // container가 null이면 에러
+    if (!container) {
+      throw new Error("컨테이너 생성 실패");
+    }
+
     // SVG를 컨테이너에 삽입
     container.innerHTML = svg;
     
@@ -215,20 +221,44 @@ export async function mermaidToImage(
       dataUrlLength: dataUrl.length,
       dataUrlPreview: dataUrl.substring(0, 100),
       isValid: dataUrl.startsWith("data:image/png"),
+      startsWithDataImage: dataUrl.startsWith("data:image"),
     });
 
     // DOM에서 제거
-    if (container.parentNode) {
+    if (container && container.parentNode) {
       document.body.removeChild(container);
     }
 
     if (!dataUrl || !dataUrl.startsWith("data:image/")) {
+      console.error("❌ Mermaid 이미지 변환 결과가 올바르지 않습니다:", {
+        hasDataUrl: !!dataUrl,
+        dataUrlType: dataUrl?.substring(0, 20) || "없음",
+        startsWithDataImage: dataUrl?.startsWith("data:image") || false,
+      });
       throw new Error("이미지 변환 결과가 올바르지 않습니다.");
     }
 
+    console.log("✅ Mermaid 이미지 변환 성공!");
     return dataUrl;
   } catch (error) {
-    console.error("Mermaid 이미지 변환 오류:", error);
+    console.error("❌ Mermaid 이미지 변환 오류:", error);
+    if (error instanceof Error) {
+      console.error("에러 상세 정보:", {
+        message: error.message,
+        stack: error.stack,
+        name: error.name,
+      });
+    }
+    
+    // DOM 정리 (에러 발생 시에도)
+    try {
+      if (container && container.parentNode) {
+        document.body.removeChild(container);
+      }
+    } catch (cleanupError) {
+      console.warn("DOM 정리 중 오류:", cleanupError);
+    }
+    
     throw new Error(
       `Mermaid 다이어그램을 이미지로 변환하는데 실패했습니다: ${
         error instanceof Error ? error.message : String(error)

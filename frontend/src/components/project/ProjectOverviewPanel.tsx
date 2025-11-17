@@ -102,6 +102,7 @@ export function ProjectOverviewPanel({
     isLoading: internalIsLoading,
     error,
     updateOverview,
+    setOverviewDirectly,
   } = useProjectOverview();
 
   // 내부와 외부 로딩 상태를 병합
@@ -831,6 +832,20 @@ export function ProjectOverviewPanel({
                   </div>
                   <UserJourneyMermaidDiagram
                     steps={displayOverview.userJourney.steps}
+                    autoGenerateImage={true}
+                    onImageGenerated={(imageUrl) => {
+                      // 이미지 생성 완료 시 프로젝트 개요에 저장
+                      console.log("프로젝트 개요 - Mermaid 이미지 생성 완료");
+                      if (displayOverview && setOverviewDirectly) {
+                        const updatedOverview = {
+                          ...displayOverview,
+                          mermaidImage: imageUrl, // 이미지 URL을 프로젝트 개요에 추가
+                        };
+                        // 프로젝트 개요 state 업데이트 (이미지 포함)
+                        setOverviewDirectly(updatedOverview);
+                        console.log("프로젝트 개요 state에 이미지 저장 완료");
+                      }
+                    }}
                   />
                 </div>
 

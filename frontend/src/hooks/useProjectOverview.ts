@@ -35,6 +35,7 @@ interface ProjectOverview {
       requiredSkills?: string[];
     }>;
   };
+  mermaidImage?: string; // Mermaid 다이어그램 이미지 (Base64)
   estimation?: {
     totalCost: string;
     breakdown: {
