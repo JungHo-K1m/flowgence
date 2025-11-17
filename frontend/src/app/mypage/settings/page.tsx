@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useAuthContext } from "@/components/providers/AuthProvider";
 import { getNotionConnection, startNotionOAuth, disconnectNotion } from "@/lib/notionOAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useSearchParams } from "next/navigation";
 
-export default function Settings() {
+function SettingsContent() {
   const { user } = useAuthContext();
   const searchParams = useSearchParams();
   const [connection, setConnection] = useState<{
@@ -210,5 +210,27 @@ export default function Settings() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function Settings() {
+  return (
+    <Suspense fallback={
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">설정</h1>
+          <p className="text-gray-600 mt-1">계정 및 프로젝트 설정을 관리하세요</p>
+        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center py-8">
+              <div className="text-gray-500">로딩 중...</div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    }>
+      <SettingsContent />
+    </Suspense>
   );
 }
