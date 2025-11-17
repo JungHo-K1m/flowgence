@@ -236,17 +236,8 @@ export async function wireframeToImage(
   scale: number = 2,
 ): Promise<string> {
   try {
-    console.log("와이어프레임 이미지 변환 시작:", {
-      screenCount: wireframe.screens?.length || 0,
-      scale,
-    });
-
     // 와이어프레임을 HTML로 렌더링
     const wireframeHTML = renderWireframeToHTML(wireframe, scale);
-    console.log("와이어프레임 HTML 생성 완료:", {
-      htmlLength: wireframeHTML.length,
-      htmlPreview: wireframeHTML.substring(0, 200),
-    });
 
     // 임시 DOM 요소 생성
     const container = document.createElement("div");
@@ -266,7 +257,6 @@ export async function wireframeToImage(
 
     // DOM에 추가 (렌더링을 위해 필요)
     document.body.appendChild(container);
-    console.log("DOM 컨테이너 추가 완료");
 
     // DOM이 완전히 렌더링될 때까지 대기
     // requestAnimationFrame을 여러 번 호출하여 렌더링 완료 보장
@@ -298,34 +288,11 @@ export async function wireframeToImage(
       container.style.height = `${containerHeight}px`;
     }
 
-    console.log("컨테이너 크기:", {
-      width: containerWidth,
-      height: containerHeight,
-      scrollWidth: container.scrollWidth,
-      scrollHeight: container.scrollHeight,
-      offsetWidth: container.offsetWidth,
-      offsetHeight: container.offsetHeight,
-      computedWidth: computedStyle.width,
-      computedHeight: computedStyle.height,
-    });
-
     // 컨테이너 내부 요소 확인
     const childElements = container.querySelectorAll('*');
-    console.log("컨테이너 내부 요소 개수:", childElements.length);
 
-    // 이미지로 변환 (고해상도)
-    console.log("이미지 변환 시작...");
-    
     // 컨테이너가 실제로 렌더링되었는지 확인
     const hasContent = container.scrollHeight > 0 && container.scrollWidth > 0;
-    console.log("렌더링 확인:", {
-      hasContent,
-      scrollHeight: container.scrollHeight,
-      scrollWidth: container.scrollWidth,
-      offsetHeight: container.offsetHeight,
-      offsetWidth: container.offsetWidth,
-      innerHTML: container.innerHTML.substring(0, 200),
-    });
 
     if (!hasContent) {
       console.warn("컨테이너에 콘텐츠가 없습니다. 강제로 크기 설정...");
@@ -339,11 +306,6 @@ export async function wireframeToImage(
     const finalWidth = Math.max(container.scrollWidth, container.offsetWidth, 1200);
     const finalHeight = Math.max(container.scrollHeight, container.offsetHeight, 800);
 
-    console.log("최종 이미지 크기:", {
-      width: finalWidth,
-      height: finalHeight,
-    });
-
     const dataUrl = await toPng(container, {
       quality: 1.0,
       pixelRatio: Math.max(scale, 2), // 최소 2배 해상도 (고해상도)
@@ -351,12 +313,6 @@ export async function wireframeToImage(
       cacheBust: true, // 캐시 무효화
       width: finalWidth,
       height: finalHeight,
-    });
-
-    console.log("이미지 변환 완료:", {
-      dataUrlLength: dataUrl.length,
-      dataUrlPreview: dataUrl.substring(0, 100),
-      isValid: dataUrl.startsWith("data:image/png"),
     });
 
     // DOM에서 제거

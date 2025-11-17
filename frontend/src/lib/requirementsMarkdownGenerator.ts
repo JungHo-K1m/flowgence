@@ -244,10 +244,6 @@ export function generateRequirementsMarkdown(
   const mermaidDiagramSection = (() => {
     // 이미지가 있고 유효한 경우 이미지 사용
     if (mermaidImage && mermaidImage.startsWith('data:image')) {
-      console.log("마크다운 생성 - Mermaid 이미지 사용:", {
-        imageLength: mermaidImage.length,
-        imagePreview: mermaidImage.substring(0, 50),
-      });
       return [
         "### 사용자 여정 다이어그램",
         "",
@@ -260,7 +256,6 @@ export function generateRequirementsMarkdown(
     
     // 이미지가 없거나 유효하지 않은 경우 코드 블록 사용
     if (mermaidDiagramCode && mermaidDiagramCode.trim()) {
-      console.log("마크다운 생성 - Mermaid 코드 블록 사용 (이미지 없음)");
       return [
         "### 사용자 여정 다이어그램",
         "",

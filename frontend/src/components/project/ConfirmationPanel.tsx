@@ -240,25 +240,6 @@ export function ConfirmationPanel({
       }
     }
 
-    // 디버깅 로그 (개발 환경에서만)
-    if (process.env.NODE_ENV === 'development') {
-      console.log('ConfirmationPanel - 요구사항 데이터:', {
-        hasExtractedRequirements: !!extractedRequirements,
-        totalCountFromData: extractedRequirements.totalCount,
-        calculatedTotal,
-        finalTotalCount: totalCount,
-        mandatory,
-        recommended,
-        optional,
-        hasProjectOverview: !!projectOverview,
-        targetUsers,
-        estimatedDuration,
-        timelineDevelopment,
-        estimatedUsersValue,
-        durationValue,
-      });
-    }
-
     return {
       total: totalCount,
       mandatory,

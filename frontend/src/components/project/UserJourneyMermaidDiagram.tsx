@@ -46,7 +46,6 @@ export function UserJourneyMermaidDiagram({
     // 다이어그램이 렌더링될 시간을 주기 위해 약간의 지연
     const timer = setTimeout(async () => {
       try {
-        console.log("UserJourneyMermaidDiagram - 이미지 생성 시작");
         const imageUrl = await mermaidToImage(mermaidCode, {
           theme: "default",
           backgroundColor: "white",
@@ -54,7 +53,6 @@ export function UserJourneyMermaidDiagram({
         });
 
         if (imageUrl && imageUrl.startsWith("data:image")) {
-          console.log("UserJourneyMermaidDiagram - 이미지 생성 완료");
           imageGeneratedRef.current = true;
           onImageGenerated(imageUrl);
         } else {

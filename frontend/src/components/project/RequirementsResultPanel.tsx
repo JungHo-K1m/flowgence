@@ -204,11 +204,6 @@ export function RequirementsResultPanel({
       }
 
       // ref가 설정되었으면 이미지 생성 시작
-      console.log("와이어프레임 이미지 생성 시작:", {
-        screenCount: wireframe.screens.length,
-        hasWireframe: !!wireframe,
-        hasContainer: !!wireframeContainerRef.current,
-      });
       
       setIsGeneratingImage(true);
       setWireframeImageUrl(null); // 이전 이미지 초기화
@@ -246,13 +241,6 @@ export function RequirementsResultPanel({
           const width = container.scrollWidth || container.offsetWidth || 1200;
           const height = container.scrollHeight || container.offsetHeight || 800;
 
-          console.log("컨테이너 크기:", {
-            width,
-            height,
-            scrollWidth: container.scrollWidth,
-            scrollHeight: container.scrollHeight,
-          });
-
           // 이미지로 변환
           const dataUrl = await toPng(container, {
             quality: 1.0,
@@ -263,11 +251,6 @@ export function RequirementsResultPanel({
             height: height,
           });
 
-          console.log("와이어프레임 이미지 생성 성공:", {
-            imageUrlLength: dataUrl?.length || 0,
-            imageUrlPreview: dataUrl?.substring(0, 100),
-            isValid: dataUrl?.startsWith("data:image/"),
-          });
 
           // 로딩 오버레이 복원 (캡처 후)
           if (loadingOverlay) {
@@ -322,10 +305,6 @@ export function RequirementsResultPanel({
       let wireframeImage: string | undefined;
       if (wireframe && wireframeImageUrl) {
         wireframeImage = wireframeImageUrl;
-        console.log("PDF 생성 - 기존 와이어프레임 이미지 재사용");
-      } else if (wireframe) {
-        console.warn("PDF 생성 - 와이어프레임 이미지가 아직 생성되지 않았습니다. HTML 렌더링 사용");
-        // 이미지가 없으면 기존 HTML 렌더링 사용
       }
 
       // Mermaid 다이어그램 이미지 변환 (저장된 이미지 우선 사용)
@@ -333,71 +312,31 @@ export function RequirementsResultPanel({
       
       // 프로젝트 개요에 저장된 이미지가 있으면 사용
       if (projectOverview?.mermaidImage && projectOverview.mermaidImage.startsWith('data:image')) {
-        console.log("PDF 생성 - 저장된 Mermaid 이미지 사용");
         mermaidImage = projectOverview.mermaidImage;
       } else if (projectOverview?.userJourney?.steps && projectOverview.userJourney.steps.length > 0) {
         // 저장된 이미지가 없으면 새로 생성
-        console.log("PDF 생성 - Mermaid 이미지 변환 조건 확인:", {
-          hasProjectOverview: !!projectOverview,
-          hasUserJourney: !!projectOverview?.userJourney,
-          hasSteps: !!projectOverview?.userJourney?.steps,
-          stepsLength: projectOverview?.userJourney?.steps?.length || 0,
-        });
-        console.log("PDF 생성 - Mermaid 다이어그램 이미지 변환 시작");
         const mermaidCode = generateUserJourneyMermaidDefault(projectOverview.userJourney.steps);
         
-        console.log("PDF 생성 - Mermaid 코드 생성 완료:", {
-          codeLength: mermaidCode?.length || 0,
-          codePreview: mermaidCode?.substring(0, 100) || "없음",
-        });
-        
-        if (!mermaidCode || !mermaidCode.trim()) {
-          console.warn("PDF 생성 - Mermaid 코드가 비어있습니다.");
-        } else {
+        if (mermaidCode && mermaidCode.trim()) {
           // 최대 3번 재시도
           let retryCount = 0;
           const maxRetries = 3;
           
           while (retryCount <= maxRetries && !mermaidImage) {
             try {
-              console.log(`PDF 생성 - Mermaid 다이어그램 이미지 변환 시작 (시도 ${retryCount + 1}/${maxRetries + 1})`);
-              
               mermaidImage = await mermaidToImage(mermaidCode, {
                 theme: "default",
                 backgroundColor: "white",
                 scale: 2, // 고해상도
               });
               
-              console.log("PDF 생성 - mermaidToImage 반환값:", {
-                hasImage: !!mermaidImage,
-                imageType: mermaidImage?.substring(0, 30) || "없음",
-                imageLength: mermaidImage?.length || 0,
-                startsWithDataImage: mermaidImage?.startsWith('data:image') || false,
-              });
-              
               if (mermaidImage && mermaidImage.startsWith('data:image')) {
-                console.log("✅ PDF 생성 - Mermaid 다이어그램 이미지 변환 완료", {
-                  imageLength: mermaidImage.length,
-                  imageType: mermaidImage.substring(0, 30),
-                  retryCount,
-                });
                 break; // 성공하면 루프 종료
               } else {
-                console.warn("PDF 생성 - Mermaid 이미지 변환 결과가 유효하지 않습니다:", {
-                  hasImage: !!mermaidImage,
-                  imageType: mermaidImage?.substring(0, 30),
-                  retryCount,
-                });
                 mermaidImage = undefined; // 유효하지 않은 이미지는 undefined로 설정
               }
             } catch (mermaidError) {
-              console.error(`❌ PDF 생성 - Mermaid 다이어그램 이미지 변환 실패 (시도 ${retryCount + 1}):`, mermaidError);
-              if (mermaidError instanceof Error) {
-                console.error("에러 상세:", {
-                  message: mermaidError.message,
-                  stack: mermaidError.stack,
-                });
-              }
+              console.error(`PDF 생성 - Mermaid 다이어그램 이미지 변환 실패 (시도 ${retryCount + 1}):`, mermaidError);
               mermaidImage = undefined;
             }
             
@@ -405,24 +344,10 @@ export function RequirementsResultPanel({
             
             // 재시도 전 대기
             if (retryCount <= maxRetries && !mermaidImage) {
-              console.log(`재시도 전 대기 중... (${retryCount * 500}ms)`);
               await new Promise((resolve) => setTimeout(resolve, retryCount * 500));
             }
           }
-          
-          if (!mermaidImage) {
-            console.warn("⚠️ PDF 생성 - Mermaid 이미지 변환 최종 실패, 코드 블록으로 대체됩니다.");
-          } else {
-            console.log("✅ PDF 생성 - Mermaid 이미지 변환 성공, 이미지 사용");
-          }
         }
-      } else {
-        console.warn("PDF 생성 - Mermaid 이미지 변환 조건 불만족:", {
-          hasProjectOverview: !!projectOverview,
-          hasUserJourney: !!projectOverview?.userJourney,
-          hasSteps: !!projectOverview?.userJourney?.steps,
-          stepsLength: projectOverview?.userJourney?.steps?.length || 0,
-        });
       }
 
       // TODO: 나중에 다시 확인 - PDF에 이미지 표시 부분 주석처리
@@ -1171,14 +1096,8 @@ export function RequirementsResultPanel({
                             alt="와이어프레임 미리보기"
                             className="w-full h-auto border border-gray-300 rounded-lg shadow-lg"
                             style={{ maxWidth: "100%", height: "auto", display: "block" }}
-                            onLoad={(e) => {
-                              const img = e.currentTarget;
-                              console.log("와이어프레임 이미지 로드 완료:", {
-                                naturalWidth: img.naturalWidth,
-                                naturalHeight: img.naturalHeight,
-                                width: img.width,
-                                height: img.height,
-                              });
+                            onLoad={() => {
+                              // 이미지 로드 완료
                             }}
                             onError={(e) => {
                               console.error("와이어프레임 이미지 로드 실패:", e);

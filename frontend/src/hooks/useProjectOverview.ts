@@ -83,20 +83,11 @@ export const useProjectOverview = () => {
   const generateOverview = useCallback(async (input: ProjectInput, messages: ChatMessage[] = []) => {
     // 중복 호출 방지: 요청 해시 생성
     const requestHash = JSON.stringify({ input, messages });
-    console.log('요청 해시 비교:', { 
-      requestHash: requestHash.substring(0, 100) + '...', 
-      lastRequestHash: lastRequestHashRef.current.substring(0, 100) + '...', 
-      isSame: requestHash === lastRequestHashRef.current,
-      isRequestInProgress
-    });
     
     // 이미 같은 요청이 완료된 경우 방지
     if (requestHash === lastRequestHashRef.current && overview) {
-      console.log('중복 요청 방지:', requestHash.substring(0, 100) + '...');
       return;
     }
-
-    console.log('새로운 API 호출 시작:', { input, messagesCount: messages.length });
     
     // 요청 시작 전에 즉시 상태 업데이트
     setIsRequestInProgress(true);
@@ -108,11 +99,6 @@ export const useProjectOverview = () => {
       // Railway 백엔드로 직접 요청
       const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
       const requestUrl = `${backendUrl}/chat/message`;
-      
-      console.log('=== API 요청 시작 ===');
-      console.log('요청 URL:', requestUrl);
-      console.log('Origin:', window.location.origin);
-      console.log('Request Headers:', { 'Content-Type': 'application/json' });
       
       const response = await fetch(requestUrl, {
         method: 'POST',
@@ -132,10 +118,6 @@ export const useProjectOverview = () => {
         })
       });
       
-      console.log('=== API 응답 수신 ===');
-      console.log('응답 상태:', response.status);
-      console.log('응답 Headers:', Object.fromEntries(response.headers.entries()));
-      
       if (!response.ok) {
         const errorData = await response.json();
         console.error('API 오류 응답:', errorData);
@@ -143,20 +125,10 @@ export const useProjectOverview = () => {
       }
       
       const data = await response.json();
-      console.log('API 응답 데이터:', data);
-      console.log('=== useProjectOverview 훅에서 overview 설정 ===');
-      console.log('설정할 overview 데이터:', data.projectOverview);
-      console.log('projectOverview 타입:', typeof data.projectOverview);
-      console.log('projectOverview가 null인가?', data.projectOverview === null);
-      console.log('projectOverview가 빈 객체인가?', 
-        data.projectOverview && typeof data.projectOverview === 'object' && 
-        Object.keys(data.projectOverview).length === 0
-      );
       
       // projectOverview가 빈 객체인 경우 null로 처리
       if (data.projectOverview && typeof data.projectOverview === 'object' && 
           Object.keys(data.projectOverview).length === 0) {
-        console.warn('⚠️ projectOverview가 빈 객체입니다. null로 처리합니다.');
         data.projectOverview = null;
       }
       
@@ -212,9 +184,6 @@ export const useProjectOverview = () => {
         setAiMessage(data.aiMessage.content);
         lastAiMessageRef.current = data.aiMessage.content;
       }
-      
-      console.log('overview 상태 설정 완료');
-      console.log('===============================================');
     } catch (err) {
       console.error('프로젝트 개요 생성 오류:', err);
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
