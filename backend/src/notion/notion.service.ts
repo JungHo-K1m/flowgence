@@ -175,7 +175,12 @@ export class NotionService {
    */
   private encryptState(userId: string): string {
     const secret = this.configService.get<string>('NOTION_OAUTH_STATE_SECRET') || 'default-secret';
-    const cipher = crypto.createCipher('aes-256-cbc', secret);
+    // secret을 32바이트 키로 변환 (간단한 해시 사용)
+    const key = crypto.createHash('sha256').update(secret).digest();
+    // 고정 IV 사용 (실제로는 랜덤 IV를 사용하고 함께 저장해야 함)
+    const iv = Buffer.alloc(16, 0); // 16바이트 0으로 채운 IV
+    
+    const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
     let encrypted = cipher.update(userId, 'utf8', 'hex');
     encrypted += cipher.final('hex');
     return encrypted;
@@ -187,7 +192,12 @@ export class NotionService {
   async extractUserIdFromState(state: string): Promise<string | null> {
     try {
       const secret = this.configService.get<string>('NOTION_OAUTH_STATE_SECRET') || 'default-secret';
-      const decipher = crypto.createDecipher('aes-256-cbc', secret);
+      // secret을 32바이트 키로 변환 (간단한 해시 사용)
+      const key = crypto.createHash('sha256').update(secret).digest();
+      // 고정 IV 사용 (암호화 시 사용한 것과 동일)
+      const iv = Buffer.alloc(16, 0); // 16바이트 0으로 채운 IV
+      
+      const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
       let decrypted = decipher.update(state, 'hex', 'utf8');
       decrypted += decipher.final('utf8');
       return decrypted;

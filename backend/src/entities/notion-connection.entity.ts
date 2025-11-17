@@ -40,7 +40,7 @@ export class NotionConnection {
   connectedAt: Date;
 
   @Column({ name: 'expires_at', type: 'timestamp with time zone', nullable: true })
-  expiresAt: Date;
+  expiresAt: Date | null;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
