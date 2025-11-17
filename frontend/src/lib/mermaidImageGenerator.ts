@@ -29,6 +29,10 @@ export async function mermaidToImage(
     throw new Error("Mermaid 코드가 비어있습니다.");
   }
 
+  // 함수 스코프에 선언 (에러 핸들러에서도 접근 가능하도록)
+  const diagramId = `mermaid-diagram-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+  let container: HTMLDivElement | null = null;
+
   try {
     console.log("Mermaid 이미지 변환 시작:", {
       codeLength: mermaidCode.length,
@@ -66,10 +70,6 @@ export async function mermaidToImage(
         useMaxWidth: true,
       },
     });
-
-    // 고유 ID 생성 (에러 핸들러에서도 사용 가능하도록 함수 스코프에 선언)
-    const diagramId = `mermaid-diagram-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-    let container: HTMLDivElement | null = null;
 
     // 임시 DOM 컨테이너 생성
     container = document.createElement("div");
