@@ -34,7 +34,7 @@ export class NotionConnection {
   botId: string;
 
   @Column({ name: 'database_id', type: 'text', nullable: true })
-  databaseId: string;
+  databaseId: string | null;
 
   @Column({ name: 'connected_at', type: 'timestamp with time zone', default: () => 'CURRENT_TIMESTAMP' })
   connectedAt: Date;
