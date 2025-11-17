@@ -163,13 +163,11 @@ function HomePageContent() {
       return;
     }
 
-    // 세션 복원
-    const sessionData = restoreSession();
-    if (sessionData) {
-      hasRestoredSession.current = true;
-      isRestoring.current = true;
-
-      console.log("세션 복원 시작:", sessionData.sessionId);
+      // 세션 복원
+      const sessionData = restoreSession();
+      if (sessionData) {
+        hasRestoredSession.current = true;
+        isRestoring.current = true;
 
       // 상태 복원
       setProjectDescription(sessionData.projectDescription);
@@ -193,10 +191,6 @@ function HomePageContent() {
 
       // 파일 메타데이터 복원 (실제 File 객체는 복원 불가, 사용자에게 재업로드 안내 필요)
       if (sessionData.uploadedFiles && sessionData.uploadedFiles.length > 0) {
-        console.log(
-          "파일 정보 복원됨:",
-          sessionData.uploadedFiles.map((f) => f.name).join(", ")
-        );
         // File 객체는 복원할 수 없으므로 fileNamesDisplay만 복원됨
         // 필요시 파일 재업로드 안내 메시지 표시 가능
       }
@@ -217,8 +211,6 @@ function HomePageContent() {
       setTimeout(() => {
         isRestoring.current = false;
       }, 500);
-
-      console.log("세션 복원 완료");
     }
   }, [searchParams, restoreSession, updateOverview, updateExtractedRequirements]);
 
@@ -252,14 +244,12 @@ function HomePageContent() {
       if (resumeData) {
         try {
           const projectData = JSON.parse(resumeData);
-          console.log("프로젝트 복구 시작 (이어서 작업하기):", projectData);
 
           const step = parseInt(targetStep);
 
           // 프로젝트 ID 설정 (요구사항 편집 시 저장을 위해 필수)
           if (projectData.projectId) {
             setSavedProjectId(projectData.projectId);
-            console.log("프로젝트 ID 설정됨:", projectData.projectId);
           }
 
           // 공통 복원 로직 사용
@@ -281,18 +271,10 @@ function HomePageContent() {
 
           // 프로젝트 개요가 없으면 DB에서 다시 조회
           if (!projectData.overview && projectData.projectId) {
-            console.log("프로젝트 개요가 없어서 DB에서 다시 조회:", projectData.projectId);
             getProjectData(projectData.projectId)
               .then((data) => {
                 if (data?.project?.project_overview && setOverviewDirectly) {
-                  console.log("DB에서 프로젝트 개요 조회 성공:", {
-                    hasOverview: !!data.project.project_overview,
-                    targetUsers: data.project.project_overview?.serviceCoreElements?.targetUsers,
-                    estimatedDuration: data.project.project_overview?.serviceCoreElements?.estimatedDuration,
-                  });
                   setOverviewDirectly(data.project.project_overview);
-                } else {
-                  console.log("DB에서 프로젝트 개요를 찾을 수 없음");
                 }
               })
               .catch((error) => {
@@ -302,7 +284,6 @@ function HomePageContent() {
 
           // 복구 완료 후 sessionStorage 정리
           sessionStorage.removeItem("flowgence_resume_project");
-          console.log("프로젝트 복구 완료 (이어서 작업하기)");
         } catch (error) {
           console.error("프로젝트 복구 실패:", error);
         }
@@ -452,13 +433,11 @@ function HomePageContent() {
         .order("updated_at", { ascending: false })
         .limit(5);
       if (error) throw error;
-      console.log("최근 작업 조회 결과:", data);
       const items = (data || []).map((p: any) => ({
         id: p.id,
         title: p.title || "제목 없음",
         updatedAt: p.updated_at,
       }));
-      console.log("최근 작업 목록:", items);
       setRecentProjects(items);
       hasLoadedRecent.current = true;
     } catch (e) {
@@ -483,13 +462,6 @@ function HomePageContent() {
   // 편집된 요구사항을 DB에 저장
   const saveEditedRequirements = useCallback(
     async (updatedRequirements: ExtractedRequirements) => {
-      console.log("=== 프로젝트 개요 저장 시점 2: 요구사항 편집 후 저장 시 ===");
-      console.log("saveEditedRequirements 호출:", {
-        savedProjectId,
-        requirementsCount: updatedRequirements.totalCount,
-        hasOverview: !!overview,
-        overviewType: typeof overview,
-      });
 
       if (!savedProjectId) {
         console.warn("⚠️ 저장된 프로젝트 ID가 없습니다. DB 저장을 건너뜁니다.", {
@@ -500,86 +472,37 @@ function HomePageContent() {
       }
 
       try {
-        console.log("편집된 요구사항 DB 저장 시작:", {
-          savedProjectId,
-          categoriesCount: updatedRequirements.categories?.length,
-          totalCount: updatedRequirements.totalCount,
-          requirementsData: updatedRequirements,
-        });
-
         // 1. 요구사항 저장
-        console.log("💾 요구사항 저장 시작:", {
-          projectId: savedProjectId,
-          requirementsCount: updatedRequirements.totalCount,
-        });
         const result = await saveRequirements(
           savedProjectId,
           updatedRequirements
         );
 
         if (result.status === "success") {
-          console.log("✅ 요구사항 DB 저장 성공:", {
-            status: result.status,
-            message: result.message,
-          });
-
           // 2. 프로젝트 개요도 함께 저장
-          console.log("=== 프로젝트 개요 저장 확인 ===");
-          console.log("현재 overview state:", {
-            hasOverview: !!overview,
-            overviewType: typeof overview,
-            overviewValue: overview,
-            overviewKeys: overview ? Object.keys(overview) : [],
-          });
 
           // 현재 overview state가 있으면 사용하고, 없으면 DB에서 조회
           let overviewToSave = overview;
           if (!overviewToSave && savedProjectId) {
             try {
-              console.log("⚠️ overview state가 없어서 DB에서 조회:", savedProjectId);
               const projectData = await getProjectData(savedProjectId);
               if (projectData?.project?.project_overview) {
                 overviewToSave = projectData.project.project_overview;
-                console.log("✅ DB에서 overview 조회 성공:", {
-                  hasOverview: !!overviewToSave,
-                  overviewType: typeof overviewToSave,
-                  overviewKeys: overviewToSave ? Object.keys(overviewToSave) : [],
-                  targetUsers: overviewToSave?.serviceCoreElements?.targetUsers,
-                  estimatedDuration: overviewToSave?.serviceCoreElements?.estimatedDuration,
-                });
                 // 조회한 overview를 state에도 설정
                 if (setOverviewDirectly) {
-                  console.log("📝 조회한 overview를 state에 설정");
                   setOverviewDirectly(overviewToSave);
                 }
               } else {
-                console.warn("⚠️ DB에서도 프로젝트 개요를 찾을 수 없음");
+                console.warn("DB에서도 프로젝트 개요를 찾을 수 없음");
               }
             } catch (fetchError) {
-              console.error("❌ DB에서 overview 조회 실패:", fetchError);
+              console.error("DB에서 overview 조회 실패:", fetchError);
             }
-          } else if (overviewToSave) {
-            console.log("✅ overview state 사용:", {
-              targetUsers: overviewToSave?.serviceCoreElements?.targetUsers,
-              estimatedDuration: overviewToSave?.serviceCoreElements?.estimatedDuration,
-            });
           }
 
           if (overviewToSave) {
             try {
-              console.log("📋 updateProjectOverview 호출:", {
-                projectId: savedProjectId,
-                hasOverview: !!overviewToSave,
-                overviewType: typeof overviewToSave,
-                targetUsers: overviewToSave?.serviceCoreElements?.targetUsers,
-                estimatedDuration: overviewToSave?.serviceCoreElements?.estimatedDuration,
-                overviewKeys: Object.keys(overviewToSave),
-              });
-              const updateResult = await updateProjectOverview(savedProjectId, overviewToSave);
-              console.log("✅ 프로젝트 개요 저장 성공:", {
-                projectId: savedProjectId,
-                updatedProject: updateResult,
-              });
+              await updateProjectOverview(savedProjectId, overviewToSave);
             } catch (overviewError) {
               console.error("❌ 프로젝트 개요 저장 실패:", {
                 error: overviewError,
@@ -630,12 +553,8 @@ function HomePageContent() {
     }) => {
       // UI 편집 모드가 아닐 때만 채팅 업데이트 진행
       if (isEditingMode) {
-        console.log("UI 편집 모드 중 - 채팅 업데이트 건너뜀");
         return;
       }
-
-      console.log("프로젝트 개요 업데이트 트리거:", data);
-      console.log("updateOverview 함수 호출 시작");
 
       // 채팅 편집 모드 시작
       setIsEditingMode(true);
@@ -665,7 +584,6 @@ function HomePageContent() {
           },
           data.messages
         );
-        console.log("updateOverview 함수 호출 완료");
       } catch (error) {
         console.error("프로젝트 개요 업데이트 실패:", error);
         const errorMessage =
@@ -687,12 +605,6 @@ function HomePageContent() {
       // 2. 요구사항이 이미 추출되어 있다면 업데이트
       const currentRequirements = editableRequirements || extractedRequirements;
       if (currentRequirements && savedProjectId) {
-        console.log("요구사항 업데이트 시작");
-        console.log("현재 요구사항 상태:", {
-          hasEditableRequirements: !!editableRequirements,
-          hasExtractedRequirements: !!extractedRequirements,
-          totalCount: currentRequirements.totalCount,
-        });
 
         try {
           // API 요청 시에는 사용자 코멘트 + 파일 내용을 포함
@@ -730,7 +642,6 @@ function HomePageContent() {
 
           // DB에 저장
           await saveEditedRequirements(updatedRequirements);
-          console.log("요구사항 업데이트 및 저장 완료");
         } catch (error) {
           console.error("요구사항 업데이트 실패:", error);
           const errorMessage =
@@ -978,7 +889,6 @@ function HomePageContent() {
 
         setEditableRequirements(updatedRequirements);
         await saveEditedRequirements(updatedRequirements);
-        console.log("비기능 요구사항 추가 완료:", nfrId);
       } catch (error) {
         console.error("비기능 요구사항 추가 실패:", error);
         throw error;
@@ -1017,7 +927,6 @@ function HomePageContent() {
 
         setEditableRequirements(updatedRequirements);
         await saveEditedRequirements(updatedRequirements);
-        console.log("비기능 요구사항 편집 완료:", nfrId);
       } catch (error) {
         console.error("비기능 요구사항 편집 실패:", error);
         throw error;
@@ -1041,7 +950,6 @@ function HomePageContent() {
 
         setEditableRequirements(updatedRequirements);
         await saveEditedRequirements(updatedRequirements);
-        console.log("비기능 요구사항 삭제 완료:", nfrId);
       } catch (error) {
         console.error("비기능 요구사항 삭제 실패:", error);
         throw error;
@@ -1198,26 +1106,10 @@ function HomePageContent() {
             }
           });
 
-          console.log(
-            "편집 처리 시작 - requirementIndexMap (삭제 후 재생성):",
-            requirementIndexMap
-          );
-          console.log(
-            "편집 처리 시작 - updatedFlatList (원본):",
-            updatedFlatList
-          );
-          console.log(
-            "편집 처리 시작 - uniqueUpdatedList (중복 제거 후):",
-            Array.from(uniqueUpdatedList.values())
-          );
 
           // 4) 업데이트/추가 처리
           uniqueUpdatedList.forEach((item) => {
             const found = item.id && requirementIndexMap.get(item.id);
-            console.log(
-              `요구사항 처리: ${item.title}, ID: ${item.id}, found:`,
-              found
-            );
             if (found) {
               const { subIndex, reqIndex } = found;
               const prev =
@@ -1282,11 +1174,6 @@ function HomePageContent() {
                       priority: item.priority || req.priority || "medium",
                     };
                     existingRequirementFound = true;
-                    console.log(
-                      `제목 매칭으로 찾은 요구사항 업데이트: ${
-                        item.title
-                      }, ID: ${item.id || req.id}`
-                    );
                     break;
                   }
                 }
@@ -1295,11 +1182,6 @@ function HomePageContent() {
 
               // 기존 요구사항을 찾지 못한 경우에만 새로 추가
               if (!existingRequirementFound) {
-                console.log(
-                  `새로운 요구사항 추가: ${item.title}, ID: ${
-                    item.id || "없음"
-                  }`
-                );
                 if (newSubCategories.length === 0) {
                   newSubCategories.push({
                     subcategory: "기본",
@@ -1363,7 +1245,6 @@ function HomePageContent() {
       // 변경사항을 즉시 DB에 저장 (낙관적 업데이트)
       try {
         await saveEditedRequirements(next);
-        console.log("편집 완료 - 업데이트된 요구사항:", next);
       } catch (error) {
         console.error("편집된 요구사항 저장 실패:", error);
         // 저장 실패해도 UI는 업데이트된 상태 유지 (낙관적 업데이트)
@@ -1416,7 +1297,6 @@ function HomePageContent() {
         showFinalResult;
 
       if (hasState) {
-        console.log("로그아웃 감지 - 상태 초기화");
         setShowChatInterface(false);
         setShowRequirements(false);
         setShowConfirmation(false);
@@ -1545,7 +1425,6 @@ function HomePageContent() {
                 result?.error || "알 수 없는 오류가 발생했습니다";
               console.error("로그인 후 상태 이전 실패:", errorMessage);
               // 실패해도 기본 상태 복원은 진행 (로그인은 성공했으므로)
-              console.log("기본 상태 복원 시도");
               const { projectData, targetStep: savedTargetStep } = tempState;
 
               const stepToMove = parseInt(
@@ -1574,7 +1453,6 @@ function HomePageContent() {
 
               // 기본 복원 완료 플래그 설정
               hasRestoredState.current = true;
-              console.log("기본 상태 복원 완료 (공통 로직 사용)");
             }
           } catch (error) {
             console.error("로그인 후 상태 복원 중 오류:", error);
@@ -1607,8 +1485,6 @@ function HomePageContent() {
           }
         } else if (targetStep) {
           // tempState가 없지만 URL 파라미터가 있는 경우만 단계 이동
-          console.log("tempState 없음 - URL 파라미터로 단계 이동");
-
           const stepToMove = parseInt(String(targetStep));
 
           // 공통 복원 로직 사용 (데이터 없이 단계만 이동)
@@ -1623,20 +1499,10 @@ function HomePageContent() {
             setShowFinalResult,
           });
 
-          // 요구사항이 없으면 추출 실행 (별도 useEffect에서 처리)
-          if (
-            stepToMove === 2 &&
-            !extractedRequirements &&
-            !editableRequirements
-          ) {
-            console.log("요구사항 없음 - 추출 필요");
-          }
-
           // URL 파라미터 복원 완료 플래그 설정
           hasRestoredState.current = true;
         } else {
           // tempState도 없고 URL 파라미터도 없으면 아무것도 하지 않음
-          console.log("복원할 상태 없음 - 초기 페이지 유지");
           hasRestoredState.current = true;
         }
       }
@@ -1714,13 +1580,10 @@ function HomePageContent() {
 
   useEffect(() => {
     const handleRequirementsExtraction = async () => {
-      // 로그인 유도 후 로그인한 사용자는 이미 복구되었으므로 API 요청하지 않음
-      if (user && hasTempState) {
-        console.log(
-          "로그인 유도 후 로그인한 사용자 - 복구 완료, API 요청 생략"
-        );
-        return;
-      }
+        // 로그인 유도 후 로그인한 사용자는 이미 복구되었으므로 API 요청하지 않음
+        if (user && hasTempState) {
+          return;
+        }
 
       // 2단계이고 요구사항이 없고 아직 추출하지 않았으면 추출 실행
       if (
@@ -1731,7 +1594,6 @@ function HomePageContent() {
         !hasExtractedRequirements.current &&
         !isRequirementsLoading
       ) {
-        console.log("요구사항 추출 시작");
         hasExtractedRequirements.current = true;
         setIsRequirementsLoading(true);
 
@@ -1790,7 +1652,6 @@ function HomePageContent() {
             if (user && savedProjectId) {
               try {
                 await saveRequirements(savedProjectId, enrichedRequirements);
-                console.log("요구사항 저장 완료");
               } catch (error) {
                 console.error("요구사항 저장 실패:", error);
               }
@@ -1924,11 +1785,6 @@ function HomePageContent() {
     // description이나 serviceType이 있으면 초기화
     if (queryDescription || queryServiceType) {
       hasInitializedFromQuery.current = true;
-      console.log("외부 URL 쿼리로 프로젝트 초기화:", {
-        description: queryDescription,
-        serviceType: queryServiceType,
-        autoStart,
-      });
 
       // 프로젝트 설명 설정
       if (queryDescription) {
@@ -1942,7 +1798,6 @@ function HomePageContent() {
 
       // autoStart가 true이면 자동으로 시작
       if (autoStart === "true" || autoStart === "1") {
-        console.log("자동 시작 옵션 활성화");
         // 약간의 지연 후 자동 시작 (상태 업데이트 완료 대기)
         setTimeout(() => {
           handleStart();
@@ -2011,11 +1866,6 @@ function HomePageContent() {
       setTimeout(() => {
         setFileProcessingMessage("");
       }, 2000);
-      
-      console.log("파일 처리 완료:", {
-        fileCount: files.length,
-        extractedLength: extractedContent.length,
-      });
     } catch (error) {
       console.error("파일 처리 실패:", error);
       setFileProcessingError(
@@ -2156,7 +2006,6 @@ function HomePageContent() {
     if (currentStep === 1) {
       // 중복 호출 방지
       if (isProcessingStep1To2.current) {
-        console.log("1단계 → 2단계 전환 중복 호출 방지");
         return;
       }
       
@@ -2164,16 +2013,6 @@ function HomePageContent() {
 
       // 1단계에서 2단계로 넘어갈 때는 로그인 없이 진행 가능
       isProcessingStep1To2.current = true;
-      
-      console.log("=== 1단계 → 2단계 전환 시작 ===");
-      console.log("현재 overview state (전환 시작 시점):", {
-        hasOverview: !!overview,
-        overviewType: typeof overview,
-        overviewValue: overview,
-        overviewKeys: overview ? Object.keys(overview) : [],
-        targetUsers: overview?.serviceCoreElements?.targetUsers,
-        estimatedDuration: overview?.serviceCoreElements?.estimatedDuration,
-      });
       
       // 세션 자동 저장 임시 중지 (전환 완료 후 재개)
       stopAutoSave();
@@ -2184,8 +2023,6 @@ function HomePageContent() {
       setIsRequirementsLoading(true);
 
       try {
-        console.log("1단계 → 2단계 전환: 요구사항 추출 시작");
-
         // 2. 요구사항 추출 (로그인 없이도 가능)
         // API 요청 시에는 사용자 코멘트 + 파일 내용을 포함 (UI에는 파일명만 표시되지만 API에는 전체 내용 전송)
         const descriptionWithFileContents = (() => {
@@ -2215,22 +2052,9 @@ function HomePageContent() {
           }))
         );
 
-        console.log("요구사항 추출 완료:", requirements);
-        console.log("=== 프로젝트 개요 저장 시점 1: 1단계 → 2단계 전환 시 ===");
-        console.log("현재 overview state (요구사항 추출 후):", {
-          hasOverview: !!overview,
-          overviewType: typeof overview,
-          overviewValue: overview,
-          overviewKeys: overview ? Object.keys(overview) : [],
-          targetUsers: overview?.serviceCoreElements?.targetUsers,
-          estimatedDuration: overview?.serviceCoreElements?.estimatedDuration,
-          serviceCoreElementsKeys: overview?.serviceCoreElements ? Object.keys(overview.serviceCoreElements) : [],
-        });
-
         // 프로젝트 개요가 없으면 요구사항에서 기본 정보 추출하여 생성
         let overviewToSave = overview;
         if (!overviewToSave && requirements) {
-          console.log("⚠️ 프로젝트 개요가 없어서 요구사항에서 기본 정보 추출");
           // 요구사항에서 기본 정보 추출
           const categories = requirements.categories || [];
           const allRequirements = categories.flatMap((cat: RequirementCategory) => 
@@ -2252,26 +2076,14 @@ function HomePageContent() {
               steps: [],
             },
           };
-          console.log("✅ 기본 프로젝트 개요 생성 완료:", {
-            overview: overviewToSave,
-            targetUsers: overviewToSave.serviceCoreElements.targetUsers,
-            estimatedDuration: overviewToSave.serviceCoreElements.estimatedDuration,
-          });
           // state에도 설정
           if (setOverviewDirectly) {
-            console.log("📝 overview state에 직접 설정");
             setOverviewDirectly(overviewToSave);
           }
-        } else {
-          console.log("✅ 기존 overview 사용:", {
-            targetUsers: overviewToSave?.serviceCoreElements?.targetUsers,
-            estimatedDuration: overviewToSave?.serviceCoreElements?.estimatedDuration,
-          });
         }
 
         // 로그인된 사용자만 프로젝트 데이터 저장
         if (user) {
-          console.log("=== 로그인된 사용자: 프로젝트 저장 시작 ===");
           // 3. 프로젝트 데이터 저장 (프로젝트 개요 포함)
           const projectData = {
             title: projectDescription.substring(0, 100),
@@ -2280,12 +2092,6 @@ function HomePageContent() {
             project_overview: overviewToSave, // 프로젝트 개요 포함 (없으면 기본값)
             uploadedFiles,
           };
-          console.log("📦 저장할 projectData:", {
-            title: projectData.title,
-            hasProjectOverview: !!projectData.project_overview,
-            projectOverviewType: typeof projectData.project_overview,
-            projectOverviewKeys: projectData.project_overview ? Object.keys(projectData.project_overview) : [],
-          });
 
           const messages = chatMessages.map((msg) => ({
             role: (msg.type === "user" ? "user" : "assistant") as
@@ -2298,67 +2104,26 @@ function HomePageContent() {
             },
           }));
 
-          console.log("💾 saveProjectWithMessages 호출 시작:", {
-            hasOverview: !!overviewToSave,
-            hasOriginalOverview: !!overview,
-            overviewType: typeof overviewToSave,
-            overviewValue: overviewToSave,
-            overviewKeys: overviewToSave ? Object.keys(overviewToSave) : [],
-            targetUsers: overviewToSave?.serviceCoreElements?.targetUsers,
-            estimatedDuration: overviewToSave?.serviceCoreElements?.estimatedDuration,
-            projectDataOverview: projectData.project_overview,
-          });
           const projectResult = await saveProjectWithMessages(
             projectData,
             messages
           );
-          console.log("✅ saveProjectWithMessages 완료:", {
-            status: projectResult.status,
-            projectId: projectResult.project_id,
-            message: projectResult.message,
-          });
 
           if (projectResult.status === "success") {
-            console.log("✅ 프로젝트 저장 성공:", projectResult.project_id);
             setSavedProjectId(projectResult.project_id);
 
             // 프로젝트 개요가 있으면 명시적으로도 저장 (saveProjectWithMessages가 저장하지만, 확실히 하기 위해)
             if (overviewToSave) {
               try {
-                console.log("=== 프로젝트 개요 명시적 저장 시작 ===");
-                console.log("📋 updateProjectOverview 호출:", {
-                  projectId: projectResult.project_id,
-                  hasOverview: !!overviewToSave,
-                  overviewType: typeof overviewToSave,
-                  targetUsers: overviewToSave?.serviceCoreElements?.targetUsers,
-                  estimatedDuration: overviewToSave?.serviceCoreElements?.estimatedDuration,
-                  overviewKeys: Object.keys(overviewToSave),
-                });
-                const updateResult = await updateProjectOverview(projectResult.project_id, overviewToSave);
-                console.log("✅ 프로젝트 개요 명시적 저장 성공:", {
-                  projectId: projectResult.project_id,
-                  updatedProject: updateResult,
-                });
+                await updateProjectOverview(projectResult.project_id, overviewToSave);
               } catch (overviewError) {
-                console.error("❌ 프로젝트 개요 명시적 저장 실패:", {
-                  error: overviewError,
-                  projectId: projectResult.project_id,
-                  hasOverview: !!overviewToSave,
-                });
+                console.error("프로젝트 개요 명시적 저장 실패:", overviewError);
                 // 개요 저장 실패해도 계속 진행 (saveProjectWithMessages에서 이미 저장했을 수 있음)
               }
-            } else {
-              console.warn("⚠️ 프로젝트 개요가 없어서 저장하지 않습니다:", {
-                hasOriginalOverview: !!overview,
-                hasOverviewToSave: !!overviewToSave,
-                projectId: projectResult.project_id,
-              });
             }
 
             // 4. 요구사항 저장
             if (requirements) {
-              console.log("요구사항 저장 시작");
-              
               // 요구사항 데이터 보강 (요청자 및 날짜 추가)
               const currentDate = new Date().toISOString();
               const requesterName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || '익명';
@@ -2384,7 +2149,6 @@ function HomePageContent() {
               );
 
               if (requirementsResult.status === "success") {
-                console.log("요구사항 저장 성공");
                 setEditableRequirements(enrichedRequirements);
               } else {
                 console.error(
@@ -2396,11 +2160,9 @@ function HomePageContent() {
           } else {
             console.error("프로젝트 저장 실패:", projectResult.message);
           }
-        } else {
-          // 로그인하지 않은 사용자는 로컬 상태로만 저장
-          console.log("로그인하지 않은 사용자: 로컬 상태로만 저장");
-          
-          // 요구사항 데이터 보강 (요청자 및 날짜 추가)
+          } else {
+            // 로그인하지 않은 사용자는 로컬 상태로만 저장
+            // 요구사항 데이터 보강 (요청자 및 날짜 추가)
           const currentDate = new Date().toISOString();
           const requesterName = '익명';
           
@@ -2472,10 +2234,9 @@ function HomePageContent() {
       }
     } else if (currentStep === 2) {
       // 2단계에서 3단계로 넘어갈 때는 로그인 필요 + AI 검증
-      requireAuth(
+        requireAuth(
         async () => {
           try {
-            console.log("=== Step 2 → Step 3: AI 검증 시작 ===");
             setIsVerifying(true);
 
             // AI 검증 API 호출
@@ -2491,39 +2252,23 @@ function HomePageContent() {
             });
 
             const result = await response.json();
-            console.log("AI 검증 결과:", result);
 
             // 검증 결과 저장
             setVerificationResult(result);
 
-            // 검증 결과가 있으면 콘솔에 표시
-            if (result.suggestions && result.suggestions.length > 0) {
-              console.log("💡 AI 제안사항:", result.suggestions);
-            }
-
-            if (result.warnings && result.warnings.length > 0) {
-              console.log("⚠️ 경고사항:", result.warnings);
-            }
-
-            console.log("📊 검증 요약:", result.summary);
-            console.log("=== AI 검증 완료 ===");
-
             // 검증 결과에 따른 처리
             if (result.status === "ok") {
               // OK: 자동으로 다음 단계 진행
-              console.log("✅ 검증 통과 - 자동으로 다음 단계 진행");
               setIsVerifying(false);
               setShowRequirements(false);
               setShowConfirmation(true);
               setCurrentStep(3);
             } else if (result.status === "warning" || result.status === "error") {
               // WARNING/ERROR: 모달 표시하고 사용자 선택
-              console.log("⚠️ 검증 결과 모달 표시 - 사용자 선택 대기");
               setIsVerifying(false);
               setShowVerificationModal(true);
             } else {
               // 예외 상황: 기본적으로 다음 단계 진행
-              console.log("❓ 알 수 없는 status - 기본적으로 진행");
               setIsVerifying(false);
               setShowRequirements(false);
               setShowConfirmation(true);
@@ -2581,7 +2326,6 @@ function HomePageContent() {
     if (user && savedProjectId) {
       try {
         await updateProjectStatus(savedProjectId, "completed");
-        console.log("프로젝트 상태를 completed로 업데이트했습니다.");
       } catch (error) {
         console.error("프로젝트 상태 업데이트 실패:", error);
       }
@@ -2593,7 +2337,6 @@ function HomePageContent() {
 
   // 검증 모달 핸들러
   const handleVerificationProceed = () => {
-    console.log("검증 모달 - 계속 진행 선택");
     setShowVerificationModal(false);
     setShowRequirements(false);
     setShowConfirmation(true);
@@ -2601,13 +2344,11 @@ function HomePageContent() {
   };
 
   const handleVerificationGoBack = () => {
-    console.log("검증 모달 - 이전으로 돌아가기 선택");
     setShowVerificationModal(false);
     // Step 2로 돌아가기 (이미 Step 2에 있음)
   };
 
   const handleVerificationClose = () => {
-    console.log("검증 모달 - 수정하기 선택");
     setShowVerificationModal(false);
     // Step 2에 그대로 머물면서 요구사항 수정
   };
@@ -2989,19 +2730,6 @@ function HomePageContent() {
       {/* Confirmation Panel - Full Screen */}
       {showConfirmation && (
         <div className="flex-1">
-          {(() => {
-            // 디버깅 로그 (개발 환경)
-            if (process.env.NODE_ENV === 'development') {
-              console.log('ConfirmationPanel 렌더링:', {
-                hasOverview: !!overview,
-                overviewType: typeof overview,
-                overviewKeys: overview ? Object.keys(overview) : [],
-                targetUsers: overview?.serviceCoreElements?.targetUsers,
-                estimatedDuration: overview?.serviceCoreElements?.estimatedDuration,
-              });
-            }
-            return null;
-          })()}
           <ConfirmationPanel
             onNextStep={handleNextStep}
             onPrevStep={handlePrevStep}
