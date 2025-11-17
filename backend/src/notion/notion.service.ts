@@ -20,7 +20,7 @@ export class NotionService {
     this.clientId = this.configService.get<string>('NOTION_CLIENT_ID') || '';
     this.clientSecret = this.configService.get<string>('NOTION_CLIENT_SECRET') || '';
     this.redirectUri = this.configService.get<string>('NOTION_REDIRECT_URI') || 
-      `${this.configService.get<string>('BACKEND_URL') || 'http://localhost:3001'}/notion/oauth/callback`;
+      `${this.configService.get<string>('BACKEND_URL') || 'http://localhost:3001'}/api/notion/oauth/callback`;
 
     if (!this.clientId || !this.clientSecret) {
       console.warn('Notion OAuth 설정이 완료되지 않았습니다. NOTION_CLIENT_ID와 NOTION_CLIENT_SECRET을 설정해주세요.');
