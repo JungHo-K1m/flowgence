@@ -326,40 +326,60 @@ export function RequirementsResultPanel({
         // 이미지가 없으면 기존 HTML 렌더링 사용
       }
 
-      // Mermaid 다이어그램 이미지 변환
+      // Mermaid 다이어그램 이미지 변환 (재시도 로직 포함)
       let mermaidImage: string | undefined;
       if (projectOverview?.userJourney?.steps && projectOverview.userJourney.steps.length > 0) {
-        try {
-          console.log("PDF 생성 - Mermaid 다이어그램 이미지 변환 시작");
-          const mermaidCode = generateUserJourneyMermaidDefault(projectOverview.userJourney.steps);
+        const mermaidCode = generateUserJourneyMermaidDefault(projectOverview.userJourney.steps);
+        
+        if (!mermaidCode || !mermaidCode.trim()) {
+          console.warn("PDF 생성 - Mermaid 코드가 비어있습니다.");
+        } else {
+          // 최대 2번 재시도
+          let retryCount = 0;
+          const maxRetries = 2;
           
-          if (!mermaidCode || !mermaidCode.trim()) {
-            console.warn("PDF 생성 - Mermaid 코드가 비어있습니다.");
-          } else {
-            mermaidImage = await mermaidToImage(mermaidCode, {
-              theme: "default",
-              backgroundColor: "white",
-              scale: 2, // 고해상도
-            });
+          while (retryCount <= maxRetries && !mermaidImage) {
+            try {
+              console.log(`PDF 생성 - Mermaid 다이어그램 이미지 변환 시작 (시도 ${retryCount + 1}/${maxRetries + 1})`);
+              
+              mermaidImage = await mermaidToImage(mermaidCode, {
+                theme: "default",
+                backgroundColor: "white",
+                scale: 2, // 고해상도
+              });
+              
+              if (mermaidImage && mermaidImage.startsWith('data:image')) {
+                console.log("PDF 생성 - Mermaid 다이어그램 이미지 변환 완료", {
+                  imageLength: mermaidImage.length,
+                  imageType: mermaidImage.substring(0, 30),
+                  retryCount,
+                });
+                break; // 성공하면 루프 종료
+              } else {
+                console.warn("PDF 생성 - Mermaid 이미지 변환 결과가 유효하지 않습니다:", {
+                  hasImage: !!mermaidImage,
+                  imageType: mermaidImage?.substring(0, 30),
+                  retryCount,
+                });
+                mermaidImage = undefined; // 유효하지 않은 이미지는 undefined로 설정
+              }
+            } catch (mermaidError) {
+              console.error(`PDF 생성 - Mermaid 다이어그램 이미지 변환 실패 (시도 ${retryCount + 1}):`, mermaidError);
+              mermaidImage = undefined;
+            }
             
-            if (mermaidImage && mermaidImage.startsWith('data:image')) {
-              console.log("PDF 생성 - Mermaid 다이어그램 이미지 변환 완료", {
-                imageLength: mermaidImage.length,
-                imageType: mermaidImage.substring(0, 30)
-              });
-            } else {
-              console.warn("PDF 생성 - Mermaid 이미지 변환 결과가 유효하지 않습니다:", {
-                hasImage: !!mermaidImage,
-                imageType: mermaidImage?.substring(0, 30)
-              });
-              mermaidImage = undefined; // 유효하지 않은 이미지는 undefined로 설정
+            retryCount++;
+            
+            // 재시도 전 대기
+            if (retryCount <= maxRetries && !mermaidImage) {
+              console.log(`재시도 전 대기 중... (${retryCount * 500}ms)`);
+              await new Promise((resolve) => setTimeout(resolve, retryCount * 500));
             }
           }
-        } catch (mermaidError) {
-          console.error("PDF 생성 - Mermaid 다이어그램 이미지 변환 실패:", mermaidError);
-          console.warn("PDF 생성 - Mermaid 코드 블록으로 대체됩니다.");
-          // 이미지 변환 실패 시 기존 Mermaid 코드 블록 사용
-          mermaidImage = undefined;
+          
+          if (!mermaidImage) {
+            console.warn("PDF 생성 - Mermaid 이미지 변환 최종 실패, 코드 블록으로 대체됩니다.");
+          }
         }
       }
 
@@ -384,12 +404,31 @@ export function RequirementsResultPanel({
       }
       
       if (mermaidImage) {
-        const hasMermaidImageInMarkdown = markdown.includes(mermaidImage.substring(0, 50));
+        // 이미지가 마크다운에 포함되었는지 여러 방법으로 확인
+        const imageStart = mermaidImage.substring(0, 50);
+        const imageEnd = mermaidImage.substring(mermaidImage.length - 50);
+        const hasMermaidImageInMarkdown = markdown.includes(imageStart) || markdown.includes(imageEnd);
+        const hasImgTag = markdown.includes('<img');
+        const hasMermaidPreview = markdown.includes('mermaid-preview');
+        const hasDataImage = markdown.includes('data:image');
+        
         console.log("마크다운에 Mermaid 이미지 포함 여부:", {
           hasImage: hasMermaidImageInMarkdown,
-          imageInMarkdown: markdown.includes('mermaidImage') || markdown.includes('data:image'),
+          hasImgTag,
+          hasMermaidPreview,
+          hasDataImage,
+          imageInMarkdown: hasMermaidImageInMarkdown || hasImgTag || hasDataImage,
           mermaidImageLength: mermaidImage.length,
+          markdownLength: markdown.length,
+          imageStartInMarkdown: markdown.includes(imageStart),
+          imageEndInMarkdown: markdown.includes(imageEnd),
         });
+        
+        // 이미지가 포함되지 않았다면 경고
+        if (!hasMermaidImageInMarkdown && !hasImgTag && !hasDataImage) {
+          console.error("⚠️ Mermaid 이미지가 마크다운에 포함되지 않았습니다!");
+          console.log("마크다운 샘플:", markdown.substring(markdown.indexOf('사용자 여정'), markdown.indexOf('사용자 여정') + 500));
+        }
       } else {
         console.log("마크다운에 Mermaid 코드 블록 포함 여부:", {
           hasMermaidCode: markdown.includes('```mermaid'),

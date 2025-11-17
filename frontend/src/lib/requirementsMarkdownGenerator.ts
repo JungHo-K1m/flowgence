@@ -240,29 +240,45 @@ export function generateRequirementsMarkdown(
     ? generateUserJourneyMermaidDefault(finalUserJourneySteps)
     : "";
 
+  // Mermaid 다이어그램 섹션 생성 (이미지 우선, 실패 시 코드 블록)
+  const mermaidDiagramSection = (() => {
+    // 이미지가 있고 유효한 경우 이미지 사용
+    if (mermaidImage && mermaidImage.startsWith('data:image')) {
+      console.log("마크다운 생성 - Mermaid 이미지 사용:", {
+        imageLength: mermaidImage.length,
+        imagePreview: mermaidImage.substring(0, 50),
+      });
+      return [
+        "### 사용자 여정 다이어그램",
+        "",
+        '<div class="mermaid-preview" style="text-align: center; page-break-inside: avoid;">',
+        `<img src="${mermaidImage}" alt="사용자 여정 다이어그램" style="max-width: 100%; height: auto; border: 1px solid #e5e7eb; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" />`,
+        "</div>",
+        "",
+      ].join("\n");
+    }
+    
+    // 이미지가 없거나 유효하지 않은 경우 코드 블록 사용
+    if (mermaidDiagramCode && mermaidDiagramCode.trim()) {
+      console.log("마크다운 생성 - Mermaid 코드 블록 사용 (이미지 없음)");
+      return [
+        "### 사용자 여정 다이어그램",
+        "",
+        "```mermaid",
+        mermaidDiagramCode,
+        "```",
+        "",
+      ].join("\n");
+    }
+    
+    return "";
+  })();
+
   const userJourneySection =
     finalUserJourneySteps.length > 0
       ? [
-          // Mermaid 다이어그램 (이미지가 있으면 이미지 사용, 없으면 코드 블록)
-          mermaidImage
-            ? [
-                "### 사용자 여정 다이어그램",
-                "",
-                '<div class="mermaid-preview" style="text-align: center; page-break-inside: avoid;">',
-                `<img src="${mermaidImage}" alt="사용자 여정 다이어그램" style="max-width: 100%; height: auto; border: 1px solid #e5e7eb; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" />`,
-                "</div>",
-                "",
-              ].join("\n")
-            : mermaidDiagramCode
-            ? [
-                "### 사용자 여정 다이어그램",
-                "",
-                "```mermaid",
-                mermaidDiagramCode,
-                "```",
-                "",
-              ].join("\n")
-            : "",
+          // Mermaid 다이어그램 섹션
+          mermaidDiagramSection,
           // 단계별 상세 정보
           finalUserJourneySteps
             .map((step, index) => {

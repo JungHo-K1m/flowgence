@@ -90,10 +90,43 @@ export async function mermaidToImage(
     document.body.appendChild(container);
 
     // Mermaid를 SVG로 렌더링
-    const { svg } = await mermaid.render(diagramId, mermaidCode);
+    let svg: string;
+    try {
+      const renderResult = await mermaid.render(diagramId, mermaidCode);
+      svg = renderResult.svg;
+      
+      if (!svg || !svg.trim()) {
+        throw new Error("Mermaid SVG 렌더링 결과가 비어있습니다.");
+      }
+      
+      console.log("Mermaid SVG 렌더링 완료:", {
+        svgLength: svg.length,
+        svgPreview: svg.substring(0, 200),
+        hasSvgTag: svg.includes('<svg'),
+      });
+    } catch (renderError) {
+      console.error("Mermaid SVG 렌더링 실패:", renderError);
+      // DOM 정리
+      if (container.parentNode) {
+        document.body.removeChild(container);
+      }
+      throw new Error(`Mermaid SVG 렌더링 실패: ${renderError instanceof Error ? renderError.message : String(renderError)}`);
+    }
     
     // SVG를 컨테이너에 삽입
     container.innerHTML = svg;
+    
+    // SVG가 실제로 삽입되었는지 확인
+    const insertedSvg = container.querySelector('svg');
+    if (!insertedSvg) {
+      console.warn("SVG가 컨테이너에 삽입되지 않았습니다. innerHTML 확인:", container.innerHTML.substring(0, 200));
+    } else {
+      console.log("SVG 삽입 확인:", {
+        svgWidth: insertedSvg.getAttribute('width'),
+        svgHeight: insertedSvg.getAttribute('height'),
+        viewBox: insertedSvg.getAttribute('viewBox'),
+      });
+    }
 
     // DOM이 완전히 렌더링될 때까지 대기
     await new Promise((resolve) => {
@@ -107,23 +140,73 @@ export async function mermaidToImage(
     });
 
     // 추가 대기 시간 (폰트 및 스타일 적용)
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    // 컨테이너 크기 확인 및 최소 크기 보장
+    const computedStyle = window.getComputedStyle(container);
+    let containerWidth = container.scrollWidth || container.offsetWidth || 1200;
+    let containerHeight = container.scrollHeight || container.offsetHeight || 800;
+
+    // 최소 크기 보장
+    if (containerWidth < 100) {
+      containerWidth = 1200;
+      container.style.width = `${containerWidth}px`;
+    }
+    if (containerHeight < 100) {
+      containerHeight = 800;
+      container.style.height = `${containerHeight}px`;
+    }
+
+    console.log("Mermaid 컨테이너 크기:", {
+      width: containerWidth,
+      height: containerHeight,
+      scrollWidth: container.scrollWidth,
+      scrollHeight: container.scrollHeight,
+      offsetWidth: container.offsetWidth,
+      offsetHeight: container.offsetHeight,
+      computedWidth: computedStyle.width,
+      computedHeight: computedStyle.height,
+    });
+
+    // 컨테이너 내부 요소 확인
+    const childElements = container.querySelectorAll('*');
+    console.log("Mermaid 컨테이너 내부 요소 개수:", childElements.length);
+
+    // 컨테이너가 실제로 렌더링되었는지 확인
+    const hasContent = container.scrollHeight > 0 && container.scrollWidth > 0;
+    console.log("Mermaid 컨테이너 콘텐츠 확인:", {
+      hasContent,
+      scrollHeight: container.scrollHeight,
+      scrollWidth: container.scrollWidth,
+      offsetHeight: container.offsetHeight,
+      offsetWidth: container.offsetWidth,
+      innerHTML: container.innerHTML.substring(0, 200),
+    });
+
+    if (!hasContent) {
+      console.warn("Mermaid 컨테이너에 콘텐츠가 없습니다. 강제로 크기 설정...");
+      container.style.minHeight = "800px";
+      container.style.minWidth = "1200px";
+      // 다시 한 번 렌더링 대기
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
 
     // 실제 렌더링된 크기 사용
     const finalWidth = Math.max(container.scrollWidth, container.offsetWidth, 1200);
-    const finalHeight = Math.max(container.scrollHeight, container.offsetHeight, 600);
+    const finalHeight = Math.max(container.scrollHeight, container.offsetHeight, 800);
 
-    console.log("Mermaid 다이어그램 크기:", {
+    console.log("Mermaid 최종 이미지 크기:", {
       width: finalWidth,
       height: finalHeight,
     });
 
     // html-to-image로 이미지 변환 (와이어프레임과 동일한 방식)
+    console.log("Mermaid 이미지 변환 시작...");
     const dataUrl = await toPng(container, {
       quality: 1.0,
       pixelRatio: Math.max(scale, 2), // 최소 2배 해상도
       backgroundColor: backgroundColor,
-      cacheBust: true,
+      cacheBust: true, // 캐시 무효화
       width: finalWidth,
       height: finalHeight,
     });
