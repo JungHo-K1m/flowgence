@@ -332,15 +332,34 @@ export function RequirementsResultPanel({
         try {
           console.log("PDF 생성 - Mermaid 다이어그램 이미지 변환 시작");
           const mermaidCode = generateUserJourneyMermaidDefault(projectOverview.userJourney.steps);
-          mermaidImage = await mermaidToImage(mermaidCode, {
-            theme: "default",
-            backgroundColor: "white",
-            scale: 2, // 고해상도
-          });
-          console.log("PDF 생성 - Mermaid 다이어그램 이미지 변환 완료");
+          
+          if (!mermaidCode || !mermaidCode.trim()) {
+            console.warn("PDF 생성 - Mermaid 코드가 비어있습니다.");
+          } else {
+            mermaidImage = await mermaidToImage(mermaidCode, {
+              theme: "default",
+              backgroundColor: "white",
+              scale: 2, // 고해상도
+            });
+            
+            if (mermaidImage && mermaidImage.startsWith('data:image')) {
+              console.log("PDF 생성 - Mermaid 다이어그램 이미지 변환 완료", {
+                imageLength: mermaidImage.length,
+                imageType: mermaidImage.substring(0, 30)
+              });
+            } else {
+              console.warn("PDF 생성 - Mermaid 이미지 변환 결과가 유효하지 않습니다:", {
+                hasImage: !!mermaidImage,
+                imageType: mermaidImage?.substring(0, 30)
+              });
+              mermaidImage = undefined; // 유효하지 않은 이미지는 undefined로 설정
+            }
+          }
         } catch (mermaidError) {
-          console.warn("PDF 생성 - Mermaid 다이어그램 이미지 변환 실패, 코드 블록 사용:", mermaidError);
+          console.error("PDF 생성 - Mermaid 다이어그램 이미지 변환 실패:", mermaidError);
+          console.warn("PDF 생성 - Mermaid 코드 블록으로 대체됩니다.");
           // 이미지 변환 실패 시 기존 Mermaid 코드 블록 사용
+          mermaidImage = undefined;
         }
       }
 
@@ -357,10 +376,24 @@ export function RequirementsResultPanel({
       // 디버깅: 마크다운에 이미지가 포함되었는지 확인
       if (wireframeImage) {
         const hasImageInMarkdown = markdown.includes(wireframeImage.substring(0, 50));
-        console.log("마크다운에 이미지 포함 여부:", {
+        console.log("마크다운에 와이어프레임 이미지 포함 여부:", {
           hasImage: hasImageInMarkdown,
           markdownLength: markdown.length,
           imageInMarkdown: markdown.includes('<img'),
+        });
+      }
+      
+      if (mermaidImage) {
+        const hasMermaidImageInMarkdown = markdown.includes(mermaidImage.substring(0, 50));
+        console.log("마크다운에 Mermaid 이미지 포함 여부:", {
+          hasImage: hasMermaidImageInMarkdown,
+          imageInMarkdown: markdown.includes('mermaidImage') || markdown.includes('data:image'),
+          mermaidImageLength: mermaidImage.length,
+        });
+      } else {
+        console.log("마크다운에 Mermaid 코드 블록 포함 여부:", {
+          hasMermaidCode: markdown.includes('```mermaid'),
+          hasMermaidPreview: markdown.includes('mermaid-preview'),
         });
       }
 

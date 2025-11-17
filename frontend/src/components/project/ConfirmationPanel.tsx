@@ -18,6 +18,8 @@ import { getShareOptions, showNotionGuide } from "@/lib/shareAlternatives";
 import { WireframeSpec } from "@/types/wireframe";
 import { LoFiCanvas } from "@/components/wireframe/LoFiCanvas";
 import { WireframeEditor } from "@/components/wireframe/WireframeEditor";
+import { calculateEstimation, formatCurrency as formatEstimationCurrency } from "@/lib/estimationCalculator";
+import { DEFAULT_ROLE_RATES, getAllRates, updateRoleRate, type RoleRates } from "@/lib/estimationRates";
 
 interface ProjectOverview {
   serviceCoreElements: {
@@ -111,6 +113,8 @@ export function ConfirmationPanel({
   ); // 첫 번째 카테고리만 기본으로 확장
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
   const downloadMenuRef = useRef<HTMLDivElement>(null);
+  const [customRates, setCustomRates] = useState<RoleRates>(DEFAULT_ROLE_RATES);
+  const [showRateSettings, setShowRateSettings] = useState(false);
 
   // 드롭다운 메뉴 외부 클릭 시 닫기
   useEffect(() => {
@@ -248,63 +252,107 @@ export function ConfirmationPanel({
     };
   }, [extractedRequirements, projectData.serviceType, projectOverview]);
 
-  // 실제 데이터 기반 견적 정보
-  const estimateData = useMemo(() => {
-    const baseEstimate = projectOverview?.estimation?.totalCost
-      ? parseInt(projectOverview.estimation.totalCost.replace(/[^0-9]/g, "")) ||
-        85000000
-      : 85000000;
+  // 새로운 견적 계산 로직 (요구사항 기반)
+  const estimationResult = useMemo(() => {
+    if (!extractedRequirements) {
+      // 요구사항이 없으면 기본값 반환
+      const baseEstimate = projectOverview?.estimation?.totalCost
+        ? parseInt(projectOverview.estimation.totalCost.replace(/[^0-9]/g, "")) || 85000000
+        : 85000000;
+      
+      return {
+        totalRequirements: 0,
+        totalDays: 60,
+        totalHours: 480,
+        totalCost: baseEstimate,
+        categoryEstimates: [],
+        roleBreakdown: [],
+        stageBreakdown: [
+          {
+            stage: "요구사항 분석 및 설계",
+            percentage: 20,
+            days: 12,
+            hours: 96,
+            cost: Math.round(baseEstimate * 0.2),
+          },
+          {
+            stage: "개발",
+            percentage: 50,
+            days: 30,
+            hours: 240,
+            cost: Math.round(baseEstimate * 0.5),
+          },
+          {
+            stage: "통합 테스트 및 QA",
+            percentage: 15,
+            days: 9,
+            hours: 72,
+            cost: Math.round(baseEstimate * 0.15),
+          },
+          {
+            stage: "배포 및 안정화",
+            percentage: 15,
+            days: 9,
+            hours: 72,
+            cost: Math.round(baseEstimate * 0.15),
+          },
+        ],
+        paymentSchedule: [
+          { stage: "계약 시", percentage: 30, amount: Math.round(baseEstimate * 0.3) },
+          { stage: "중간 검수", percentage: 40, amount: Math.round(baseEstimate * 0.4) },
+          { stage: "최종 납품", percentage: 30, amount: Math.round(baseEstimate * 0.3) },
+        ],
+        estimatedDuration: projectOverview?.serviceCoreElements?.estimatedDuration || "12주",
+        estimatedWeeks: 12,
+        teamSize: projectOverview?.serviceCoreElements?.requiredTeam?.length || 6,
+        teamBreakdown: projectOverview?.serviceCoreElements?.requiredTeam?.join(", ") || "개발자 4명, 디자이너 1명, PM 1명",
+      };
+    }
+    
+    // 요구사항 기반 견적 계산
+    return calculateEstimation(extractedRequirements, customRates);
+  }, [extractedRequirements, customRates, projectOverview]);
 
-    const stages = [
+  // 기존 estimateData 형식으로 변환 (호환성 유지)
+  const estimateData = useMemo(() => {
+    const baseEstimate = estimationResult.totalCost;
+    const stages = estimationResult.stageBreakdown?.map((stage) => ({
+      name: stage.stage,
+      duration: `${Math.round(stage.days / 5)}주`, // 일을 주로 변환
+      percentage: stage.percentage,
+      cost: stage.cost,
+    })) || [
       {
         name: "요구사항 분석 및 설계",
-        duration: projectOverview?.estimation?.timeline?.planning || "2주",
+        duration: "2주",
         percentage: 20,
         cost: Math.round(baseEstimate * 0.2),
       },
       {
         name: "개발",
-        duration: projectOverview?.estimation?.timeline?.development || "6주",
+        duration: "6주",
         percentage: 50,
         cost: Math.round(baseEstimate * 0.5),
       },
       {
         name: "통합 테스트 및 QA",
-        duration: projectOverview?.estimation?.timeline?.testing || "2주",
+        duration: "2주",
         percentage: 15,
         cost: Math.round(baseEstimate * 0.15),
       },
       {
         name: "배포 및 안정화",
-        duration: projectOverview?.estimation?.timeline?.deployment || "2주",
+        duration: "2주",
         percentage: 15,
         cost: Math.round(baseEstimate * 0.15),
       },
     ];
 
-    const payments = [
-      {
-        stage: "계약 시",
-        percentage: 30,
-        amount: Math.round(baseEstimate * 0.3),
-      },
-      {
-        stage: "중간 검수",
-        percentage: 40,
-        amount: Math.round(baseEstimate * 0.4),
-      },
-      {
-        stage: "최종 납품",
-        percentage: 30,
-        amount: Math.round(baseEstimate * 0.3),
-      },
+    const payments = estimationResult.paymentSchedule || [
+      { stage: "계약 시", percentage: 30, amount: Math.round(baseEstimate * 0.3) },
+      { stage: "중간 검수", percentage: 40, amount: Math.round(baseEstimate * 0.4) },
+      { stage: "최종 납품", percentage: 30, amount: Math.round(baseEstimate * 0.3) },
     ];
-
-    const teamSize =
-      projectOverview?.serviceCoreElements?.requiredTeam?.length || 6;
-    const teamBreakdown =
-      projectOverview?.serviceCoreElements?.requiredTeam?.join(", ") ||
-      "개발자 4명, 디자이너 1명, PM 1명";
 
     return {
       baseEstimate,
@@ -313,53 +361,37 @@ export function ConfirmationPanel({
       stages,
       payments,
       projectOverview: {
-        duration:
-          projectOverview?.serviceCoreElements?.estimatedDuration || "12주",
-        period: "2025년 1월~4월", // 실제 날짜 계산 로직 추가 가능
-        personnel: teamSize,
-        breakdown: teamBreakdown,
+        duration: estimationResult.estimatedDuration || "12주",
+        period: "2025년 1월~4월",
+        personnel: estimationResult.teamSize || 6,
+        breakdown: estimationResult.teamBreakdown || "개발자 4명, 디자이너 1명, PM 1명",
         warranty: "1년",
         warrantyDetail: "무상 유지보수",
       },
     };
-  }, [projectOverview]);
+  }, [estimationResult]);
 
-  // 실제 요구사항 데이터를 기반으로 한 상세 내역
+  // 실제 요구사항 데이터를 기반으로 한 상세 내역 (새로운 계산 로직 사용)
   const requirementsDetails = useMemo(() => {
-    if (!extractedRequirements) {
+    if (!extractedRequirements || !estimationResult.categoryEstimates) {
       return [];
     }
 
-    return extractedRequirements.categories.map((category, categoryIndex) => {
-      const allRequirements = category.subCategories.flatMap(
-        (subCategory) => subCategory.requirements
-      );
-      const totalCost = allRequirements.length * 1000000; // 기본 견적: 요구사항당 100만원
-
+    return estimationResult.categoryEstimates.map((categoryEstimate, categoryIndex) => {
       return {
-        category: category.majorCategory,
-        count: allRequirements.length,
+        category: categoryEstimate.category,
+        count: categoryEstimate.requirementCount,
         expanded: expandedCategories.has(categoryIndex),
-        items: allRequirements.map((requirement, reqIndex) => ({
+        items: categoryEstimate.requirements.map((reqEffort, reqIndex) => ({
           id: `REQ-${categoryIndex + 1}-${reqIndex + 1}`,
-          title: requirement.title,
-          description: requirement.description,
-          effort:
-            requirement.priority === "high"
-              ? "5일"
-              : requirement.priority === "medium"
-              ? "3일"
-              : "2일",
-          cost:
-            requirement.priority === "high"
-              ? 1500000
-              : requirement.priority === "medium"
-              ? 1000000
-              : 500000,
+          title: reqEffort.requirement.title,
+          description: reqEffort.requirement.description,
+          effort: `${Math.round(reqEffort.adjustedDays)}일`,
+          cost: reqEffort.cost,
         })),
       };
     });
-  }, [extractedRequirements, expandedCategories]);
+  }, [estimationResult, expandedCategories]);
 
   const toggleCategory = (categoryIndex: number) => {
     setExpandedCategories((prev) => {
@@ -859,39 +891,15 @@ export function ConfirmationPanel({
               </div>
             ) : (
               <>
-                {/* Estimate Summary */}
-                <div className="bg-purple-50 border border-purple-200 rounded-lg p-6 mb-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-lg font-semibold text-purple-900 mb-4">
-                        견적 요약
-                      </h3>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-purple-700">기본 견적</span>
-                          <span className="font-semibold text-purple-900">
-                            {formatCurrency(estimateData.baseEstimate)}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-purple-700">할인</span>
-                          <span className="font-semibold text-purple-900">
-                            - {formatCurrency(estimateData.discount)}
-                          </span>
-                        </div>
-                        <div className="border-t border-purple-200 pt-2 mt-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-lg font-semibold text-purple-900">
-                              최종 견적
-                            </span>
-                            <span className="text-xl font-bold text-purple-900">
-                              = {formatCurrency(estimateData.finalEstimate)}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="relative" ref={downloadMenuRef}>
+                {/* 다운로드 버튼 및 단가 설정 */}
+                <div className="mb-4 flex justify-end space-x-2">
+                  <button
+                    onClick={() => setShowRateSettings(!showRateSettings)}
+                    className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
+                  >
+                    {showRateSettings ? "단가 설정 닫기" : "⚙️ 단가 설정"}
+                  </button>
+                  <div className="relative" ref={downloadMenuRef}>
                       <button
                         className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center"
                         onClick={() => setShowDownloadMenu(!showDownloadMenu)}
@@ -1004,9 +1012,108 @@ export function ConfirmationPanel({
                   </div>
                 </div>
 
+                {/* 단가 설정 패널 */}
+                {showRateSettings && (
+                  <div className="mb-6 bg-gray-50 border border-gray-200 rounded-lg p-4">
+                    <h4 className="text-sm font-semibold text-gray-900 mb-3">
+                      역할별 시간당 단가 설정 (원/시간)
+                    </h4>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      {Object.entries(customRates).map(([role, rate]) => (
+                        <div key={role} className="flex items-center space-x-2">
+                          <label className="text-sm text-gray-700 w-32 truncate">
+                            {role}:
+                          </label>
+                          <input
+                            type="number"
+                            value={rate}
+                            onChange={(e) => {
+                              const newRate = parseInt(e.target.value) || 0;
+                              setCustomRates((prev) => ({
+                                ...prev,
+                                [role]: newRate,
+                              }));
+                            }}
+                            className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            min="0"
+                            step="1000"
+                          />
+                          <span className="text-xs text-gray-500">원</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-4 flex justify-end space-x-2">
+                      <button
+                        onClick={() => setCustomRates(DEFAULT_ROLE_RATES)}
+                        className="px-3 py-1 text-sm text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50"
+                      >
+                        기본값으로 초기화
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* 견적 요약 카드 */}
+                <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="text-sm text-blue-600 mb-1">총 견적 금액</div>
+                    <div className="text-2xl font-bold text-blue-900">
+                      {formatCurrency(estimationResult.totalCost)}
+                    </div>
+                  </div>
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div className="text-sm text-green-600 mb-1">총 공수</div>
+                    <div className="text-2xl font-bold text-green-900">
+                      {estimationResult.totalDays}일 ({estimationResult.totalHours}시간)
+                    </div>
+                  </div>
+                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                    <div className="text-sm text-purple-600 mb-1">예상 기간</div>
+                    <div className="text-2xl font-bold text-purple-900">
+                      {estimationResult.estimatedDuration}
+                    </div>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   {/* Left Column - Stages and Payments */}
                   <div className="lg:col-span-2 space-y-6">
+                    {/* 역할별 상세 */}
+                    {estimationResult.roleBreakdown && estimationResult.roleBreakdown.length > 0 && (
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                          역할별 상세 내역
+                        </h3>
+                        <div className="space-y-3">
+                          {estimationResult.roleBreakdown.map((role, index) => (
+                            <div
+                              key={index}
+                              className="border border-gray-200 rounded-lg p-4"
+                            >
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <div className="font-medium text-gray-900">
+                                    {role.role}
+                                  </div>
+                                  <div className="text-sm text-gray-500">
+                                    {Math.round(role.totalHours)}시간
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <div className="text-sm text-gray-500">
+                                    {role.percentage.toFixed(1)}%
+                                  </div>
+                                  <div className="font-semibold text-gray-900">
+                                    {formatCurrency(role.totalCost)}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Stages */}
                     <div>
                       <h3 className="text-lg font-semibold text-gray-900 mb-4">

@@ -40,6 +40,35 @@ function markdownToHtml(markdown: string): string {
   const htmlBlocks: string[] = [];
   let html = markdown;
   
+  // Mermaid 코드 블록을 먼저 처리 (이미지로 변환되지 않은 경우를 대비)
+  // ```mermaid ... ``` 형식의 코드 블록을 감지
+  html = html.replace(/```mermaid\s*([\s\S]*?)```/gim, (match, mermaidCode) => {
+    // Mermaid 코드 블록을 보기 좋게 표시
+    const placeholder = `__HTML_BLOCK_${htmlBlocks.length}__`;
+    htmlBlocks.push(
+      `<div class="mermaid-code-block" style="background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin: 16px 0; page-break-inside: avoid;">
+        <div style="font-size: 12px; color: #6b7280; margin-bottom: 8px; font-weight: 600;">Mermaid 다이어그램 (코드)</div>
+        <pre style="margin: 0; padding: 0; font-family: 'Courier New', monospace; font-size: 11px; line-height: 1.5; color: #374151; white-space: pre-wrap; word-wrap: break-word; overflow-x: auto;"><code>${mermaidCode.trim()}</code></pre>
+        <div style="font-size: 11px; color: #9ca3af; margin-top: 8px; font-style: italic;">※ PDF에서는 Mermaid 다이어그램이 코드로 표시됩니다. 이미지로 확인하려면 웹 브라우저에서 확인해주세요.</div>
+      </div>`
+    );
+    return placeholder;
+  });
+  
+  // 일반 코드 블록 처리 (mermaid가 아닌 경우)
+  html = html.replace(/```(\w+)?\s*([\s\S]*?)```/gim, (match, lang, code) => {
+    // 이미 Mermaid로 처리된 경우 건너뛰기
+    if (match.includes('__HTML_BLOCK_')) {
+      return match;
+    }
+    const placeholder = `__HTML_BLOCK_${htmlBlocks.length}__`;
+    const language = lang || 'text';
+    htmlBlocks.push(
+      `<pre style="background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin: 16px 0; overflow-x: auto; page-break-inside: avoid;"><code class="language-${language}" style="font-family: 'Courier New', monospace; font-size: 11px; line-height: 1.5; color: #374151; white-space: pre-wrap; word-wrap: break-word;">${code.trim()}</code></pre>`
+    );
+    return placeholder;
+  });
+  
   // img 태그를 먼저 처리 (Base64 데이터 URL이 매우 길 수 있음)
   html = html.replace(/<img[^>]*>/gim, (match) => {
     const placeholder = `__HTML_BLOCK_${htmlBlocks.length}__`;
@@ -316,6 +345,40 @@ function createHTMLDocument(html: string, title: string, author: string, subject
             page-break-inside: avoid;
             break-inside: avoid;
             object-fit: contain;
+        }
+        
+        /* Mermaid 코드 블록 스타일 */
+        .mermaid-code-block {
+            background: #f3f4f6;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 24px 0;
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+        
+        .mermaid-code-block pre {
+            margin: 0;
+            padding: 0;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            line-height: 1.5;
+            color: #374151;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-x: auto;
+            background: transparent;
+            border: none;
+        }
+        
+        .mermaid-code-block code {
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            color: #374151;
+            background: transparent;
+            padding: 0;
+            border: none;
         }
 
         .wireframe-device-group {
