@@ -77,7 +77,7 @@ export default function ContactPage() {
                   <span className="font-medium">전화:</span> 02-1234-5678
                 </p> */}
                 <p className="text-gray-600">
-                  <span className="font-medium">주소:</span> 대전광역시 중구 중앙로 101<br/>
+                  <span className="font-semibold">주소:</span> 대전광역시 중구 중앙로 101<br/>
                   대전창업허브 406호
                 </p>
               </div>
