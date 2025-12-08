@@ -50,14 +50,14 @@ export function ChatInput({
 
   return (
     <>
-      <form onSubmit={handleSubmit} className="flex gap-3">
+      <form onSubmit={handleSubmit} className="flex gap-2 sm:gap-3">
         <input
           type="text"
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           placeholder={placeholder}
           disabled={disabled}
-          className={`flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:border-transparent ${
+          className={`flex-1 px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:border-transparent text-sm sm:text-base ${
             disabled ? "bg-gray-100 cursor-not-allowed" : ""
           }`}
           style={
@@ -69,7 +69,7 @@ export function ChatInput({
         <button
           type="submit"
           disabled={disabled}
-          className={`text-white px-6 py-2 rounded-lg transition-colors duration-200 ${
+          className={`text-white px-4 sm:px-6 py-2 rounded-lg transition-colors duration-200 text-sm sm:text-base whitespace-nowrap ${
             disabled ? "bg-gray-400 cursor-not-allowed" : ""
           }`}
           style={{

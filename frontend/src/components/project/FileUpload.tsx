@@ -54,7 +54,7 @@ export function FileUpload({ onFileSelect, className = "" }: FileUploadProps) {
       <div
         {...getRootProps()}
         className={`
-          relative border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-all duration-200
+          relative border-2 border-dashed rounded-lg p-4 sm:p-8 text-center cursor-pointer transition-all duration-200
           ${
             isDragActive
               ? "border-purple-400 bg-purple-50"
@@ -67,10 +67,10 @@ export function FileUpload({ onFileSelect, className = "" }: FileUploadProps) {
         <input {...getInputProps()} />
 
         {/* Upload Icon */}
-        <div className="mb-4">
-          <div className="mx-auto w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center">
+        <div className="mb-3 sm:mb-4">
+          <div className="mx-auto w-12 h-12 sm:w-16 sm:h-16 bg-gray-200 rounded-full flex items-center justify-center">
             <svg
-              className="w-8 h-8 text-gray-400"
+              className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -86,7 +86,7 @@ export function FileUpload({ onFileSelect, className = "" }: FileUploadProps) {
         </div>
 
         {/* Upload Text */}
-        <p className="text-lg font-medium text-gray-700 mb-2">
+        <p className="text-sm sm:text-lg font-medium text-gray-700 mb-2">
           파일이나 이미지를 여기로 끌어오세요
         </p>
 
@@ -96,13 +96,13 @@ export function FileUpload({ onFileSelect, className = "" }: FileUploadProps) {
             e.stopPropagation();
             handleFileSelect();
           }}
-          className="bg-[#6366F1] text-white px-6 py-2 rounded-lg hover:bg-[#6366F1] transition-colors duration-200"
+          className="bg-[#6366F1] text-white px-4 sm:px-6 py-2 rounded-lg hover:bg-[#6366F1] transition-colors duration-200 text-sm sm:text-base"
         >
           파일 선택하기
         </button>
 
         {/* Info Icon */}
-        <button className="absolute top-4 right-4 w-6 h-6 bg-gray-300 rounded-full flex items-center justify-center hover:bg-gray-400 transition-colors duration-200">
+        <button className="absolute top-2 right-2 sm:top-4 sm:right-4 w-5 h-5 sm:w-6 sm:h-6 bg-gray-300 rounded-full flex items-center justify-center hover:bg-gray-400 transition-colors duration-200">
           <span className="text-xs font-medium text-gray-600">i</span>
         </button>
       </div>

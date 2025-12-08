@@ -50,13 +50,13 @@ export function ServiceTypeButtons({
   selectedType,
 }: ServiceTypeButtonsProps) {
   return (
-    <div className="flex flex-wrap gap-2 sm:gap-3 justify-center">
+    <div className="flex flex-wrap gap-1.5 sm:gap-2 md:gap-3 justify-center px-2 sm:px-0">
       {serviceTypes.map((service) => (
         <button
           key={service.id}
           onClick={() => onSelect(service.id)}
           className={`
-            px-3 sm:px-4 rounded-full border-2 transition-all duration-200 hover:shadow-md min-h-[38px] sm:min-h-[42px]
+            px-2 sm:px-3 md:px-4 rounded-full border-2 transition-all duration-200 hover:shadow-md min-h-[34px] sm:min-h-[38px] md:min-h-[42px]
             ${
               selectedType === service.id
                 ? `${service.color} border-current shadow-md`
@@ -64,9 +64,9 @@ export function ServiceTypeButtons({
             }
           `}
         >
-          <div className="flex items-center space-x-1.5 sm:space-x-2">
-            <span className="text-[15px] sm:text-[16px]">{service.icon}</span>
-            <span className="font-medium text-[14px] sm:text-[16px]">
+          <div className="flex items-center space-x-1 sm:space-x-1.5 md:space-x-2">
+            <span className="text-[13px] sm:text-[15px] md:text-[16px]">{service.icon}</span>
+            <span className="font-medium text-[12px] sm:text-[14px] md:text-[16px]">
               {service.name}
             </span>
           </div>

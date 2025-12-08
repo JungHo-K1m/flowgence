@@ -49,7 +49,7 @@ export function Header() {
         <div className="flex justify-between items-center h-16 relative">
           <div className="flex items-center">
             <Link href="/" className="flex items-center" onClick={handleLogoClick}>
-              <div className="relative w-[124px] h-[37px]">
+              <div className="relative w-[100px] h-[30px] sm:w-[124px] sm:h-[37px]">
                 <Image
                   src="/images/flowgence-logo.png"
                   alt="Flowgence Logo"

@@ -26,3 +26,31 @@ html, body {
 .h-full {
   height: 100% !important;
 }
+
+/* 모바일 반응형 기본 설정 */
+@media (max-width: 640px) {
+  html, body {
+    font-size: 14px;
+    overflow-x: hidden;
+  }
+
+  /* 모바일에서 터치 스크롤 개선 */
+  .overflow-y-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* 태블릿 반응형 */
+@media (max-width: 768px) {
+  /* 모달 및 팝업 최적화 */
+  .fixed.inset-0 {
+    padding: 1rem;
+  }
+}
+
+/* 작은 모바일 화면 (320px 이하) */
+@media (max-width: 320px) {
+  html, body {
+    font-size: 13px;
+  }
+}

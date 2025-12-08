@@ -351,14 +351,14 @@ export function ChatInterface({
   };
 
   return (
-    <div className="flex flex-col h-full bg-gray-50 max-h-[calc(100vh-120px)]">
+    <div className="flex flex-col h-full bg-gray-50 max-h-[calc(100vh-120px)] sm:max-h-[calc(100vh-120px)]">
       {/* Chat Messages - Scrollable Area */}
-      <div className="flex-1 overflow-y-auto p-4 pl-[30px] space-y-4 min-h-0">
+      <div className="flex-1 overflow-y-auto p-3 sm:p-4 pl-3 sm:pl-[30px] space-y-3 sm:space-y-4 min-h-0">
         {/* Step Header - Fixed */}
-        <div className="bg-white border-1 border-[#E5E7EB] p-4 pl-[90px] rounded-[16px]">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-              <span className="text-lg">
+        <div className="bg-white border-1 border-[#E5E7EB] p-3 sm:p-4 pl-4 sm:pl-[90px] rounded-[12px] sm:rounded-[16px]">
+          <div className="flex items-center space-x-2 sm:space-x-3">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
+              <span className="text-base sm:text-lg">
                 {currentStep === 1
                   ? "💡"
                   : currentStep === 2
@@ -368,8 +368,8 @@ export function ChatInterface({
                   : "✅"}
               </span>
             </div>
-            <div>
-              <h3 className="font-semibold text-gray-900">
+            <div className="min-w-0 flex-1">
+              <h3 className="font-semibold text-gray-900 text-sm sm:text-base">
                 {currentStep === 1
                   ? "문제 정의"
                   : currentStep === 2
@@ -378,7 +378,7 @@ export function ChatInterface({
                   ? "기능 구성"
                   : "최종 확인"}
               </h3>
-              <p className="text-sm text-gray-600">
+              <p className="text-xs sm:text-sm text-gray-600 truncate sm:whitespace-normal">
                 {currentStep === 1
                   ? "해결하고자 하는 핵심 문제를 파악합니다"
                   : currentStep === 2
@@ -418,7 +418,7 @@ export function ChatInterface({
       </div>
 
       {/* Chat Input */}
-      <div className="bg-white border-t border-gray-200 p-4 pl-[30px]">
+      <div className="bg-white border-t border-gray-200 p-3 sm:p-4 pl-3 sm:pl-[30px]">
         <ChatInput
           onSendMessage={handleSendMessage}
           currentStep={currentStep}

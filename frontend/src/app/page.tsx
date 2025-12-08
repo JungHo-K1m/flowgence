@@ -22,6 +22,8 @@ import { useWireframe } from "@/hooks/useWireframe";
 import { RequirementsResultPanel } from "@/components/project/RequirementsResultPanel";
 import { FinalConfirmationModal } from "@/components/project/FinalConfirmationModal";
 import { ProgressBar } from "@/components/layout/ProgressBar";
+import { MobileTabLayout } from "@/components/layout/MobileTabLayout";
+import { MobileRequirementsPanel } from "@/components/requirements/MobileRequirementsPanel";
 import { LoginRequiredModal } from "@/components/auth/LoginRequiredModal";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useStatePersistence } from "@/hooks/useStatePersistence";
@@ -2408,23 +2410,24 @@ function HomePageContent() {
               <div className="max-w-4xl mx-auto w-full space-y-8">
                 <div className="text-center">
                 {/* Main Title */}
-                <h1 className="text-3xl sm:text-[40px] md:text-[48px] font-bold text-black mb-4 leading-tight">
+                <h1 className="text-2xl sm:text-3xl md:text-[40px] lg:text-[48px] font-bold text-black mb-4 leading-tight px-2 sm:px-0">
                   당신이 만들고 싶은 서비스를 말하거나
-                  <br /> 자료를 업로드해보세요!
+                  <br className="hidden sm:block" />
+                  <span className="sm:hidden"> </span>자료를 업로드해보세요!
                 </h1>
 
                 {/* Subtitle */}
-                <p className="text-base sm:text-lg text-[#4B5563] mb-8 max-w-2xl mx-auto leading-relaxed">
+                <p className="text-sm sm:text-base md:text-lg text-[#4B5563] mb-6 sm:mb-8 max-w-2xl mx-auto leading-relaxed px-4 sm:px-0">
                   사업계획서 없이도 한 문장만 적어도 됩니다.
-                  <br />
-                  자료가 있다면 더 정확한 초안을 만들어 드려요.
+                  <br className="hidden sm:block" />
+                  <span className="sm:hidden"> </span>자료가 있다면 더 정확한 초안을 만들어 드려요.
                 </p>
 
                 {/* Text Input Section */}
-                <div className="mb-6">
-                  <div className="relative max-w-[760px] w-full mx-auto mb-6 px-4 sm:px-0">
+                <div className="mb-4 sm:mb-6">
+                  <div className="relative max-w-[760px] w-full mx-auto mb-4 sm:mb-6 px-2 sm:px-4 md:px-0">
                     <div
-                      className="relative flex items-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden focus-within:ring-2 focus-within:border-blue-500"
+                      className="relative flex flex-col sm:flex-row items-stretch sm:items-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden focus-within:ring-2 focus-within:border-blue-500"
                       style={
                         {
                           "--tw-ring-color": "#6366F1",
@@ -2436,7 +2439,7 @@ function HomePageContent() {
                         value={userComment}
                         onChange={(e) => handleDescriptionChange(e.target.value)}
                         placeholder="예: 음식 배달 앱을 만들고 싶어요"
-                        className="flex-1 px-6 py-4 bg-transparent border-0 focus:outline-none text-gray-700 placeholder-gray-500"
+                        className="flex-1 px-4 sm:px-6 py-3 sm:py-4 bg-transparent border-0 focus:outline-none text-gray-700 placeholder-gray-500 text-sm sm:text-base"
                       />
                       <button
                         onClick={() => {
@@ -2446,7 +2449,7 @@ function HomePageContent() {
                           handleStart();
                         }}
                         disabled={isStartDisabled}
-                        className={`bg-[#6366F1] text-white px-8 transition-colors duration-200 font-medium m-2 rounded-lg h-[40px] flex items-center justify-center whitespace-nowrap ${
+                        className={`bg-[#6366F1] text-white px-6 sm:px-8 transition-colors duration-200 font-medium m-2 rounded-lg h-[38px] sm:h-[40px] flex items-center justify-center whitespace-nowrap text-sm sm:text-base ${
                           isStartDisabled ? "opacity-60 cursor-not-allowed" : "hover:bg-[#6366F1]"
                         }`}
                       >
@@ -2456,12 +2459,12 @@ function HomePageContent() {
                     
                     {/* Uploaded Files List - Show below input */}
                     {uploadedFiles.length > 0 && (
-                      <div className="mt-3 max-w-[760px] w-full mx-auto px-4 sm:px-0">
+                      <div className="mt-2 sm:mt-3 max-w-[760px] w-full mx-auto px-0">
                         <div className="flex flex-wrap gap-2">
                           {uploadedFiles.map((file, index) => (
                             <div
                               key={`${file.name}-${index}`}
-                              className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-sm"
+                              className="flex items-center gap-1.5 sm:gap-2 bg-blue-50 border border-blue-200 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm"
                             >
                               <svg
                                 className="w-4 h-4 text-blue-600 flex-shrink-0"
@@ -2476,7 +2479,7 @@ function HomePageContent() {
                                   d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
                                 />
                               </svg>
-                              <span className="text-gray-700 truncate max-w-[200px]">
+                              <span className="text-gray-700 truncate max-w-[120px] sm:max-w-[200px]">
                                 {file.name}
                               </span>
                               <button
@@ -2644,10 +2647,71 @@ function HomePageContent() {
       {/* Chat Interface with Slide Animation - Hide in confirmation and final result steps */}
       {!showConfirmation && !showFinalResult && showChatInterface && (
         <div className="flex-1 transition-all duration-700 ease-in-out opacity-100 translate-x-0 overflow-hidden">
-          <div className="flex h-full max-h-[calc(100vh-120px)]">
+          {/* Mobile: Tab-based Layout */}
+          <MobileTabLayout
+            panelTitle={showRequirements ? "요구사항" : "프로젝트 개요"}
+            chatContent={
+              <ChatInterface
+                initialMessage=""
+                serviceType={selectedServiceType}
+                currentStep={currentStep}
+                messages={chatMessages}
+                onMessagesChange={handleMessagesChange}
+                onProjectUpdate={handleProjectUpdate}
+                aiResponse={aiMessage || undefined}
+                isLoading={isOverviewLoading || isEditingMode}
+              />
+            }
+            panelContent={
+              showRequirements ? (
+                isProcessing ? (
+                  <RequirementsLoading
+                    stage={
+                      isExtractingRequirements
+                        ? "extracting"
+                        : isUpdatingRequirements
+                        ? "updating"
+                        : isSaving
+                        ? "saving"
+                        : "processing"
+                    }
+                  />
+                ) : (
+                  <MobileRequirementsPanel
+                    requirementsData={
+                      editableRequirements || extractedRequirements || undefined
+                    }
+                    onNextStep={handleNextStep}
+                    onOpenEditModal={(category) => {
+                      setEditingCategory(category);
+                      setShowEditModal(true);
+                      setIsEditingMode(true);
+                    }}
+                    isNextButtonEnabled={isStep2ButtonEnabled}
+                    isLoading={isOverviewLoading}
+                  />
+                )
+              ) : (
+                <ProjectOverviewPanel
+                  projectDescription={projectDescription}
+                  serviceType={selectedServiceType}
+                  uploadedFiles={uploadedFiles}
+                  onNextStep={handleNextStep}
+                  currentStep={currentStep}
+                  messages={chatMessages}
+                  onGenerateOverview={generateOverviewRef}
+                  realtimeOverview={overview || undefined}
+                  isLoading={isOverviewLoading}
+                />
+              )
+            }
+          />
+
+          {/* Desktop: Side-by-side Layout */}
+          <div className="hidden md:flex h-full max-h-[calc(100vh-120px)]">
             {/* Left Chat Interface */}
             <div
-              className={`transition-all duration-700 ease-in-out translate-x-0 ${
+              className={`transition-all duration-700 ease-in-out ${
                 showRequirements ? "w-1/3" : "flex-1"
               }`}
             >
@@ -2665,7 +2729,7 @@ function HomePageContent() {
 
             {/* Right Panel - Project Overview or Requirements */}
             <div
-              className={`border-l border-gray-200 transition-all duration-700 ease-in-out translate-x-0 h-full flex flex-col ${
+              className={`border-l border-gray-200 transition-all duration-700 ease-in-out h-full flex flex-col ${
                 showRequirements ? "w-2/3" : "w-1/3"
               }`}
             >
@@ -2699,7 +2763,7 @@ function HomePageContent() {
                     onOpenEditModal={(category) => {
                       setEditingCategory(category);
                       setShowEditModal(true);
-                      setIsEditingMode(true); // UI 편집 모드 시작
+                      setIsEditingMode(true);
                     }}
                     onDeleteCategory={handleCategoryDeleteRequest}
                     onAddNFR={handleAddNFR}

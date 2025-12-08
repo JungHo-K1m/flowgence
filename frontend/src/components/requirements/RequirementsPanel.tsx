@@ -348,13 +348,13 @@ export function RequirementsPanel({
   return (
     <div className="h-full bg-white flex flex-col max-h-screen">
       {/* Header */}
-      <div className="border-b border-gray-200 p-4 flex-shrink-0">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-gray-900">
+      <div className="border-b border-gray-200 p-3 sm:p-4 flex-shrink-0">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 sm:mb-4 gap-2">
+          <h2 className="text-lg sm:text-xl font-semibold text-gray-900">
             {data ? "AI 추출 요구사항" : "요구사항 카드"}
           </h2>
           {data && (
-            <div className="text-sm text-gray-600">
+            <div className="text-xs sm:text-sm text-gray-600">
               총 {allRequirements.length}개 요구사항
               {needsClarificationRequirements.length > 0 && (
                 <span className="ml-2 text-orange-600 font-medium">
@@ -366,11 +366,11 @@ export function RequirementsPanel({
         </div>
 
         {/* Search and Filter */}
-        <div className="flex space-x-4">
+        <div className="flex flex-col sm:flex-row gap-2 sm:space-x-4">
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className="px-3 py-2 border border-gray-300 rounded-lg text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 w-full sm:w-auto"
           >
             {categories.map((category) => (
               <option key={category.id} value={category.id}>
@@ -384,13 +384,13 @@ export function RequirementsPanel({
             placeholder="검색..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
           />
         </div>
       </div>
 
       {/* Content - Scrollable Area */}
-      <div className="flex-1 overflow-y-auto p-4 min-h-0">
+      <div className="flex-1 overflow-y-auto p-3 sm:p-4 min-h-0">
         {/* 동적 섹션 렌더링 */}
         {categories
           .filter((cat) => cat.id !== "all")

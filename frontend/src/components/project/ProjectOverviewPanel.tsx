@@ -476,7 +476,7 @@ export function ProjectOverviewPanel({
         <div className="flex">
           <button
             onClick={() => setActiveTab("elements")}
-            className={`flex-1 px-4 py-3 text-sm font-medium ${
+            className={`flex-1 px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-medium ${
               activeTab === "elements"
                 ? "text-blue-600 border-b-2 border-blue-600"
                 : "text-gray-500 hover:text-gray-700"
@@ -486,7 +486,7 @@ export function ProjectOverviewPanel({
           </button>
           <button
             onClick={() => setActiveTab("journey")}
-            className={`flex-1 px-4 py-3 text-sm font-medium ${
+            className={`flex-1 px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-medium ${
               activeTab === "journey"
                 ? "text-blue-600 border-b-2 border-blue-600"
                 : "text-gray-500 hover:text-gray-700"
@@ -498,11 +498,11 @@ export function ProjectOverviewPanel({
       </div>
 
       {/* Tab Content - Scrollable Area with Fixed Height */}
-      <div className="flex-1 overflow-y-auto p-4 min-h-0">
+      <div className="flex-1 overflow-y-auto p-3 sm:p-4 min-h-0">
         {isLoading && !displayOverview ? (
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             <LoadingSpinner />
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
                 <div className="flex items-center space-x-3 mb-2">
                   <Image
@@ -554,19 +554,20 @@ export function ProjectOverviewPanel({
             </div>
           </div>
         ) : activeTab === "elements" ? (
-          <div className="space-y-4">
-            {/* 2x2 Grid Layout */}
-            <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-3 sm:space-y-4">
+            {/* 2x2 Grid Layout - 1 column on mobile, 2 columns on tablet+ */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               {/* Target Customer */}
-              <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                <div className="flex items-center space-x-3 mb-2">
+              <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border border-gray-200">
+                <div className="flex items-center space-x-2 sm:space-x-3 mb-2">
                   <Image
                     src="/images/target-client.png"
                     alt="타겟 고객"
                     width={30}
                     height={24}
+                    className="w-6 h-5 sm:w-[30px] sm:h-6"
                   />
-                  <h3 className="font-semibold text-gray-900">타겟 고객</h3>
+                  <h3 className="font-semibold text-gray-900 text-sm sm:text-base">타겟 고객</h3>
                 </div>
                 {streamingData.type === "targetUsers" && streamingData.data ? (
                   <div className="space-y-2">
@@ -603,15 +604,16 @@ export function ProjectOverviewPanel({
               </div>
 
               {/* Core Problem */}
-              <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                <div className="flex items-center space-x-3 mb-2">
+              <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border border-gray-200">
+                <div className="flex items-center space-x-2 sm:space-x-3 mb-2">
                   <Image
                     src="/images/question-mark.png"
                     alt="핵심 문제"
                     width={24}
                     height={24}
+                    className="w-5 h-5 sm:w-6 sm:h-6"
                   />
-                  <h3 className="font-semibold text-gray-900">핵심 문제</h3>
+                  <h3 className="font-semibold text-gray-900 text-sm sm:text-base">핵심 문제</h3>
                 </div>
                 {streamingData.type === "coreProblem" && streamingData.data ? (
                   <div className="space-y-2">
@@ -640,15 +642,16 @@ export function ProjectOverviewPanel({
               </div>
 
               {/* Core Feature */}
-              <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                <div className="flex items-center space-x-3 mb-2">
+              <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border border-gray-200">
+                <div className="flex items-center space-x-2 sm:space-x-3 mb-2">
                   <Image
                     src="/images/core-feature.png"
                     alt="핵심 기능"
                     width={24}
                     height={24}
+                    className="w-5 h-5 sm:w-6 sm:h-6"
                   />
-                  <h3 className="font-semibold text-gray-900">핵심 기능</h3>
+                  <h3 className="font-semibold text-gray-900 text-sm sm:text-base">핵심 기능</h3>
                 </div>
                 {streamingData.type === "keyFeatures" && streamingData.data ? (
                   <div className="space-y-2">
@@ -681,15 +684,16 @@ export function ProjectOverviewPanel({
               </div>
 
               {/* Revenue Model */}
-              <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                <div className="flex items-center space-x-3 mb-2">
+              <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border border-gray-200">
+                <div className="flex items-center space-x-2 sm:space-x-3 mb-2">
                   <Image
                     src="/images/bm.png"
                     alt="수익 모델"
                     width={19}
                     height={25}
+                    className="w-4 h-5 sm:w-[19px] sm:h-[25px]"
                   />
-                  <h3 className="font-semibold text-gray-900">수익 모델</h3>
+                  <h3 className="font-semibold text-gray-900 text-sm sm:text-base">수익 모델</h3>
                 </div>
                 {streamingData.type === "revenueModel" && streamingData.data ? (
                   <div className="space-y-2">
@@ -970,11 +974,11 @@ export function ProjectOverviewPanel({
       </div>
 
       {/* Next Step Button */}
-      <div className="border-t border-gray-200 p-4 flex justify-end flex-shrink-0">
+      <div className="border-t border-gray-200 p-3 sm:p-4 flex justify-end flex-shrink-0">
         <button
           onClick={onNextStep}
           disabled={currentStep >= 4 || !isButtonEnabled || isLoading}
-          className={`px-6 py-3 rounded-lg transition-colors duration-200 ${
+          className={`px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base rounded-lg transition-colors duration-200 ${
             currentStep >= 4 || !isButtonEnabled || isLoading
               ? "bg-gray-300 text-gray-500 cursor-not-allowed"
               : "text-white"
