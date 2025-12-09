@@ -2410,7 +2410,7 @@ function HomePageContent() {
               <div className="max-w-4xl mx-auto w-full space-y-8">
                 <div className="text-center">
                 {/* Main Title */}
-                <h1 className="text-2xl sm:text-3xl md:text-[40px] lg:text-[48px] font-bold text-black mb-4 leading-tight px-2 sm:px-0">
+                <h1 className="text-2xl sm:text-3xl md:text-[40px] lg:text-[48px] font-bold text-black mb-4 leading-snug sm:leading-normal px-2 sm:px-0">
                   당신이 만들고 싶은 서비스를 말하거나
                   <br className="hidden sm:block" />
                   <span className="sm:hidden"> </span>자료를 업로드해보세요!
