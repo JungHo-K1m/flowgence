@@ -128,19 +128,19 @@ export function VerificationResultModal({
             <div className="grid grid-cols-3 gap-4">
               <div className="text-center">
                 <div className="text-2xl font-bold text-blue-600">
-                  {result.summary.totalRequirements}
+                  {result.summary?.totalRequirements ?? 0}
                 </div>
                 <div className="text-sm text-gray-600">총 요구사항</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-yellow-600">
-                  {result.summary.issuesFound}
+                  {result.summary?.issuesFound ?? 0}
                 </div>
                 <div className="text-sm text-gray-600">발견된 문제</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-red-600">
-                  {result.summary.criticalIssues}
+                  {result.summary?.criticalIssues ?? 0}
                 </div>
                 <div className="text-sm text-gray-600">중요 문제</div>
               </div>
@@ -202,7 +202,8 @@ export function VerificationResultModal({
           )}
 
           {/* No Issues */}
-          {result.suggestions.length === 0 && result.warnings.length === 0 && (
+          {(!result.suggestions || result.suggestions.length === 0) &&
+           (!result.warnings || result.warnings.length === 0) && (
             <div className="text-center py-8">
               <div className="text-6xl mb-4">🎉</div>
               <p className="text-lg text-gray-600">

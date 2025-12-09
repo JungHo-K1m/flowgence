@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
+import { isDevelopmentMode } from "@/lib/dummyData";
 
 interface AIRecommendation {
   id: string;
@@ -58,6 +59,13 @@ export function AIRecommendationsPanel({
 
   const fetchRecommendations = async () => {
     if (isLoading || isStreaming) return;
+
+    // 개발 모드에서는 API 호출하지 않음
+    if (isDevelopmentMode()) {
+      console.log('[DEV MODE] AI 추천 기능 API 호출 건너뜀');
+      setRecommendations([]);
+      return;
+    }
 
     setIsLoading(true);
     setStreamingText("");
@@ -344,9 +352,9 @@ export function AIRecommendationsPanel({
   };
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="p-3 border-b border-gray-200">
+      <div className="p-3 border-b border-gray-200 flex-shrink-0">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-gray-900">추천 기능</h3>
           <Button
@@ -365,7 +373,7 @@ export function AIRecommendationsPanel({
       </div>
 
       {/* Recommendations List */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-3">
+      <div className="flex-1 overflow-y-auto p-3 space-y-3 min-h-0">
         {isLoading && (
           <div className="flex items-center justify-center py-8">
             <div className="text-center">

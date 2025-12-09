@@ -1,9 +1,10 @@
 import { useState, useCallback, useRef } from 'react';
-import { 
-  ExtractedRequirements, 
+import {
+  ExtractedRequirements,
   RequirementsExtractionState,
-  RequirementsExtractionRequest 
+  RequirementsExtractionRequest
 } from '@/types/requirements';
+import { isDevelopmentMode, DUMMY_REQUIREMENTS } from '@/lib/dummyData';
 
 interface ProjectInput {
   description: string;
@@ -57,8 +58,24 @@ export const useRequirementsExtraction = () => {
     }));
 
     lastRequestHashRef.current = requestHash;
-    
+
     try {
+      // 개발 모드: 더미 데이터 반환
+      if (isDevelopmentMode()) {
+        console.log('[DEV MODE] 더미 요구사항 데이터 사용');
+        await new Promise(resolve => setTimeout(resolve, 1500)); // 로딩 시뮬레이션
+
+        setState(prev => ({
+          ...prev,
+          extractedRequirements: DUMMY_REQUIREMENTS as ExtractedRequirements,
+          lastExtractionTime: new Date().toISOString(),
+          isLoading: false,
+          error: null,
+        }));
+
+        return DUMMY_REQUIREMENTS as ExtractedRequirements;
+      }
+
       // Railway 백엔드로 직접 요청
       const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
       const response = await fetch(`${backendUrl}/chat/requirements/extract`, {

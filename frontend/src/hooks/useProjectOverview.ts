@@ -1,4 +1,5 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { isDevelopmentMode, DUMMY_PROJECT_OVERVIEW } from '@/lib/dummyData';
 
 interface ProjectOverview {
   serviceCoreElements: {
@@ -79,6 +80,22 @@ export const useProjectOverview = () => {
   const [isRequestInProgress, setIsRequestInProgress] = useState(false);
   const [aiMessage, setAiMessage] = useState<string | null>(null);
   const lastAiMessageRef = useRef<string | null>(null);
+  const hasInitializedDevMode = useRef(false);
+
+  // 개발 모드일 때 자동으로 더미 데이터 설정
+  useEffect(() => {
+    // 이미 overview가 있거나 초기화했으면 건너뛰기
+    if (overview || hasInitializedDevMode.current) return;
+
+    // 개발 모드가 아니면 건너뛰기
+    if (!isDevelopmentMode()) return;
+
+    // 즉시 더미 데이터 설정
+    console.log('[DEV MODE] 자동으로 더미 프로젝트 개요 데이터 설정');
+    hasInitializedDevMode.current = true;
+    setOverview(DUMMY_PROJECT_OVERVIEW as ProjectOverview);
+    setAiMessage("프로젝트 개요가 분석되었습니다. (개발 모드)");
+  }, [overview]);
 
   const generateOverview = useCallback(async (input: ProjectInput, messages: ChatMessage[] = []) => {
     // 중복 호출 방지: 요청 해시 생성
@@ -94,8 +111,21 @@ export const useProjectOverview = () => {
     setIsLoading(true);
     setError(null);
     lastRequestHashRef.current = requestHash; // ref로 즉시 업데이트
-    
+
     try {
+      // 개발 모드: 더미 데이터 반환
+      if (isDevelopmentMode()) {
+        console.log('[DEV MODE] 더미 프로젝트 개요 데이터 사용');
+        await new Promise(resolve => setTimeout(resolve, 300)); // 짧은 로딩 시뮬레이션
+
+        setOverview(DUMMY_PROJECT_OVERVIEW as ProjectOverview);
+        setAiMessage("프로젝트 개요가 분석되었습니다. (개발 모드)");
+        setIsLoading(false);
+        setIsRequestInProgress(false);
+        hasInitializedDevMode.current = true;
+        return;
+      }
+
       // Railway 백엔드로 직접 요청
       const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
       const requestUrl = `${backendUrl}/chat/message`;

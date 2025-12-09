@@ -33,17 +33,27 @@ export function MobileRequirementsPanel({
 
   const data = requirementsData as any;
 
+  // ID 정규화 함수
+  const normalizeId = (name: string | undefined | null) => {
+    if (!name) return "";
+    return name.toLowerCase().replace(/\s+/g, "_");
+  };
+
   // 모든 요구사항 추출
   const allRequirements = useMemo(() => {
     if (!data?.categories) return [];
 
-    const reqs: Requirement[] = [];
+    const reqs: (Requirement & { majorCategory?: string; majorCategoryId?: string })[] = [];
     data.categories.forEach((cat: any) => {
+      const majorCat = cat.majorCategory || cat.category;
+      const majorCatId = normalizeId(majorCat);
       cat.subCategories?.forEach((sub: any) => {
         sub.requirements?.forEach((req: any) => {
           reqs.push({
             ...req,
-            category: sub.subCategory || sub.subcategory || cat.majorCategory,
+            category: sub.subCategory || sub.subcategory || majorCat,
+            majorCategory: majorCat,
+            majorCategoryId: majorCatId,
           });
         });
       });
@@ -251,7 +261,7 @@ export function MobileRequirementsPanel({
                   {getPriorityLabel(req.priority)}
                 </span>
                 <button
-                  onClick={() => onOpenEditModal?.(req.category || "")}
+                  onClick={() => onOpenEditModal?.(req.majorCategoryId || req.category || "")}
                   className="text-xs text-indigo-600 font-medium px-2 py-1 hover:bg-indigo-50 rounded transition-colors"
                 >
                   편집

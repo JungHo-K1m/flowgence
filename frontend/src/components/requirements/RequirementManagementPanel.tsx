@@ -171,20 +171,22 @@ export function RequirementManagementPanel({
   };
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="p-3 border-b border-gray-200">
-        <div className="flex items-center justify-between">
-          <InlineEditInput
-            value={categoryTitle}
-            onSave={handleCategoryTitleEdit}
-            className="text-lg font-semibold text-gray-900"
-            placeholder="카테고리 제목"
-            saveError={saveError}
-          />
-          <div className="flex items-center space-x-2">
+      <div className="p-2 sm:p-3 border-b border-gray-200 flex-shrink-0">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            <InlineEditInput
+              value={categoryTitle}
+              onSave={handleCategoryTitleEdit}
+              className="text-base sm:text-lg font-semibold text-gray-900"
+              placeholder="카테고리 제목"
+              saveError={saveError}
+            />
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
             {isSaving && (
-              <div className="flex items-center text-blue-600 text-sm">
+              <div className="hidden sm:flex items-center text-blue-600 text-sm">
                 <div className="animate-spin w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full mr-2"></div>
                 저장중...
               </div>
@@ -192,7 +194,7 @@ export function RequirementManagementPanel({
             <Button
               variant="outline"
               size="sm"
-              className="transition-opacity"
+              className="transition-opacity p-2"
               onClick={() => {
                 // 편집 모드 토글 로직
                 console.log("편집 모드");
@@ -210,8 +212,8 @@ export function RequirementManagementPanel({
       </div>
 
       {/* Requirements List */}
-      <div 
-        className={`flex-1 overflow-y-auto p-3 space-y-3 transition-colors ${
+      <div
+        className={`flex-1 overflow-y-auto p-3 space-y-3 transition-colors min-h-0 ${
           isDragOver ? 'bg-blue-50 border-2 border-blue-300 border-dashed rounded-lg' : ''
         }`}
         onDragOver={(e) => {
@@ -269,10 +271,10 @@ export function RequirementManagementPanel({
           localRequirements.map((requirement) => (
             <div
               key={requirement.id}
-              className="p-4 bg-white border border-gray-200 rounded-lg hover:shadow-sm transition-shadow"
+              className="p-3 sm:p-4 bg-white border border-gray-200 rounded-lg hover:shadow-sm transition-shadow"
             >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                <div className="flex-1 min-w-0">
                   {/* Title */}
                   <div className="mb-2">
                     <InlineEditInput
@@ -280,7 +282,7 @@ export function RequirementManagementPanel({
                       onSave={(newTitle) =>
                         handleTitleEdit(requirement, newTitle)
                       }
-                      className="font-medium text-gray-900"
+                      className="font-medium text-gray-900 text-sm sm:text-base"
                       placeholder="요구사항 제목"
                       saveError={errorStates[`${requirement.id}-title`]}
                       showEditButton={true}
@@ -294,7 +296,7 @@ export function RequirementManagementPanel({
                       onSave={(newDescription) =>
                         handleDescriptionEdit(requirement, newDescription)
                       }
-                      className="text-sm text-gray-600"
+                      className="text-xs sm:text-sm text-gray-600"
                       placeholder="요구사항 설명"
                       multiline
                       saveError={errorStates[`${requirement.id}-description`]}
@@ -303,7 +305,7 @@ export function RequirementManagementPanel({
                   </div>
 
                   {/* Priority Badge and Status */}
-                  <div className="flex items-center space-x-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span
                       className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(
                         requirement.priority
@@ -334,11 +336,11 @@ export function RequirementManagementPanel({
                   {requirement.needsClarification &&
                     requirement.clarificationQuestions &&
                     requirement.clarificationQuestions.length > 0 && (
-                      <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                        <h5 className="text-sm font-medium text-orange-800 mb-2">
+                      <div className="mt-3 p-2 sm:p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                        <h5 className="text-xs sm:text-sm font-medium text-orange-800 mb-2">
                           명확화 질문:
                         </h5>
-                        <ul className="text-sm text-orange-700 space-y-1">
+                        <ul className="text-xs sm:text-sm text-orange-700 space-y-1">
                           {requirement.clarificationQuestions.map(
                             (question: string, index: number) => (
                               <li key={index} className="flex items-start">
@@ -352,8 +354,8 @@ export function RequirementManagementPanel({
                     )}
                 </div>
 
-                {/* Action Buttons */}
-                <div className="flex items-center space-x-6 ml-8">
+                {/* Action Buttons - 모바일에서는 하단에 배치 */}
+                <div className="flex items-center justify-end gap-2 sm:gap-4 sm:ml-4 flex-shrink-0">
                   {/* Status Change Button */}
                   {requirement.needsClarification &&
                     onRequirementStatusChange && (
@@ -369,7 +371,7 @@ export function RequirementManagementPanel({
                             console.error("상태 변경 실패:", error);
                           }
                         }}
-                        className="transition-opacity"
+                        className="transition-opacity p-2"
                         disabled={
                           savingStates[`${requirement.id}-title`] ||
                           savingStates[`${requirement.id}-description`]
@@ -395,7 +397,7 @@ export function RequirementManagementPanel({
                         console.error("삭제 실패:", error);
                       }
                     }}
-                    className="transition-opacity"
+                    className="transition-opacity p-2"
                     disabled={
                       savingStates[`${requirement.id}-title`] ||
                       savingStates[`${requirement.id}-description`]
@@ -416,7 +418,7 @@ export function RequirementManagementPanel({
       </div>
 
       {/* Footer */}
-      <div className="p-3 border-t border-gray-200">
+      <div className="p-3 border-t border-gray-200 flex-shrink-0">
         <Button
           onClick={onAddNew}
           className="w-full bg-[#6366F1] hover:bg-[#5B5BD6] text-white"

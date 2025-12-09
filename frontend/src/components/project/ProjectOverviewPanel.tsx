@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useProjectOverview } from "@/hooks/useProjectOverview";
 import React from "react";
 import { UserJourneyMermaidDiagram } from "./UserJourneyMermaidDiagram";
+import { isDevelopmentMode } from "@/lib/dummyData";
 
 interface ChatMessage {
   type: "user" | "ai" | "system";
@@ -111,8 +112,8 @@ export function ProjectOverviewPanel({
   // 실시간 업데이트된 개요가 있으면 우선 사용
   const displayOverview = realtimeOverview || overview;
 
-  // 버튼 활성화를 위한 상태 (realtimeOverview가 있으면 즉시 활성화)
-  const isButtonEnabled = realtimeOverview ? true : !!overview && !isLoading;
+  // 버튼 활성화를 위한 상태 (displayOverview가 있으면 활성화)
+  const isButtonEnabled = !!displayOverview && !isLoading;
 
   // 스트리밍 효과를 위한 상태
   const prevOverviewRef = useRef<typeof displayOverview>(null);
@@ -232,6 +233,12 @@ export function ProjectOverviewPanel({
 
     // overview가 변경되었는지 확인
     if (!displayOverview) return;
+
+    // 개발 모드에서는 스트리밍 효과 건너뛰기
+    if (isDevelopmentMode()) {
+      prevOverviewRef.current = displayOverview;
+      return;
+    }
 
     // 초기 로딩 체크
     const isInitialLoad = !prevOverviewRef.current;
@@ -470,7 +477,7 @@ export function ProjectOverviewPanel({
   };
 
   return (
-    <div className="h-full bg-white flex flex-col max-h-screen">
+    <div className="h-full bg-white flex flex-col overflow-hidden">
       {/* Tab Header */}
       <div className="border-b border-gray-200 flex-shrink-0">
         <div className="flex">

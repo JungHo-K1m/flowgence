@@ -1,12 +1,28 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { AIRecommendationsPanel } from "./AIRecommendationsPanel";
 import { RequirementManagementPanel } from "./RequirementManagementPanel";
 import { AddRequirementModal } from "./AddRequirementModal";
 import { DeleteConfirmModal } from "./DeleteConfirmModal";
 import { RequirementDeleteConfirmModal } from "./RequirementDeleteConfirmModal";
+
+// 모바일 감지 훅
+const useIsMobile = () => {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  return isMobile;
+};
 
 interface Requirement {
   id: string;
@@ -60,6 +76,10 @@ export function SimpleRequirementModal({
     useState(false);
   const [requirementToDeleteConfirm, setRequirementToDeleteConfirm] =
     useState<Requirement | null>(null);
+
+  // 모바일 탭 상태
+  const isMobile = useIsMobile();
+  const [activeTab, setActiveTab] = useState<"ai" | "manage">("manage");
 
   // ESC 키로 모달 닫기
   useEffect(() => {
@@ -151,19 +171,19 @@ export function SimpleRequirementModal({
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          padding: "20px",
+          padding: isMobile ? "0" : "20px",
         }}
         onClick={onClose}
       >
         <div
           style={{
             backgroundColor: "white",
-            borderRadius: "8px",
+            borderRadius: isMobile ? "0" : "8px",
             boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
             width: "100%",
             height: "100%",
-            maxWidth: "1400px",
-            maxHeight: "900px",
+            maxWidth: isMobile ? "100%" : "1400px",
+            maxHeight: isMobile ? "100%" : "900px",
             display: "flex",
             flexDirection: "column",
             overflow: "hidden",
@@ -173,7 +193,7 @@ export function SimpleRequirementModal({
           {/* Header */}
           <div
             style={{
-              padding: "16px 20px",
+              padding: isMobile ? "12px 16px" : "16px 20px",
               borderBottom: "1px solid #e5e7eb",
               display: "flex",
               alignItems: "center",
@@ -183,7 +203,7 @@ export function SimpleRequirementModal({
           >
             <h2
               style={{
-                fontSize: "20px",
+                fontSize: isMobile ? "16px" : "20px",
                 fontWeight: "600",
                 color: "#111827",
                 margin: 0,
@@ -201,69 +221,136 @@ export function SimpleRequirementModal({
             </Button>
           </div>
 
+          {/* Mobile Tab Header */}
+          {isMobile && (
+            <div
+              style={{
+                display: "flex",
+                borderBottom: "1px solid #e5e7eb",
+                flexShrink: 0,
+              }}
+            >
+              <button
+                onClick={() => setActiveTab("ai")}
+                style={{
+                  flex: 1,
+                  padding: "12px",
+                  fontSize: "14px",
+                  fontWeight: "500",
+                  backgroundColor: activeTab === "ai" ? "#f0f0ff" : "transparent",
+                  color: activeTab === "ai" ? "#6366F1" : "#6b7280",
+                  border: "none",
+                  borderBottom: activeTab === "ai" ? "2px solid #6366F1" : "2px solid transparent",
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                }}
+              >
+                🤖 AI 추천
+              </button>
+              <button
+                onClick={() => setActiveTab("manage")}
+                style={{
+                  flex: 1,
+                  padding: "12px",
+                  fontSize: "14px",
+                  fontWeight: "500",
+                  backgroundColor: activeTab === "manage" ? "#f0f0ff" : "transparent",
+                  color: activeTab === "manage" ? "#6366F1" : "#6b7280",
+                  border: "none",
+                  borderBottom: activeTab === "manage" ? "2px solid #6366F1" : "2px solid transparent",
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                }}
+              >
+                📋 요구사항 ({requirements.length})
+              </button>
+            </div>
+          )}
+
           {/* Content */}
           <div
             style={{
               flex: 1,
               display: "flex",
               overflow: "hidden",
+              flexDirection: isMobile ? "column" : "row",
+              minHeight: 0,
             }}
           >
             {/* Left Panel - AI Recommendations */}
-            <div
-              style={{
-                width: "33.33%",
-                borderRight: "1px solid #e5e7eb",
-                overflow: "hidden",
-              }}
-            >
-              <AIRecommendationsPanel 
-                onAddRequirement={handleAddRequirement}
-                requirements={requirements}
-                categoryTitle={categoryTitle}
-                projectData={projectData}
-              />
-            </div>
+            {(!isMobile || activeTab === "ai") && (
+              <div
+                style={{
+                  width: isMobile ? "100%" : "33.33%",
+                  height: isMobile ? "100%" : "auto",
+                  borderRight: isMobile ? "none" : "1px solid #e5e7eb",
+                  overflow: "hidden",
+                  display: "flex",
+                  flexDirection: "column",
+                  minHeight: 0,
+                }}
+              >
+                <AIRecommendationsPanel
+                  onAddRequirement={handleAddRequirement}
+                  requirements={requirements}
+                  categoryTitle={categoryTitle}
+                  projectData={projectData}
+                />
+              </div>
+            )}
 
             {/* Right Panel - Requirement Management */}
-            <div
-              style={{
-                width: "66.67%",
-                overflow: "hidden",
-              }}
-            >
-              <RequirementManagementPanel
-                requirements={requirements}
-                categoryTitle={categoryTitle}
-                onCategoryTitleChange={onCategoryTitleChange}
-                onUpdateRequirement={handleUpdateRequirement}
-                onDeleteRequirement={handleDeleteRequirement}
-                onAddNew={() => setShowAddModal(true)}
-                onRequirementStatusChange={onRequirementStatusChange}
-                isSaving={isSaving}
-                saveError={saveError}
-                onDropRequirement={async (newRequirement) => {
-                  await handleAddRequirement(newRequirement);
+            {(!isMobile || activeTab === "manage") && (
+              <div
+                style={{
+                  width: isMobile ? "100%" : "66.67%",
+                  height: isMobile ? "100%" : "auto",
+                  overflow: "hidden",
+                  display: "flex",
+                  flexDirection: "column",
+                  minHeight: 0,
                 }}
-              />
-            </div>
+              >
+                <RequirementManagementPanel
+                  requirements={requirements}
+                  categoryTitle={categoryTitle}
+                  onCategoryTitleChange={onCategoryTitleChange}
+                  onUpdateRequirement={handleUpdateRequirement}
+                  onDeleteRequirement={handleDeleteRequirement}
+                  onAddNew={() => setShowAddModal(true)}
+                  onRequirementStatusChange={onRequirementStatusChange}
+                  isSaving={isSaving}
+                  saveError={saveError}
+                  onDropRequirement={async (newRequirement) => {
+                    await handleAddRequirement(newRequirement);
+                  }}
+                />
+              </div>
+            )}
           </div>
 
           {/* Footer */}
           <div
             style={{
-              padding: "16px 20px",
+              padding: isMobile ? "12px 16px" : "16px 20px",
               borderTop: "1px solid #e5e7eb",
               display: "flex",
+              flexDirection: isMobile ? "column" : "row",
               justifyContent: "space-between",
-              alignItems: "center",
+              alignItems: isMobile ? "stretch" : "center",
+              gap: isMobile ? "12px" : "0",
               flexShrink: 0,
             }}
           >
             <div
-              style={{ display: "flex", flexDirection: "column", gap: "4px" }}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "4px",
+                alignItems: isMobile ? "center" : "flex-start",
+              }}
             >
-              <div style={{ fontSize: "14px", color: "#6b7280" }}>
+              <div style={{ fontSize: isMobile ? "12px" : "14px", color: "#6b7280" }}>
                 변경사항은 자동 저장됩니다
               </div>
               {isSaving && (
@@ -295,14 +382,20 @@ export function SimpleRequirementModal({
                 </div>
               )}
             </div>
-            <div style={{ display: "flex", gap: "8px" }}>
-              <Button variant="outline" onClick={onClose} disabled={isSaving}>
+            <div style={{ display: "flex", gap: "8px", justifyContent: isMobile ? "stretch" : "flex-end" }}>
+              <Button
+                variant="outline"
+                onClick={onClose}
+                disabled={isSaving}
+                style={{ flex: isMobile ? 1 : "none" }}
+              >
                 닫기
               </Button>
               <Button
                 onClick={onClose}
                 disabled={isSaving}
                 style={{
+                  flex: isMobile ? 1 : "none",
                   backgroundColor: isSaving ? "#9ca3af" : "#6366F1",
                   color: "white",
                   border: "none",
