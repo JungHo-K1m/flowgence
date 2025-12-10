@@ -112,7 +112,7 @@ export function Header() {
           </nav>
 
           <div
-            className={`md:hidden absolute top-16 left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg transition-transform duration-300 ${
+            className={`md:hidden absolute top-16 left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg transition-transform duration-300 z-50 ${
               isMobileMenuOpen ? "translate-y-0 opacity-100" : "-translate-y-4 opacity-0 pointer-events-none"
             }`}
           >

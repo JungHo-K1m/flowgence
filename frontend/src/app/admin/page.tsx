@@ -277,115 +277,115 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4 md:space-y-6 lg:space-y-8">
       {/* Page Title */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">대시보드</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <h1 className="text-xl md:text-2xl font-bold text-gray-900">대시보드</h1>
         <input
           type="text"
           placeholder="검색..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6366F1] w-64"
+          className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6366F1] w-full sm:w-64"
         />
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 lg:gap-6">
+        <div className="bg-white p-3 md:p-4 lg:p-6 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center">
-            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
-              <span className="text-2xl">▶️</span>
+            <div className="w-10 h-10 md:w-12 md:h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-2 md:mr-4 flex-shrink-0">
+              <span className="text-lg md:text-2xl">▶️</span>
             </div>
-            <div>
-              <p className="text-2xl font-bold text-gray-900">
+            <div className="min-w-0">
+              <p className="text-lg md:text-xl lg:text-2xl font-bold text-gray-900">
                 {stats.totalProjects}
               </p>
-              <p className="text-sm text-gray-600">진행중인 프로젝트</p>
+              <p className="text-xs md:text-sm text-gray-600 truncate">진행중인 프로젝트</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <div className="bg-white p-3 md:p-4 lg:p-6 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center">
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mr-4">
-              <span className="text-2xl">✅</span>
+            <div className="w-10 h-10 md:w-12 md:h-12 bg-green-100 rounded-lg flex items-center justify-center mr-2 md:mr-4 flex-shrink-0">
+              <span className="text-lg md:text-2xl">✅</span>
             </div>
-            <div>
-              <p className="text-2xl font-bold text-gray-900">
+            <div className="min-w-0">
+              <p className="text-lg md:text-xl lg:text-2xl font-bold text-gray-900">
                 {stats.completedProjects}
               </p>
-              <p className="text-sm text-gray-600">완료된 프로젝트</p>
+              <p className="text-xs md:text-sm text-gray-600 truncate">완료된 프로젝트</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <div className="bg-white p-3 md:p-4 lg:p-6 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center">
-            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mr-4">
-              <span className="text-2xl">💰</span>
+            <div className="w-10 h-10 md:w-12 md:h-12 bg-purple-100 rounded-lg flex items-center justify-center mr-2 md:mr-4 flex-shrink-0">
+              <span className="text-lg md:text-2xl">💰</span>
             </div>
-            <div>
-              <p className="text-2xl font-bold text-gray-900">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm md:text-lg lg:text-2xl font-bold text-gray-900 truncate">
                 {stats.totalEstimate.toLocaleString()}원
               </p>
-              <p className="text-sm text-gray-600">총 견적금액</p>
+              <p className="text-xs md:text-sm text-gray-600 truncate">총 견적금액</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <div className="bg-white p-3 md:p-4 lg:p-6 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center">
-            <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center mr-4">
-              <span className="text-2xl">⏰</span>
+            <div className="w-10 h-10 md:w-12 md:h-12 bg-orange-100 rounded-lg flex items-center justify-center mr-2 md:mr-4 flex-shrink-0">
+              <span className="text-lg md:text-2xl">⏰</span>
             </div>
-            <div>
-              <p className="text-2xl font-bold text-gray-900">
+            <div className="min-w-0">
+              <p className="text-lg md:text-xl lg:text-2xl font-bold text-gray-900">
                 {stats.pendingApproval}
               </p>
-              <p className="text-sm text-gray-600">승인 대기</p>
+              <p className="text-xs md:text-sm text-gray-600 truncate">승인 대기</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Recent Projects & Pending Reviews */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         {/* Recent Projects */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          <div className="p-6 border-b border-gray-200">
+          <div className="p-4 md:p-6 border-b border-gray-200">
             <div className="flex justify-between items-center">
-              <h2 className="text-lg font-semibold text-gray-900">
+              <h2 className="text-base md:text-lg font-semibold text-gray-900">
                 최근 프로젝트
               </h2>
               <Link
                 href="/admin/projects"
-                className="text-sm text-[#6366F1] hover:text-[#4F46E5] font-medium"
+                className="text-xs md:text-sm text-[#6366F1] hover:text-[#4F46E5] font-medium"
               >
                 전체보기 →
               </Link>
             </div>
           </div>
-          <div className="p-6">
-            <div className="space-y-4">
+          <div className="p-4 md:p-6">
+            <div className="space-y-3 md:space-y-4">
               {recentProjects.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
+                <div className="text-center py-6 md:py-8 text-gray-500 text-sm md:text-base">
                   프로젝트가 없습니다
                 </div>
               ) : (
                 recentProjects.map((project) => (
                   <div
                     key={project.id}
-                    className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-200"
+                    className="flex items-center justify-between p-3 md:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-200"
                   >
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-1">
-                        <h3 className="font-semibold text-gray-900">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center flex-wrap gap-2 mb-1">
+                        <h3 className="font-semibold text-gray-900 text-sm md:text-base truncate">
                           {project.title}
                         </h3>
                         {getStatusBadge(project.status)}
                       </div>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-xs md:text-sm text-gray-600 truncate">
                         {project.userName} •{" "}
                         {new Date(project.createdAt).toLocaleDateString()}
                       </p>
@@ -399,38 +399,38 @@ export default function AdminPage() {
 
         {/* Pending Reviews */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">
+          <div className="p-4 md:p-6 border-b border-gray-200">
+            <h2 className="text-base md:text-lg font-semibold text-gray-900">
               승인 대기 검토
             </h2>
           </div>
-          <div className="p-6">
-            <div className="space-y-4">
+          <div className="p-4 md:p-6">
+            <div className="space-y-3 md:space-y-4">
               {pendingReviews.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
+                <div className="text-center py-6 md:py-8 text-gray-500 text-sm md:text-base">
                   승인 대기 중인 프로젝트가 없습니다
                 </div>
               ) : (
                 pendingReviews.map((review) => (
                   <div
                     key={review.id}
-                    className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-200"
+                    className="p-3 md:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-200"
                   >
-                    <div className="flex justify-between items-start mb-2">
-                      <h3 className="font-semibold text-gray-900">
+                    <div className="flex justify-between items-start gap-2 mb-2">
+                      <h3 className="font-semibold text-gray-900 text-sm md:text-base truncate flex-1">
                         {review.title}
                       </h3>
                       <button
                         onClick={() => openProjectDetail(review.id)}
-                        className="text-sm text-[#6366F1] hover:text-[#4F46E5]"
+                        className="text-xs md:text-sm text-[#6366F1] hover:text-[#4F46E5] flex-shrink-0"
                       >
                         상세보기
                       </button>
                     </div>
-                    <p className="text-sm text-gray-600 mb-2">
+                    <p className="text-xs md:text-sm text-gray-600 mb-1 md:mb-2">
                       {review.estimate} • {review.daysWaiting}일 전 발송
                     </p>
-                    <p className="text-sm text-gray-600">{review.userName}</p>
+                    <p className="text-xs md:text-sm text-gray-600 truncate">{review.userName}</p>
                   </div>
                 ))
               )}
