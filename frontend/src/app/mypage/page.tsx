@@ -351,67 +351,67 @@ export default function MyPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4 md:space-y-6 lg:space-y-8">
       {/* Page Title */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">프로젝트 대시보드</h1>
-        <p className="text-gray-600 mt-1">프로젝트 현황을 한눈에 확인하세요</p>
+        <h1 className="text-xl md:text-2xl font-bold text-gray-900">프로젝트 대시보드</h1>
+        <p className="text-gray-600 mt-1 text-sm md:text-base">프로젝트 현황을 한눈에 확인하세요</p>
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 lg:gap-6">
+        <div className="bg-white p-3 md:p-4 lg:p-6 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center">
-            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
-              <span className="text-blue-600 text-xl">▶️</span>
+            <div className="w-10 h-10 md:w-12 md:h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-2 md:mr-4 flex-shrink-0">
+              <span className="text-blue-600 text-lg md:text-xl">▶️</span>
             </div>
-            <div>
-              <p className="text-2xl font-bold text-gray-900">
+            <div className="min-w-0">
+              <p className="text-lg md:text-xl lg:text-2xl font-bold text-gray-900">
                 {stats.inProgress}
               </p>
-              <p className="text-sm text-gray-600">진행중인 프로젝트</p>
+              <p className="text-xs md:text-sm text-gray-600 truncate">진행중인 프로젝트</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <div className="bg-white p-3 md:p-4 lg:p-6 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center">
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mr-4">
-              <span className="text-green-600 text-xl">✅</span>
+            <div className="w-10 h-10 md:w-12 md:h-12 bg-green-100 rounded-lg flex items-center justify-center mr-2 md:mr-4 flex-shrink-0">
+              <span className="text-green-600 text-lg md:text-xl">✅</span>
             </div>
-            <div>
-              <p className="text-2xl font-bold text-gray-900">
+            <div className="min-w-0">
+              <p className="text-lg md:text-xl lg:text-2xl font-bold text-gray-900">
                 {stats.completed}
               </p>
-              <p className="text-sm text-gray-600">완료된 프로젝트</p>
+              <p className="text-xs md:text-sm text-gray-600 truncate">완료된 프로젝트</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <div className="bg-white p-3 md:p-4 lg:p-6 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center">
-            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mr-4">
-              <span className="text-purple-600 text-xl">💰</span>
+            <div className="w-10 h-10 md:w-12 md:h-12 bg-purple-100 rounded-lg flex items-center justify-center mr-2 md:mr-4 flex-shrink-0">
+              <span className="text-purple-600 text-lg md:text-xl">💰</span>
             </div>
-            <div>
-              <p className="text-2xl font-bold text-gray-900">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm md:text-lg lg:text-2xl font-bold text-gray-900 truncate">
                 {stats.totalEstimated.toLocaleString()}원
               </p>
-              <p className="text-sm text-gray-600">총 견적금액</p>
+              <p className="text-xs md:text-sm text-gray-600 truncate">총 견적금액</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <div className="bg-white p-3 md:p-4 lg:p-6 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center">
-            <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center mr-4">
-              <span className="text-orange-600 text-xl">⏰</span>
+            <div className="w-10 h-10 md:w-12 md:h-12 bg-orange-100 rounded-lg flex items-center justify-center mr-2 md:mr-4 flex-shrink-0">
+              <span className="text-orange-600 text-lg md:text-xl">⏰</span>
             </div>
-            <div>
-              <p className="text-2xl font-bold text-gray-900">
+            <div className="min-w-0">
+              <p className="text-lg md:text-xl lg:text-2xl font-bold text-gray-900">
                 {stats.pendingApproval}
               </p>
-              <p className="text-sm text-gray-600">승인 대기</p>
+              <p className="text-xs md:text-sm text-gray-600 truncate">승인 대기</p>
             </div>
           </div>
         </div>
@@ -419,15 +419,15 @@ export default function MyPage() {
 
       {/* Recent Projects */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div className="p-6 border-b border-gray-200">
+        <div className="p-4 md:p-6 border-b border-gray-200">
           <div className="flex justify-between items-center">
-            <h2 className="text-lg font-semibold text-gray-900">
+            <h2 className="text-base md:text-lg font-semibold text-gray-900">
               최근 프로젝트
             </h2>
             {projects.length > 6 && (
               <Link
                 href="/mypage/in-progress"
-                className="text-sm text-[#6366F1] hover:text-[#4F46E5] font-medium flex items-center"
+                className="text-xs md:text-sm text-[#6366F1] hover:text-[#4F46E5] font-medium flex items-center"
               >
                 전체 보기 ({projects.length}개)
                 <span className="ml-1">→</span>
@@ -436,62 +436,62 @@ export default function MyPage() {
           </div>
         </div>
 
-        <div className="p-6">
+        <div className="p-4 md:p-6">
           {recentProjects.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="text-gray-500 text-lg">프로젝트가 없습니다</div>
-              <p className="text-gray-400 mt-2">새 프로젝트를 시작해보세요</p>
+            <div className="text-center py-8 md:py-12">
+              <div className="text-gray-500 text-base md:text-lg">프로젝트가 없습니다</div>
+              <p className="text-gray-400 mt-2 text-sm md:text-base">새 프로젝트를 시작해보세요</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
               {recentProjects.map((project) => (
                 <div
                   key={project.id}
-                  className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-lg transition-all duration-200 hover:border-gray-300 overflow-hidden"
+                  className="bg-white border border-gray-200 rounded-lg p-4 md:p-6 hover:shadow-lg transition-all duration-200 hover:border-gray-300 overflow-hidden"
                 >
                   {/* Project Header */}
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-2 min-w-0">
-                        <h3 className="text-lg font-semibold text-gray-900 truncate flex-1 min-w-0 max-w-[12ch] overflow-hidden">
+                  <div className="flex items-start justify-between mb-3 md:mb-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center space-x-2 md:space-x-3 mb-2 min-w-0">
+                        <h3 className="text-base md:text-lg font-semibold text-gray-900 truncate flex-1 min-w-0">
                           {project.title}
                         </h3>
                         <div className="flex-shrink-0">
                           {getStatusBadge(project.status)}
                         </div>
                       </div>
-                      <p className="text-sm text-gray-600 line-clamp-2 break-words break-all hyphens-auto leading-relaxed">
+                      <p className="text-xs md:text-sm text-gray-600 line-clamp-2 break-words leading-relaxed">
                         {project.description}
                       </p>
                     </div>
                   </div>
 
                   {/* Project Details */}
-                  <div className="space-y-3 mb-6">
-                    <div className="flex items-center justify-between text-sm">
+                  <div className="space-y-2 md:space-y-3 mb-4 md:mb-6">
+                    <div className="flex items-center justify-between text-xs md:text-sm">
                       <span className="text-gray-500">프로젝트 ID</span>
                       <span
-                        className="font-medium text-gray-900 truncate max-w-[120px]"
+                        className="font-medium text-gray-900 truncate max-w-[100px] md:max-w-[120px]"
                         title={`#${project.id}`}
                       >
-                        #{project.id}
+                        #{project.id.slice(0, 8)}...
                       </span>
                     </div>
-                    <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center justify-between text-xs md:text-sm">
                       <span className="text-gray-500">요구사항</span>
                       <span className="font-medium text-gray-900">
                         {getRequirementCount(project) || 0}개
                       </span>
                     </div>
-                    <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center justify-between text-xs md:text-sm">
                       <span className="text-gray-500">견적</span>
-                      <span className="font-medium text-gray-900">
+                      <span className="font-medium text-gray-900 truncate max-w-[120px]">
                         {project.status === "completed"
                           ? `${getEstimateAmount(project).toLocaleString()}원`
                           : "미산출"}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center justify-between text-xs md:text-sm">
                       <span className="text-gray-500">수정일</span>
                       <span className="font-medium text-gray-900">
                         {new Date(project.updatedAt).toLocaleDateString()}
@@ -500,23 +500,23 @@ export default function MyPage() {
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="flex space-x-3">
+                  <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 md:space-x-3">
                     {project.status === "completed" && (
-                      <button 
+                      <button
                         onClick={() => handleDownloadEstimate(project)}
-                        className="flex-1 px-4 py-2 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors duration-200 flex items-center justify-center truncate"
+                        className="flex-1 px-3 md:px-4 py-2 text-xs md:text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors duration-200 flex items-center justify-center"
                       >
-                        <span className="mr-2 flex-shrink-0">📥</span>
-                        <span className="truncate">견적서 다운로드</span>
+                        <span className="mr-1.5 md:mr-2 flex-shrink-0">📥</span>
+                        <span className="truncate">견적서</span>
                       </button>
                     )}
                     <button
                       onClick={() => resumeProject(project.id)}
-                      className="flex-1 px-4 py-2 text-sm text-white bg-[#6366F1] hover:bg-[#4F46E5] rounded-md transition-colors duration-200 truncate"
+                      className="flex-1 px-3 md:px-4 py-2 text-xs md:text-sm text-white bg-[#6366F1] hover:bg-[#4F46E5] rounded-md transition-colors duration-200 truncate"
                     >
                       {project.status === "completed"
                         ? "상세보기"
-                        : "작성 이어하기"}
+                        : "이어하기"}
                     </button>
                   </div>
                 </div>
