@@ -510,53 +510,76 @@ export function ProjectOverviewPanel({
           <div className="space-y-3 sm:space-y-4">
             <LoadingSpinner />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-              <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                <div className="flex items-center space-x-3 mb-2">
+              <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border border-gray-200">
+                <div className="flex items-center space-x-2 sm:space-x-3 mb-2">
                   <Image
                     src="/images/target-client.png"
                     alt="타겟 고객"
                     width={30}
                     height={24}
+                    className="w-6 h-5 sm:w-[30px] sm:h-6"
                   />
-                  <h3 className="font-semibold text-gray-900">타겟 고객</h3>
+                  <h3 className="font-semibold text-gray-900 text-sm sm:text-base">타겟 고객</h3>
                 </div>
                 <LoadingSkeleton />
               </div>
-              <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                <div className="flex items-center space-x-3 mb-2">
+              <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border border-gray-200">
+                <div className="flex items-center space-x-2 sm:space-x-3 mb-2">
                   <Image
                     src="/images/question-mark.png"
                     alt="핵심 문제"
                     width={24}
                     height={24}
+                    className="w-5 h-5 sm:w-6 sm:h-6"
                   />
-                  <h3 className="font-semibold text-gray-900">핵심 문제</h3>
+                  <h3 className="font-semibold text-gray-900 text-sm sm:text-base">핵심 문제</h3>
                 </div>
                 <LoadingSkeleton />
               </div>
-              <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                <div className="flex items-center space-x-3 mb-2">
+              <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border border-gray-200">
+                <div className="flex items-center space-x-2 sm:space-x-3 mb-2">
                   <Image
                     src="/images/core-feature.png"
                     alt="핵심 기능"
                     width={24}
                     height={24}
+                    className="w-5 h-5 sm:w-6 sm:h-6"
                   />
-                  <h3 className="font-semibold text-gray-900">핵심 기능</h3>
+                  <h3 className="font-semibold text-gray-900 text-sm sm:text-base">핵심 기능</h3>
                 </div>
                 <LoadingSkeleton />
               </div>
-              <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                <div className="flex items-center space-x-3 mb-2">
+              <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border border-gray-200">
+                <div className="flex items-center space-x-2 sm:space-x-3 mb-2">
                   <Image
                     src="/images/bm.png"
                     alt="수익 모델"
                     width={19}
                     height={25}
+                    className="w-4 h-5 sm:w-[19px] sm:h-[25px]"
                   />
-                  <h3 className="font-semibold text-gray-900">수익 모델</h3>
+                  <h3 className="font-semibold text-gray-900 text-sm sm:text-base">수익 모델</h3>
                 </div>
                 <LoadingSkeleton />
+              </div>
+            </div>
+            {/* 실시간 AI 분석 로딩 */}
+            <div className="mt-4 sm:mt-6">
+              <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border border-purple-200">
+                <div className="flex items-center space-x-2 sm:space-x-3 mb-3">
+                  <span className="text-xl sm:text-2xl">🤖</span>
+                  <h4 className="font-semibold text-gray-900 text-sm sm:text-base">
+                    실시간 AI 분석
+                  </h4>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-start space-x-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mt-1"></div>
+                    <p className="text-sm text-gray-600">
+                      AI가 프로젝트를 분석하고 있습니다...
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -738,11 +761,11 @@ export function ProjectOverviewPanel({
             </div>
 
             {/* Real-time AI Analysis */}
-            <div className="mt-6">
-              <div className="bg-white p-4 rounded-lg shadow-sm border border-purple-200">
-                <div className="flex items-center space-x-3 mb-3">
-                  <span className="text-2xl">🤖</span>
-                  <h4 className="font-semibold text-gray-900">
+            <div className="mt-4 sm:mt-6">
+              <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border border-purple-200">
+                <div className="flex items-center space-x-2 sm:space-x-3 mb-3">
+                  <span className="text-xl sm:text-2xl">🤖</span>
+                  <h4 className="font-semibold text-gray-900 text-sm sm:text-base">
                     실시간 AI 분석
                   </h4>
                 </div>
