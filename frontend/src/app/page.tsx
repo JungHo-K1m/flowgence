@@ -315,14 +315,18 @@ function HomePageContent() {
     isSaving ||
     isRequirementsLoading;
 
-  // 디버깅용 로그 (1단계 버튼 활성화 상태 확인)
-  // useEffect(() => {
-  //   console.log("=== 1단계 버튼 활성화 상태 디버깅 ===");
-  //   console.log("overview 존재 여부:", !!overview);
-  //   console.log("overview 데이터:", overview);
-  //   console.log("isOverviewLoading:", isOverviewLoading);
-  //   console.log("=====================================");
-  // }, [overview, isOverviewLoading]);
+  // 디버깅용 로그 (overview 상태 확인)
+  useEffect(() => {
+    console.log("[page.tsx] overview 상태 변경:", {
+      hasOverview: !!overview,
+      overviewKeys: overview ? Object.keys(overview) : null,
+      serviceCoreElements: overview?.serviceCoreElements ? {
+        hasTargetUsers: !!overview.serviceCoreElements.targetUsers,
+        hasDescription: !!overview.serviceCoreElements.description,
+      } : null,
+      isOverviewLoading,
+    });
+  }, [overview, isOverviewLoading]);
 
   // 2단계 버튼 활성화 조건: 요구사항 로딩 완료 + 결정 필요 요구사항 모두 편집 완료
   const isStep2ButtonEnabled = useMemo(() => {
