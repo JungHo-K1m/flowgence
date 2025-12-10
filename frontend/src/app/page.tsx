@@ -2687,6 +2687,8 @@ function HomePageContent() {
                   onGenerateOverview={generateOverviewRef}
                   realtimeOverview={overview || undefined}
                   isLoading={isOverviewLoading}
+                  onUpdateOverview={updateOverview}
+                  onSetOverviewDirectly={setOverviewDirectly}
                 />
               )
             }
@@ -2769,6 +2771,8 @@ function HomePageContent() {
                   onGenerateOverview={generateOverviewRef}
                   realtimeOverview={overview || undefined}
                   isLoading={isOverviewLoading}
+                  onUpdateOverview={updateOverview}
+                  onSetOverviewDirectly={setOverviewDirectly}
                 />
               )}
             </div>

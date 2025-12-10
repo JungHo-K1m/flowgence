@@ -81,6 +81,8 @@ interface ProjectOverviewPanelProps {
   onGenerateOverview?: React.MutableRefObject<(() => void) | null>;
   realtimeOverview?: ProjectOverview;
   isLoading?: boolean;
+  onUpdateOverview?: (input: { description: string; serviceType: string; uploadedFiles: File[] }, messages: ChatMessage[]) => void;
+  onSetOverviewDirectly?: (overview: ProjectOverview | null) => void;
 }
 
 export function ProjectOverviewPanel({
@@ -93,6 +95,8 @@ export function ProjectOverviewPanel({
   onGenerateOverview,
   realtimeOverview,
   isLoading: externalIsLoading,
+  onUpdateOverview,
+  onSetOverviewDirectly,
 }: ProjectOverviewPanelProps) {
   const [activeTab, setActiveTab] = useState<"elements" | "journey">(
     "elements"
@@ -154,6 +158,7 @@ export function ProjectOverviewPanel({
 
 
   // 수동으로 프로젝트 개요 생성하는 함수 (useCallback으로 최적화)
+  // 부모에서 전달된 onUpdateOverview가 있으면 그것을 사용 (상태 동기화를 위해)
   const handleGenerateOverview = useCallback(() => {
     if (
       messages.length > 0 &&
@@ -165,7 +170,13 @@ export function ProjectOverviewPanel({
         serviceType,
         uploadedFiles,
       };
-      updateOverview(input, messages);
+      // 부모의 updateOverview를 우선 사용하여 상태 동기화
+      if (onUpdateOverview) {
+        onUpdateOverview(input, messages);
+      } else {
+        // 폴백: 내부 훅 사용 (하위 호환성)
+        updateOverview(input, messages);
+      }
     }
   }, [
     messages,
@@ -173,6 +184,7 @@ export function ProjectOverviewPanel({
     serviceType,
     uploadedFiles,
     updateOverview,
+    onUpdateOverview,
   ]);
 
   // 외부에서 호출할 수 있도록 함수 노출
@@ -809,13 +821,18 @@ export function ProjectOverviewPanel({
                       autoGenerateImage={true}
                       onImageGenerated={(imageUrl) => {
                         // 이미지 생성 완료 시 프로젝트 개요에 저장
-                        if (displayOverview && setOverviewDirectly) {
+                        if (displayOverview) {
                           const updatedOverview = {
                             ...displayOverview,
                             mermaidImage: imageUrl, // 이미지 URL을 프로젝트 개요에 추가
                           };
-                          // 프로젝트 개요 state 업데이트 (이미지 포함)
-                          setOverviewDirectly(updatedOverview);
+                          // 부모의 setOverviewDirectly를 우선 사용
+                          if (onSetOverviewDirectly) {
+                            onSetOverviewDirectly(updatedOverview);
+                          } else if (setOverviewDirectly) {
+                            // 폴백: 내부 훅 사용
+                            setOverviewDirectly(updatedOverview);
+                          }
                         }
                       }}
                     />

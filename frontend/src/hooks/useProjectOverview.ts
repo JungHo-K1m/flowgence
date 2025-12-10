@@ -155,13 +155,13 @@ export const useProjectOverview = () => {
       }
       
       const data = await response.json();
-      
+
       // projectOverview가 빈 객체인 경우 null로 처리
-      if (data.projectOverview && typeof data.projectOverview === 'object' && 
+      if (data.projectOverview && typeof data.projectOverview === 'object' &&
           Object.keys(data.projectOverview).length === 0) {
         data.projectOverview = null;
       }
-      
+
       // 백엔드 응답 구조를 프론트엔드 구조로 변환
       let processedOverview = data.projectOverview;
       
@@ -206,9 +206,9 @@ export const useProjectOverview = () => {
           }
         };
       }
-      
+
       setOverview(processedOverview);
-      
+
       // AI 메시지 설정 (중복 방지)
       if (data.aiMessage?.content && data.aiMessage.content !== lastAiMessageRef.current) {
         setAiMessage(data.aiMessage.content);
