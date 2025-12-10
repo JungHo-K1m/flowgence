@@ -112,6 +112,24 @@ export function ProjectOverviewPanel({
   // 실시간 업데이트된 개요가 있으면 우선 사용
   const displayOverview = realtimeOverview || overview;
 
+  // 디버깅: displayOverview 상태 확인
+  React.useEffect(() => {
+    console.log("[ProjectOverviewPanel] displayOverview 상태:", {
+      hasRealtimeOverview: !!realtimeOverview,
+      hasInternalOverview: !!overview,
+      hasDisplayOverview: !!displayOverview,
+      realtimeOverviewKeys: realtimeOverview ? Object.keys(realtimeOverview) : null,
+      serviceCoreElements: displayOverview?.serviceCoreElements ? {
+        hasTargetUsers: !!displayOverview.serviceCoreElements.targetUsers,
+        targetUsersLength: displayOverview.serviceCoreElements.targetUsers?.length,
+        targetUsers: displayOverview.serviceCoreElements.targetUsers,
+        hasDescription: !!displayOverview.serviceCoreElements.description,
+        description: displayOverview.serviceCoreElements.description,
+      } : "serviceCoreElements 없음",
+      fullRealtimeOverview: realtimeOverview,
+    });
+  }, [realtimeOverview, overview, displayOverview]);
+
   // 버튼 활성화를 위한 상태 (displayOverview가 있으면 활성화)
   const isButtonEnabled = !!displayOverview && !isLoading;
 
