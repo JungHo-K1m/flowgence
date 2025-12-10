@@ -152,19 +152,6 @@ export function ProjectOverviewPanel({
     }>
   >([]);
 
-  // 디버깅: displayOverview 상태 확인
-  const renderCountRef = useRef(0);
-  renderCountRef.current += 1;
-
-  console.log(`[ProjectOverviewPanel] 렌더링 #${renderCountRef.current}:`, {
-    hasRealtimeOverview: !!realtimeOverview,
-    hasInternalOverview: !!overview,
-    hasDisplayOverview: !!displayOverview,
-    targetUsers: displayOverview?.serviceCoreElements?.targetUsers,
-    isLoading,
-    streamingQueueLength: streamingQueue?.length || 0,
-    streamingDataType: streamingData?.type,
-  });
 
   // 수동으로 프로젝트 개요 생성하는 함수 (useCallback으로 최적화)
   const handleGenerateOverview = useCallback(() => {
@@ -251,6 +238,13 @@ export function ProjectOverviewPanel({
 
     // 개발 모드에서는 스트리밍 효과 건너뛰기
     if (isDevelopmentMode()) {
+      prevOverviewRef.current = displayOverview;
+      return;
+    }
+
+    // 모바일에서는 스트리밍 효과 건너뛰기 (렌더링 문제 방지)
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+    if (isMobile) {
       prevOverviewRef.current = displayOverview;
       return;
     }
@@ -614,20 +608,8 @@ export function ProjectOverviewPanel({
                   />
                   <h3 className="font-semibold text-gray-900 text-sm sm:text-base">타겟 고객</h3>
                 </div>
-                {streamingData.type === "targetUsers" && streamingData.data ? (
-                  <div className="space-y-2">
-                    <div className="whitespace-pre-wrap">
-                      <p className="text-sm text-gray-600">
-                        {streamingData.data}
-                        <span className="animate-pulse">|</span>
-                      </p>
-                    </div>
-                  </div>
-                ) : streamingQueue.some(
-                    (item) => item.type === "targetUsers"
-                  ) ? (
-                  <LoadingSkeleton />
-                ) : displayOverview?.serviceCoreElements?.targetUsers ? (
+                {displayOverview?.serviceCoreElements?.targetUsers &&
+                displayOverview.serviceCoreElements.targetUsers.length > 0 ? (
                   <div className="space-y-2">
                     {displayOverview.serviceCoreElements.targetUsers.map(
                       (user: string, index: number) => (
@@ -660,20 +642,7 @@ export function ProjectOverviewPanel({
                   />
                   <h3 className="font-semibold text-gray-900 text-sm sm:text-base">핵심 문제</h3>
                 </div>
-                {streamingData.type === "coreProblem" && streamingData.data ? (
-                  <div className="space-y-2">
-                    <div className="whitespace-pre-wrap">
-                      <p className="text-sm text-gray-600">
-                        {streamingData.data}
-                        <span className="animate-pulse">|</span>
-                      </p>
-                    </div>
-                  </div>
-                ) : streamingQueue.some(
-                    (item) => item.type === "coreProblem"
-                  ) ? (
-                  <LoadingSkeleton />
-                ) : displayOverview?.serviceCoreElements?.description ? (
+                {displayOverview?.serviceCoreElements?.description ? (
                   <p className="text-sm text-gray-600">
                     {displayOverview.serviceCoreElements.description}
                   </p>
@@ -698,20 +667,8 @@ export function ProjectOverviewPanel({
                   />
                   <h3 className="font-semibold text-gray-900 text-sm sm:text-base">핵심 기능</h3>
                 </div>
-                {streamingData.type === "keyFeatures" && streamingData.data ? (
-                  <div className="space-y-2">
-                    <div className="whitespace-pre-wrap">
-                      <p className="text-sm text-gray-600">
-                        {streamingData.data}
-                        <span className="animate-pulse">|</span>
-                      </p>
-                    </div>
-                  </div>
-                ) : streamingQueue.some(
-                    (item) => item.type === "keyFeatures"
-                  ) ? (
-                  <LoadingSkeleton />
-                ) : displayOverview?.serviceCoreElements?.keyFeatures ? (
+                {displayOverview?.serviceCoreElements?.keyFeatures &&
+                displayOverview.serviceCoreElements.keyFeatures.length > 0 ? (
                   <div className="space-y-2">
                     {displayOverview.serviceCoreElements.keyFeatures.map(
                       (feature: string, index: number) => (
@@ -740,21 +697,8 @@ export function ProjectOverviewPanel({
                   />
                   <h3 className="font-semibold text-gray-900 text-sm sm:text-base">수익 모델</h3>
                 </div>
-                {streamingData.type === "revenueModel" && streamingData.data ? (
-                  <div className="space-y-2">
-                    <div className="whitespace-pre-wrap">
-                      <p className="text-sm text-gray-600">
-                        {streamingData.data}
-                        <span className="animate-pulse">|</span>
-                      </p>
-                    </div>
-                  </div>
-                ) : streamingQueue.some(
-                    (item) => item.type === "revenueModel"
-                  ) ? (
-                  <LoadingSkeleton />
-                ) : displayOverview?.serviceCoreElements?.businessModel
-                    ?.revenueStreams ? (
+                {displayOverview?.serviceCoreElements?.businessModel?.revenueStreams &&
+                displayOverview.serviceCoreElements.businessModel.revenueStreams.length > 0 ? (
                   <div className="space-y-2">
                     {displayOverview.serviceCoreElements.businessModel.revenueStreams.map(
                       (stream: string, index: number) => (
@@ -785,27 +729,7 @@ export function ProjectOverviewPanel({
                   </h4>
                 </div>
                 <div>
-                  {streamingData.type === "aiAnalysis" && streamingData.data ? (
-                    <div className="space-y-3">
-                      <div className="whitespace-pre-wrap">
-                        <p className="text-sm text-gray-600">
-                          {streamingData.data}
-                          <span className="animate-pulse">|</span>
-                        </p>
-                      </div>
-                    </div>
-                  ) : streamingQueue.some(
-                      (item) => item.type === "aiAnalysis"
-                    ) ? (
-                    <div className="space-y-3">
-                      <div className="flex items-start space-x-2">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mt-1"></div>
-                        <p className="text-sm text-gray-600">
-                          AI가 프로젝트를 분석하고 있습니다...
-                        </p>
-                      </div>
-                    </div>
-                  ) : error ? (
+                  {error ? (
                     <div className="space-y-3">
                       <div className="flex items-start space-x-2">
                         <span className="text-red-500 text-lg">❌</span>
