@@ -833,29 +833,31 @@ export function ProjectOverviewPanel({
             ) : displayOverview?.userJourney?.steps &&
               displayOverview.userJourney.steps.length > 0 ? (
               <>
-                {/* Mermaid 다이어그램 */}
-                <div className="bg-white p-6 rounded-lg border border-gray-200 mb-6">
-                  <div className="flex items-center space-x-3 mb-4">
-                    <span className="text-2xl">📊</span>
-                    <h3 className="font-semibold text-gray-900">
+                {/* Mermaid 다이어그램 - 모바일에서는 숨기거나 간소화 */}
+                <div className="bg-white p-4 sm:p-6 rounded-lg border border-gray-200 mb-4 sm:mb-6">
+                  <div className="flex items-center space-x-2 sm:space-x-3 mb-3 sm:mb-4">
+                    <span className="text-xl sm:text-2xl">📊</span>
+                    <h3 className="font-semibold text-gray-900 text-sm sm:text-base">
                       사용자 여정 다이어그램
                     </h3>
                   </div>
-                  <UserJourneyMermaidDiagram
-                    steps={displayOverview.userJourney.steps}
-                    autoGenerateImage={true}
-                    onImageGenerated={(imageUrl) => {
-                      // 이미지 생성 완료 시 프로젝트 개요에 저장
-                      if (displayOverview && setOverviewDirectly) {
-                        const updatedOverview = {
-                          ...displayOverview,
-                          mermaidImage: imageUrl, // 이미지 URL을 프로젝트 개요에 추가
-                        };
-                        // 프로젝트 개요 state 업데이트 (이미지 포함)
-                        setOverviewDirectly(updatedOverview);
-                      }
-                    }}
-                  />
+                  <div className="overflow-x-auto">
+                    <UserJourneyMermaidDiagram
+                      steps={displayOverview.userJourney.steps}
+                      autoGenerateImage={true}
+                      onImageGenerated={(imageUrl) => {
+                        // 이미지 생성 완료 시 프로젝트 개요에 저장
+                        if (displayOverview && setOverviewDirectly) {
+                          const updatedOverview = {
+                            ...displayOverview,
+                            mermaidImage: imageUrl, // 이미지 URL을 프로젝트 개요에 추가
+                          };
+                          // 프로젝트 개요 state 업데이트 (이미지 포함)
+                          setOverviewDirectly(updatedOverview);
+                        }
+                      }}
+                    />
+                  </div>
                 </div>
 
                 {/* 사용자 여정 단계별 상세 정보 */}

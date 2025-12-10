@@ -73,16 +73,17 @@ export async function mermaidToImage(
 
     // 임시 DOM 컨테이너 생성
     container = document.createElement("div");
-    container.style.position = "fixed";
-    container.style.left = "0";
+    container.style.position = "absolute";
+    container.style.left = "-9999px"; // 화면 밖으로 이동 (모바일에서 안정적)
     container.style.top = "0";
     container.style.width = "1200px"; // 충분한 너비
-    container.style.maxWidth = "1200px";
+    container.style.minWidth = "1200px"; // 최소 너비 보장
+    container.style.maxWidth = "none"; // 최대 너비 제한 제거
     container.style.backgroundColor = backgroundColor;
     container.style.padding = "24px";
     container.style.boxSizing = "border-box";
-    container.style.zIndex = "-9999"; // 뒤로 보내기
-    container.style.opacity = "0"; // 투명하게
+    container.style.zIndex = "9999"; // 앞으로 (렌더링 보장)
+    container.style.opacity = "1"; // 완전히 보이게 (html-to-image가 visibility:hidden을 캡처 못함)
     container.style.pointerEvents = "none"; // 클릭 방지
     container.style.overflow = "visible";
     container.id = diagramId;

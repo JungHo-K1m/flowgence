@@ -197,16 +197,9 @@ function HomePageContent() {
         // 필요시 파일 재업로드 안내 메시지 표시 가능
       }
 
-      // 개요 복원
-      if (sessionData.overview && updateOverview) {
-        updateOverview(
-          {
-            description: sessionData.projectDescription,
-            serviceType: sessionData.selectedServiceType,
-            uploadedFiles: [],
-          },
-          sessionData.chatMessages || []
-        );
+      // 개요 복원 (직접 설정 - API 재호출 방지)
+      if (sessionData.overview && setOverviewDirectly) {
+        setOverviewDirectly(sessionData.overview);
       }
 
       // 복원 완료
@@ -214,7 +207,7 @@ function HomePageContent() {
         isRestoring.current = false;
       }, 500);
     }
-  }, [searchParams, restoreSession, updateOverview, updateExtractedRequirements]);
+  }, [searchParams, restoreSession, setOverviewDirectly, updateExtractedRequirements]);
 
   // 요구사항 업데이트 훅 사용
   const {

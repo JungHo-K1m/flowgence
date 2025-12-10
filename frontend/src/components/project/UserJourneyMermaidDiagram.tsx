@@ -43,9 +43,19 @@ export function UserJourneyMermaidDiagram({
       return;
     }
 
+    // 모바일 환경 체크 (이미지 생성 건너뛰기)
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
     // 다이어그램이 렌더링될 시간을 주기 위해 약간의 지연
     const timer = setTimeout(async () => {
       try {
+        // 모바일에서는 이미지 생성 건너뛰기 (렌더링 문제 방지)
+        if (isMobile) {
+          console.log("UserJourneyMermaidDiagram - 모바일 환경, 이미지 생성 건너뜀");
+          imageGeneratedRef.current = true;
+          return;
+        }
+
         const imageUrl = await mermaidToImage(mermaidCode, {
           theme: "default",
           backgroundColor: "white",
@@ -57,9 +67,11 @@ export function UserJourneyMermaidDiagram({
           onImageGenerated(imageUrl);
         } else {
           console.warn("UserJourneyMermaidDiagram - 이미지 생성 실패: 유효하지 않은 이미지");
+          imageGeneratedRef.current = true; // 재시도 방지
         }
       } catch (error) {
         console.error("UserJourneyMermaidDiagram - 이미지 생성 오류:", error);
+        imageGeneratedRef.current = true; // 에러 시에도 재시도 방지
       }
     }, 2000); // 2초 후 이미지 생성 (다이어그램 렌더링 완료 대기)
 

@@ -119,6 +119,8 @@ export function MermaidDiagram({
         className="mermaid-diagram flex justify-center items-center min-h-[200px]"
         style={{
           overflow: "auto",
+          minWidth: "100%",
+          width: "100%",
         }}
       />
       {!isRendered && (
