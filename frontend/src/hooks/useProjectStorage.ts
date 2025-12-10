@@ -27,39 +27,10 @@ export const useProjectStorage = () => {
     }));
 
     try {
-      console.log('=== saveProjectWithMessages 함수 호출 ===');
-      console.log('프로젝트와 메시지 저장 시작:', {
-        title: projectData.title,
-        messagesCount: messages.length,
-        hasProjectOverview: !!projectData.project_overview,
-        projectOverviewType: typeof projectData.project_overview,
-        projectOverviewKeys: projectData.project_overview ? Object.keys(projectData.project_overview) : [],
-        projectOverviewRaw: projectData.project_overview,
-      });
-      
-      if (projectData.project_overview) {
-        console.log('📋 project_overview 상세 정보:', {
-          serviceCoreElements: projectData.project_overview.serviceCoreElements ? {
-            hasServiceCoreElements: true,
-            targetUsers: projectData.project_overview.serviceCoreElements.targetUsers,
-            estimatedDuration: projectData.project_overview.serviceCoreElements.estimatedDuration,
-            hasUserJourney: !!projectData.project_overview.userJourney,
-          } : null,
-        });
-      }
-
       // Supabase 연결 상태 확인
       const { data: { user } } = await supabase.auth.getUser();
-      console.log('현재 사용자:', user?.id);
 
       // Supabase 함수 호출
-      console.log('📤 Supabase RPC 함수 호출:', {
-        functionName: 'save_project_with_messages',
-        projectDataTitle: projectData.title,
-        hasProjectOverview: !!projectData.project_overview,
-        projectOverviewValue: projectData.project_overview || null,
-      });
-      
       const { data, error } = await supabase.rpc('save_project_with_messages', {
         project_data: {
           title: projectData.title,
@@ -68,48 +39,10 @@ export const useProjectStorage = () => {
         },
         messages_data: messages
       });
-      
-      console.log('📥 Supabase RPC 응답:', {
-        hasData: !!data,
-        hasError: !!error,
-        responseData: data,
-        errorDetails: error,
-      });
-      
-      // RPC 함수로 저장된 프로젝트 조회 (project_overview 확인)
-      if (data?.project_id && !error) {
-        try {
-          const { data: savedProject, error: fetchError } = await supabase
-            .from('projects')
-            .select('project_overview')
-            .eq('id', data.project_id)
-            .single();
-          
-          if (!fetchError && savedProject) {
-            console.log('✅ RPC 저장 후 DB 확인:', {
-              projectId: data.project_id,
-              hasProjectOverview: !!savedProject.project_overview,
-              targetUsers: savedProject.project_overview?.serviceCoreElements?.targetUsers,
-              estimatedDuration: savedProject.project_overview?.serviceCoreElements?.estimatedDuration,
-            });
-          }
-        } catch (checkError) {
-          console.warn('⚠️ 저장 후 DB 확인 실패:', checkError);
-        }
-      }
 
       if (error) {
-        console.error('프로젝트 저장 오류:', error);
-        console.error('오류 상세 정보:', {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code
-        });
         throw new Error(`Database error: ${error.message}`);
       }
-
-      console.log('프로젝트 저장 성공:', data);
 
       const result: SaveProjectResponse = {
         project_id: data.project_id,
@@ -127,7 +60,6 @@ export const useProjectStorage = () => {
 
       return result;
     } catch (err) {
-      console.error('프로젝트 저장 실패:', err);
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       
       setState(prev => ({

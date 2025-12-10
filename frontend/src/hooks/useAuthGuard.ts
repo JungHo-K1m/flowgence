@@ -23,10 +23,7 @@ export function useAuthGuard() {
 
   // 로그인 후 임시 상태를 실제 DB로 이전하는 함수
   const processLoginState = useCallback(async () => {
-    console.log('processLoginState 호출됨:', { user: !!user, tempState: !!tempState, isProcessingLogin });
-    
     if (!user || !tempState) {
-      console.log('processLoginState 조건 불만족:', { user: !!user, tempState: !!tempState, isProcessingLogin });
       return {
         success: false,
         error: '사용자 정보 또는 임시 상태가 없습니다'
@@ -35,7 +32,6 @@ export function useAuthGuard() {
 
     // 이미 처리 중이면 실패
     if (processingRef.current) {
-      console.log('이미 처리 중 - 중복 실행 방지');
       return {
         success: false,
         error: '이미 처리 중입니다'
@@ -45,12 +41,10 @@ export function useAuthGuard() {
     try {
       processingRef.current = true;
       setIsProcessingLogin(true);
-      console.log('로그인 후 상태 처리 시작:', tempState);
 
       const { projectData, targetStep } = tempState;
-      
+
       if (!projectData) {
-        console.log('저장된 프로젝트 데이터가 없습니다');
         clearState();
         return {
           success: false,
@@ -76,24 +70,17 @@ export function useAuthGuard() {
         }
       }));
 
-      console.log('프로젝트 저장 시작');
       const projectResult = await saveProjectWithMessages(projectDataForSave, messages);
-      
+
       if (projectResult.status === 'success') {
-        console.log('프로젝트 저장 성공:', projectResult.project_id);
-        
         // 2. 기존 프로젝트 데이터가 있는지 확인하고 가져오기
         let existingProjectData = null;
         try {
-          console.log('기존 프로젝트 데이터 확인 중...');
           existingProjectData = await getProjectData(projectResult.project_id);
-          console.log('기존 프로젝트 데이터 로드 완료:', existingProjectData);
         } catch (error) {
-          console.log('기존 프로젝트 데이터 없음 또는 로드 실패:', error);
           // 기존 데이터가 없으면 새로 추출
           if (projectData.chatMessages && projectData.chatMessages.length > 0) {
             try {
-              console.log('새로운 요구사항 추출 시작');
               const extractedRequirements = await extractRequirements(
                 {
                   description: projectData.description,
@@ -108,17 +95,10 @@ export function useAuthGuard() {
               );
 
               if (extractedRequirements) {
-                console.log('새로운 요구사항 저장 시작');
-                const requirementsResult = await saveRequirements(projectResult.project_id, extractedRequirements);
-                
-                if (requirementsResult.status === 'success') {
-                  console.log('새로운 요구사항 저장 성공');
-                } else {
-                  console.error('새로운 요구사항 저장 실패:', requirementsResult.message);
-                }
+                await saveRequirements(projectResult.project_id, extractedRequirements);
               }
             } catch (extractError) {
-              console.error('새로운 요구사항 추출/저장 중 오류:', extractError);
+              // 요구사항 추출/저장 중 오류 발생
             }
           }
         }
@@ -135,14 +115,12 @@ export function useAuthGuard() {
           existingProjectData: existingProjectData
         };
       } else {
-        console.error('프로젝트 저장 실패:', projectResult.message);
         return {
           success: false,
           error: projectResult.message
         };
       }
     } catch (error) {
-      console.error('로그인 후 상태 처리 중 오류:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
@@ -154,18 +132,13 @@ export function useAuthGuard() {
   }, [user, tempState, isProcessingLogin, saveProjectWithMessages, saveRequirements, extractRequirements, clearState]);
 
   const requireAuth = (action: () => void, projectData?: { description: string; serviceType: string; chatMessages?: Array<{ type: string; content: string }>; uploadedFiles?: File[]; projectOverview?: string; requirements?: unknown[] }) => {
-    console.log("requireAuth 호출됨:", { loading, user: !!user, projectData: !!projectData });
-    
     if (loading) {
-      console.log("로딩 중이므로 대기");
       return; // 로딩 중이면 대기
     }
 
     if (!user) {
-      console.log("사용자 없음 - 로그인 모달 표시");
       // 프로젝트 데이터가 있으면 저장
       if (projectData) {
-        console.log("프로젝트 데이터 저장:", projectData);
         const projectDataWithRequirements = {
           ...projectData,
           uploadedFiles: projectData.uploadedFiles || [],
@@ -174,14 +147,11 @@ export function useAuthGuard() {
         };
         saveState(projectDataWithRequirements);
       }
-      console.log("setShowLoginModal(true) 호출 전");
       setShowLoginModal(true);
-      console.log("setShowLoginModal(true) 호출 후");
       return;
     }
 
     // 로그인된 사용자는 바로 액션 실행
-    console.log("로그인된 사용자 - 액션 실행");
     action();
   };
 

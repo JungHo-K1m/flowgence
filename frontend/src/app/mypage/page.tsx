@@ -41,7 +41,6 @@ export default function MyPage() {
 
     try {
       const supabase = createClient();
-      console.log("Loading projects for user:", user.id);
 
       const { data, error } = await supabase
         .from("projects")
@@ -50,11 +49,8 @@ export default function MyPage() {
         .order("updated_at", { ascending: false });
 
       if (error) {
-        console.error("Supabase error:", error);
         throw error;
       }
-
-      console.log("Loaded projects:", data);
 
       // 데이터 형식 변환
       const formattedProjects: Project[] = (data || []).map((project: any) => ({
@@ -70,10 +66,8 @@ export default function MyPage() {
         rawData: project, // 전체 원본 데이터 저장
       }));
 
-      console.log("Formatted projects:", formattedProjects);
       setProjects(formattedProjects);
     } catch (err) {
-      console.error("프로젝트 로드 실패:", err);
       setError(
         err instanceof Error
           ? err.message
@@ -276,13 +270,11 @@ export default function MyPage() {
         subject: "프로젝트 견적서",
       });
     } catch (error) {
-      console.error("견적서 다운로드 실패:", error);
       alert("견적서 다운로드에 실패했습니다. 다시 시도해주세요.");
     }
   };
 
   const getProjectStats = () => {
-    console.log("Calculating stats for projects:", projects);
 
     // 진행중인 프로젝트: requirements_review, requirements_extraction, estimation, contract, in_progress
     const inProgress = projects.filter((p) =>
@@ -323,7 +315,6 @@ export default function MyPage() {
     const pendingApproval = projects.filter((p) => p.status === "draft").length;
 
     const stats = { inProgress, completed, totalEstimated, pendingApproval };
-    console.log("Calculated stats:", stats);
     return stats;
   };
 
