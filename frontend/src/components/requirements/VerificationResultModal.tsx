@@ -217,7 +217,7 @@ export function VerificationResultModal({
         <div className="border-t border-gray-200 px-6 py-4 bg-gray-50 flex justify-between">
           <button
             onClick={onGoBack}
-            className="px-6 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+            className="px-2 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium whitespace-nowrap"
           >
             이전으로 돌아가기
           </button>
@@ -225,7 +225,7 @@ export function VerificationResultModal({
             {result.status === "error" ? (
               <button
                 onClick={onClose}
-                className="px-6 py-2 text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors font-medium"
+                className="px-2 py-2 text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors font-medium whitespace-nowrap"
               >
                 수정하기
               </button>
@@ -233,14 +233,14 @@ export function VerificationResultModal({
               <>
                 <button
                   onClick={onClose}
-                  className="px-6 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                  className="px-2 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium whitespace-nowrap"
                 >
                   수정하기
                 </button>
                 {showProceedButton && (
                   <button
                     onClick={onProceed}
-                    className="px-6 py-2 text-white bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg hover:from-blue-600 hover:to-purple-600 transition-colors font-medium shadow-lg"
+                    className="px-2 py-2 text-white bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg hover:from-blue-600 hover:to-purple-600 transition-colors font-medium shadow-lg whitespace-nowrap"
                   >
                     계속 진행
                   </button>

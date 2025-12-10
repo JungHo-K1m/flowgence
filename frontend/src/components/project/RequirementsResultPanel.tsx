@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { ExtractedRequirements, NonFunctionalRequirement } from "@/types/requirements";
 import { generateRequirementsMarkdown } from "@/lib/requirementsMarkdownGenerator";
 import { downloadMarkdownAsPDF } from "@/lib/pdfGenerator";
@@ -86,6 +86,7 @@ export function RequirementsResultPanel({
   const [shareData, setShareData] = useState<any>(null);
   const [wireframeImageUrl, setWireframeImageUrl] = useState<string | null>(null);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const wireframeContainerRef = useRef<HTMLDivElement>(null);
 
   // 실제 데이터 기반 요구사항 결과
@@ -567,6 +568,17 @@ export function RequirementsResultPanel({
     }, 100);
   };
 
+  // 모바일 사이드바 토글 함수
+  const toggleMobileSidebar = useCallback(() => {
+    setIsMobileSidebarOpen((prev) => !prev);
+  }, []);
+
+  // 섹션 클릭 시 모바일 사이드바 닫기
+  const handleSectionClick = useCallback((sectionId: string) => {
+    scrollToSection(sectionId);
+    setIsMobileSidebarOpen(false);
+  }, []);
+
   return (
     <>
       <style jsx>{`
@@ -585,38 +597,71 @@ export function RequirementsResultPanel({
           background: #555;
         }
       `}</style>
-      <div className="h-full bg-white flex">
-        {/* Left Sidebar */}
-        <div className="w-64 bg-gray-50 border-r border-gray-200 flex flex-col">
+      <div className="h-full bg-white flex flex-col md:flex-row">
+        {/* Mobile Header with Sidebar Toggle */}
+        <div className="md:hidden flex items-center justify-between p-3 border-b border-gray-200 bg-white sticky top-0 z-20">
+          <button
+            onClick={toggleMobileSidebar}
+            className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+          >
+            <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          <h2 className="font-semibold text-gray-900 text-sm truncate flex-1 mx-3">
+            {requirementsData.projectName}
+          </h2>
+          <button
+            onClick={handleExportPDF}
+            className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            title="PDF로 내보내기"
+          >
+            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Mobile Sidebar Overlay */}
+        {isMobileSidebarOpen && (
+          <div
+            className="md:hidden fixed inset-0 bg-black bg-opacity-50 z-30"
+            onClick={() => setIsMobileSidebarOpen(false)}
+          />
+        )}
+
+        {/* Left Sidebar - Hidden on mobile, shown as slide-out drawer */}
+        <div className={`
+          fixed md:relative inset-y-0 left-0 z-40
+          w-64 bg-gray-50 border-r border-gray-200 flex flex-col
+          transform transition-transform duration-300 ease-in-out
+          ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+          md:translate-x-0 md:flex
+        `}>
           {/* Project Selection */}
           <div className="p-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
-              <h2 className="font-semibold text-gray-900">
+              <h2 className="font-semibold text-gray-900 text-sm md:text-base truncate">
                 {requirementsData.projectName}
               </h2>
-              <svg
-                className="w-4 h-4 text-gray-500"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+              <button
+                onClick={() => setIsMobileSidebarOpen(false)}
+                className="md:hidden p-1 rounded hover:bg-gray-200"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 9l-7 7-7-7"
-                />
-              </svg>
+                <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
           </div>
 
           {/* Navigation Menu */}
-          <div className="flex-1 p-4">
+          <div className="flex-1 p-4 overflow-y-auto">
             <nav className="space-y-1">
               {sections.filter((section) => !section.hidden).map((section) => (
                 <button
                   key={section.id}
-                  onClick={() => scrollToSection(section.id)}
+                  onClick={() => handleSectionClick(section.id)}
                   className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                     activeSection === section.id
                       ? "bg-blue-100 text-blue-700"
@@ -631,25 +676,25 @@ export function RequirementsResultPanel({
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 flex flex-col mb-4">
-          {/* Header */}
-          <div className="border-b border-gray-200 px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">
+        <div className="flex-1 flex flex-col mb-4 min-w-0">
+          {/* Header - Desktop only (mobile header is at top) */}
+          <div className="hidden md:block border-b border-gray-200 px-4 lg:px-6 py-4">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="min-w-0">
+                <h1 className="text-xl lg:text-2xl font-bold text-gray-900 truncate">
                   요구사항 결과 페이지
                 </h1>
-                <p className="text-gray-600 mt-1">
+                <p className="text-gray-600 mt-1 text-sm lg:text-base">
                   프로젝트 요구사항 및 견적 결과
                 </p>
               </div>
-              <div className="flex space-x-3">
+              <div className="flex space-x-2 lg:space-x-3 flex-shrink-0">
                 <button
                   onClick={handleExportPDF}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors flex items-center"
+                  className="px-3 lg:px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors flex items-center text-sm"
                 >
                   <svg
-                    className="w-4 h-4 mr-2"
+                    className="w-4 h-4 mr-1 lg:mr-2"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -661,15 +706,16 @@ export function RequirementsResultPanel({
                       d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                     />
                   </svg>
-                  PDF로 내보내기
+                  <span className="hidden lg:inline">PDF로 내보내기</span>
+                  <span className="lg:hidden">PDF</span>
                 </button>
                 <button
                   onClick={handleShareNotion}
                   data-notion-share
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors flex items-center"
+                  className="px-3 lg:px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors flex items-center text-sm"
                 >
                   <svg
-                    className="w-4 h-4 mr-2"
+                    className="w-4 h-4 mr-1 lg:mr-2"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -681,7 +727,8 @@ export function RequirementsResultPanel({
                       d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z"
                     />
                   </svg>
-                  Notion으로 공유
+                  <span className="hidden lg:inline">Notion으로 공유</span>
+                  <span className="lg:hidden">공유</span>
                 </button>
               </div>
             </div>
@@ -693,26 +740,37 @@ export function RequirementsResultPanel({
                 placeholder="검색..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full max-w-md px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full max-w-md px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
               />
             </div>
           </div>
 
+          {/* Mobile Search */}
+          <div className="md:hidden px-3 py-2 border-b border-gray-200">
+            <input
+              type="text"
+              placeholder="검색..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+            />
+          </div>
+
           {/* Content */}
-          <div className="flex-1 overflow-y-auto p-6 max-h-[calc(100vh-200px)] requirements-content">
+          <div className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 max-h-[calc(100vh-200px)] requirements-content">
             {/* Overview Section */}
-            <section id="overview" className="mb-8">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">개요</h2>
-              <div className="space-y-4">
+            <section id="overview" className="mb-6 md:mb-8">
+              <h2 className="text-lg md:text-xl font-semibold text-gray-900 mb-3 md:mb-4">개요</h2>
+              <div className="space-y-3 md:space-y-4">
                 <div>
-                  <h3 className="font-medium text-gray-900 mb-2">목표</h3>
-                  <p className="text-gray-600">
+                  <h3 className="font-medium text-gray-900 mb-2 text-sm md:text-base">목표</h3>
+                  <p className="text-gray-600 text-sm md:text-base">
                     {requirementsData.overview.goal}
                   </p>
                 </div>
                 <div>
-                  <h3 className="font-medium text-gray-900 mb-2">가치 제안</h3>
-                  <p className="text-gray-600">
+                  <h3 className="font-medium text-gray-900 mb-2 text-sm md:text-base">가치 제안</h3>
+                  <p className="text-gray-600 text-sm md:text-base">
                     {requirementsData.overview.valueProposition}
                   </p>
                 </div>
@@ -720,32 +778,32 @@ export function RequirementsResultPanel({
             </section>
 
             {/* Scope Section */}
-            <section id="scope" className="mb-8">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">범위</h2>
-              <div className="space-y-6">
+            <section id="scope" className="mb-6 md:mb-8">
+              <h2 className="text-lg md:text-xl font-semibold text-gray-900 mb-3 md:mb-4">범위</h2>
+              <div className="space-y-4 md:space-y-6">
                 <div>
-                  <h3 className="font-medium text-gray-900 mb-3">
+                  <h3 className="font-medium text-gray-900 mb-2 md:mb-3 text-sm md:text-base">
                     포함 범위 (Included Scope)
                   </h3>
-                  <ul className="space-y-2">
+                  <ul className="space-y-1 md:space-y-2">
                     {requirementsData.scope.included.map((item, index) => (
                       <li key={index} className="flex items-start">
-                        <span className="text-green-500 mr-2 mt-1">•</span>
-                        <span className="text-gray-600">{item}</span>
+                        <span className="text-green-500 mr-2 mt-0.5 md:mt-1">•</span>
+                        <span className="text-gray-600 text-sm md:text-base">{item}</span>
                       </li>
                     ))}
                   </ul>
                 </div>
                 {requirementsData.scope.excluded.length > 0 && (
                   <div>
-                    <h3 className="font-medium text-gray-900 mb-3">
+                    <h3 className="font-medium text-gray-900 mb-2 md:mb-3 text-sm md:text-base">
                       제외 범위 (Excluded Scope)
                     </h3>
-                    <ul className="space-y-2">
+                    <ul className="space-y-1 md:space-y-2">
                       {requirementsData.scope.excluded.map((item, index) => (
                         <li key={index} className="flex items-start">
-                          <span className="text-red-500 mr-2 mt-1">•</span>
-                          <span className="text-gray-600">{item}</span>
+                          <span className="text-red-500 mr-2 mt-0.5 md:mt-1">•</span>
+                          <span className="text-gray-600 text-sm md:text-base">{item}</span>
                         </li>
                       ))}
                     </ul>
@@ -755,30 +813,65 @@ export function RequirementsResultPanel({
             </section>
 
             {/* Functional Requirements Section */}
-            <section id="functional" className="mb-8">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">
+            <section id="functional" className="mb-6 md:mb-8">
+              <h2 className="text-lg md:text-xl font-semibold text-gray-900 mb-3 md:mb-4">
                 기능 요구사항
               </h2>
-              <div className="overflow-x-auto">
+              {/* Mobile: Card Layout */}
+              <div className="md:hidden space-y-3">
+                {requirementsData.functionalRequirements.map((req) => (
+                  <div key={req.id} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                    <div className="flex items-start justify-between mb-2">
+                      <span className="text-xs font-mono text-gray-500 bg-gray-200 px-2 py-0.5 rounded">
+                        {req.id}
+                      </span>
+                      <span
+                        className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${
+                          req.priority === "필수"
+                            ? "bg-red-100 text-red-800"
+                            : req.priority === "권장"
+                            ? "bg-yellow-100 text-yellow-800"
+                            : "bg-green-100 text-green-800"
+                        }`}
+                      >
+                        {req.priority}
+                      </span>
+                    </div>
+                    <h4 className="font-medium text-gray-900 text-sm mb-1">{req.name}</h4>
+                    <p className="text-xs text-gray-600 line-clamp-2">{req.description}</p>
+                    {(req.requester || req.initialRequestDate) && (
+                      <div className="mt-2 pt-2 border-t border-gray-200 flex flex-wrap gap-2 text-xs text-gray-500">
+                        {req.requester && <span>요청자: {req.requester}</span>}
+                        {req.initialRequestDate && (
+                          <span>요청일: {new Date(req.initialRequestDate).toLocaleDateString('ko-KR')}</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop: Table Layout */}
+              <div className="hidden md:block overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                      <th className="px-3 lg:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                         요구사항 ID
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                      <th className="px-3 lg:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                         요구사항명
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                      <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                         요구사항 내용
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                      <th className="px-3 lg:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                         요청자
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                      <th className="px-3 lg:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                         최초 요청 일자
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                      <th className="px-3 lg:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                         중요도
                       </th>
                     </tr>
@@ -786,29 +879,29 @@ export function RequirementsResultPanel({
                   <tbody className="bg-white divide-y divide-gray-200">
                     {requirementsData.functionalRequirements.map((req) => (
                       <tr key={req.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        <td className="px-3 lg:px-4 py-3 lg:py-4 whitespace-nowrap text-xs lg:text-sm font-medium text-gray-900">
                           {req.id}
                         </td>
-                        <td className="px-4 py-4 text-sm text-gray-900 max-w-[200px]">
+                        <td className="px-3 lg:px-4 py-3 lg:py-4 text-xs lg:text-sm text-gray-900 max-w-[150px] lg:max-w-[200px]">
                           <div className="line-clamp-2" title={req.name}>
                             {req.name}
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-600 max-w-[300px]">
+                        <td className="px-4 lg:px-6 py-3 lg:py-4 text-xs lg:text-sm text-gray-600 max-w-[200px] lg:max-w-[300px]">
                           <div className="line-clamp-3" title={req.description}>
                             {req.description}
                           </div>
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
+                        <td className="px-3 lg:px-4 py-3 lg:py-4 whitespace-nowrap text-xs lg:text-sm text-gray-700">
                           {req.requester || '-'}
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600">
-                          {req.initialRequestDate 
+                        <td className="px-3 lg:px-4 py-3 lg:py-4 whitespace-nowrap text-xs lg:text-sm text-gray-600">
+                          {req.initialRequestDate
                             ? new Date(req.initialRequestDate).toLocaleDateString('ko-KR')
                             : '-'
                           }
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-center">
+                        <td className="px-3 lg:px-4 py-3 lg:py-4 whitespace-nowrap text-center">
                           <span
                             className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                               req.priority === "필수"
@@ -829,13 +922,13 @@ export function RequirementsResultPanel({
             </section>
 
             {/* Non-functional Requirements Section */}
-            <section id="non-functional" className="mb-8">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">
+            <section id="non-functional" className="mb-6 md:mb-8">
+              <h2 className="text-lg md:text-xl font-semibold text-gray-900 mb-3 md:mb-4">
                 비기능 요구사항
               </h2>
-              <div className="space-y-4">
+              <div className="space-y-3 md:space-y-4">
                 {requirementsData.nonFunctionalRequirements.length === 0 ? (
-                  <p className="text-gray-500 text-center py-4">
+                  <p className="text-gray-500 text-center py-4 text-sm md:text-base">
                     비기능 요구사항이 아직 정의되지 않았습니다.
                   </p>
                 ) : (
@@ -843,15 +936,15 @@ export function RequirementsResultPanel({
                     (req: any, index: number) => (
                       <div
                         key={req.id || index}
-                        className="border border-gray-200 rounded-lg p-4"
+                        className="border border-gray-200 rounded-lg p-3 md:p-4"
                       >
                         <div className="flex items-start justify-between mb-2">
-                          <h3 className="font-medium text-gray-900">
+                          <h3 className="font-medium text-gray-900 text-sm md:text-base">
                             {req.category}
                           </h3>
                           {req.priority && (
                             <span
-                              className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                              className={`px-2 py-0.5 md:py-1 text-xs font-semibold rounded-full ${
                                 req.priority === 'high'
                                   ? 'bg-red-100 text-red-800'
                                   : req.priority === 'medium'
@@ -863,9 +956,9 @@ export function RequirementsResultPanel({
                             </span>
                           )}
                         </div>
-                        <p className="text-gray-600 mb-2">{req.description}</p>
+                        <p className="text-gray-600 mb-2 text-sm md:text-base">{req.description}</p>
                         {req.metrics && (
-                          <p className="text-sm text-gray-500 italic">
+                          <p className="text-xs md:text-sm text-gray-500 italic">
                             📊 측정 지표: {req.metrics}
                           </p>
                         )}
@@ -877,17 +970,17 @@ export function RequirementsResultPanel({
             </section>
 
             {/* Screen List Section */}
-            <section id="screens" className="mb-8">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">
+            <section id="screens" className="mb-6 md:mb-8">
+              <h2 className="text-lg md:text-xl font-semibold text-gray-900 mb-3 md:mb-4">
                 화면 목록
               </h2>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 md:gap-4">
                 {requirementsData.screenList.map((screen, index) => (
                   <div
                     key={index}
-                    className="border border-gray-200 rounded-lg p-4 text-center"
+                    className="border border-gray-200 rounded-lg p-3 md:p-4 text-center"
                   >
-                    <span className="text-gray-900">{screen}</span>
+                    <span className="text-gray-900 text-sm md:text-base">{screen}</span>
                   </div>
                 ))}
               </div>
@@ -895,16 +988,16 @@ export function RequirementsResultPanel({
 
             {/* User Journey Section */}
             {projectOverview?.userJourney?.steps && projectOverview.userJourney.steps.length > 0 && (
-              <section id="user-journey" className="mb-8">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">
+              <section id="user-journey" className="mb-6 md:mb-8">
+                <h2 className="text-lg md:text-xl font-semibold text-gray-900 mb-3 md:mb-4">
                   🗺️ 사용자 여정 (User Journey)
                 </h2>
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                  <div className="flex items-start gap-3">
-                    <span className="text-blue-600 text-xl">💡</span>
-                    <div className="flex-1 text-sm text-blue-800">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 md:p-4 mb-4 md:mb-6">
+                  <div className="flex items-start gap-2 md:gap-3">
+                    <span className="text-blue-600 text-lg md:text-xl">💡</span>
+                    <div className="flex-1 text-xs md:text-sm text-blue-800">
                       <p className="font-medium mb-1">사용자 여정 다이어그램</p>
-                      <ul className="list-disc list-inside space-y-1 text-blue-700">
+                      <ul className="list-disc list-inside space-y-0.5 md:space-y-1 text-blue-700">
                         <li>사용자가 서비스를 이용하는 전체 흐름을 시각화합니다</li>
                         <li>각 단계별 사용자 행동과 시스템 응답을 확인할 수 있습니다</li>
                         <li>PDF 다운로드 시 다이어그램이 포함됩니다</li>
@@ -912,41 +1005,43 @@ export function RequirementsResultPanel({
                     </div>
                   </div>
                 </div>
-                <div className="bg-white rounded-lg p-6 border border-gray-200 mb-6">
+                <div className="bg-white rounded-lg p-3 md:p-6 border border-gray-200 mb-4 md:mb-6 overflow-x-auto">
                   {/* 저장된 이미지가 있으면 이미지 표시, 없으면 다이어그램 렌더링 */}
                   {projectOverview?.mermaidImage && projectOverview.mermaidImage.startsWith('data:image') ? (
-                    <div className="w-full">
-                      <img 
-                        src={projectOverview.mermaidImage} 
-                        alt="사용자 여정 다이어그램" 
+                    <div className="w-full min-w-[300px]">
+                      <img
+                        src={projectOverview.mermaidImage}
+                        alt="사용자 여정 다이어그램"
                         className="w-full h-auto rounded-lg border border-gray-200"
                       />
                     </div>
                   ) : (
-                    <UserJourneyMermaidDiagram
-                      steps={projectOverview.userJourney.steps}
-                    />
+                    <div className="min-w-[300px]">
+                      <UserJourneyMermaidDiagram
+                        steps={projectOverview.userJourney.steps}
+                      />
+                    </div>
                   )}
                 </div>
-                <div className="space-y-4">
-                  <h3 className="font-semibold text-gray-900 text-lg mb-4">
+                <div className="space-y-3 md:space-y-4">
+                  <h3 className="font-semibold text-gray-900 text-base md:text-lg mb-3 md:mb-4">
                     단계별 상세 정보
                   </h3>
                   {projectOverview.userJourney.steps.map((step, index) => (
-                    <div key={index} className="bg-gray-50 p-4 rounded-lg">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <span className="text-2xl">🔄</span>
-                        <h3 className="font-semibold text-gray-900">
+                    <div key={index} className="bg-gray-50 p-3 md:p-4 rounded-lg">
+                      <div className="flex items-center space-x-2 md:space-x-3 mb-2">
+                        <span className="text-xl md:text-2xl">🔄</span>
+                        <h3 className="font-semibold text-gray-900 text-sm md:text-base">
                           단계 {step.step}
                         </h3>
                       </div>
-                      <h4 className="font-medium text-gray-800 mb-2">
+                      <h4 className="font-medium text-gray-800 mb-2 text-sm md:text-base">
                         {step.title}
                       </h4>
-                      <p className="text-sm text-gray-600 mb-2">
+                      <p className="text-xs md:text-sm text-gray-600 mb-2">
                         {step.description}
                       </p>
-                      <div className="text-xs text-gray-500 space-y-1">
+                      <div className="text-xs text-gray-500 space-y-0.5 md:space-y-1">
                         <p>
                           <strong>사용자 행동:</strong> {step.userAction}
                         </p>
@@ -972,16 +1067,16 @@ export function RequirementsResultPanel({
 
             {/* Wireframe Section */}
             {wireframe && (
-              <section id="wireframe" className="mb-8">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">
+              <section id="wireframe" className="mb-6 md:mb-8">
+                <h2 className="text-lg md:text-xl font-semibold text-gray-900 mb-3 md:mb-4">
                   📱 화면 미리보기 (로파이 와이어프레임)
                 </h2>
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                  <div className="flex items-start gap-3">
-                    <span className="text-blue-600 text-xl">💡</span>
-                    <div className="flex-1 text-sm text-blue-800">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 md:p-4 mb-4 md:mb-6">
+                  <div className="flex items-start gap-2 md:gap-3">
+                    <span className="text-blue-600 text-lg md:text-xl">💡</span>
+                    <div className="flex-1 text-xs md:text-sm text-blue-800">
                       <p className="font-medium mb-1">와이어프레임 정보</p>
-                      <ul className="list-disc list-inside space-y-1 text-blue-700">
+                      <ul className="list-disc list-inside space-y-0.5 md:space-y-1 text-blue-700">
                         <li>이것은 <strong>로파이(저해상도) 와이어프레임</strong>입니다</li>
                         <li>화면 구조와 주요 요소 배치를 확인할 수 있습니다</li>
                         <li>실제 디자인은 개발 단계에서 세부적으로 진행됩니다</li>
@@ -990,7 +1085,7 @@ export function RequirementsResultPanel({
                     </div>
                   </div>
                 </div>
-                <div className="flex justify-center bg-gray-50 rounded-lg p-8 border border-gray-200 relative">
+                <div className="flex justify-center bg-gray-50 rounded-lg p-4 md:p-8 border border-gray-200 relative overflow-x-auto">
                   {wireframe ? (
                     <>
                       {/* 모든 화면을 한 번에 렌더링 (ref로 참조하여 캡처) */}
@@ -1120,22 +1215,22 @@ export function RequirementsResultPanel({
             )}
 
             {/* Data Model Section */}
-            <section id="data-model" className="mb-24">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">
+            <section id="data-model" className="mb-16 md:mb-24">
+              <h2 className="text-lg md:text-xl font-semibold text-gray-900 mb-3 md:mb-4">
                 기술 스택 및 데이터 모델
               </h2>
               {requirementsData.dataModel ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <h3 className="font-semibold text-gray-900 mb-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-6">
+                  <div className="bg-gray-50 p-3 md:p-4 rounded-lg">
+                    <h3 className="font-semibold text-gray-900 mb-2 md:mb-3 text-sm md:text-base">
                       프론트엔드
                     </h3>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-1.5 md:gap-2">
                       {requirementsData.dataModel.frontend.map(
                         (tech, index) => (
                           <span
                             key={index}
-                            className="bg-blue-100 text-blue-800 text-sm px-3 py-1 rounded-full"
+                            className="bg-blue-100 text-blue-800 text-xs md:text-sm px-2 md:px-3 py-0.5 md:py-1 rounded-full"
                           >
                             {tech}
                           </span>
@@ -1143,29 +1238,29 @@ export function RequirementsResultPanel({
                       )}
                     </div>
                   </div>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <h3 className="font-semibold text-gray-900 mb-3">백엔드</h3>
-                    <div className="flex flex-wrap gap-2">
+                  <div className="bg-gray-50 p-3 md:p-4 rounded-lg">
+                    <h3 className="font-semibold text-gray-900 mb-2 md:mb-3 text-sm md:text-base">백엔드</h3>
+                    <div className="flex flex-wrap gap-1.5 md:gap-2">
                       {requirementsData.dataModel.backend.map((tech, index) => (
                         <span
                           key={index}
-                          className="bg-green-100 text-green-800 text-sm px-3 py-1 rounded-full"
+                          className="bg-green-100 text-green-800 text-xs md:text-sm px-2 md:px-3 py-0.5 md:py-1 rounded-full"
                         >
                           {tech}
                         </span>
                       ))}
                     </div>
                   </div>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <h3 className="font-semibold text-gray-900 mb-3">
+                  <div className="bg-gray-50 p-3 md:p-4 rounded-lg">
+                    <h3 className="font-semibold text-gray-900 mb-2 md:mb-3 text-sm md:text-base">
                       데이터베이스
                     </h3>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-1.5 md:gap-2">
                       {requirementsData.dataModel.database.map(
                         (tech, index) => (
                           <span
                             key={index}
-                            className="bg-purple-100 text-purple-800 text-sm px-3 py-1 rounded-full"
+                            className="bg-purple-100 text-purple-800 text-xs md:text-sm px-2 md:px-3 py-0.5 md:py-1 rounded-full"
                           >
                             {tech}
                           </span>
@@ -1173,14 +1268,14 @@ export function RequirementsResultPanel({
                       )}
                     </div>
                   </div>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <h3 className="font-semibold text-gray-900 mb-3">인프라</h3>
-                    <div className="flex flex-wrap gap-2">
+                  <div className="bg-gray-50 p-3 md:p-4 rounded-lg">
+                    <h3 className="font-semibold text-gray-900 mb-2 md:mb-3 text-sm md:text-base">인프라</h3>
+                    <div className="flex flex-wrap gap-1.5 md:gap-2">
                       {requirementsData.dataModel.infrastructure.map(
                         (tech, index) => (
                           <span
                             key={index}
-                            className="bg-orange-100 text-orange-800 text-sm px-3 py-1 rounded-full"
+                            className="bg-orange-100 text-orange-800 text-xs md:text-sm px-2 md:px-3 py-0.5 md:py-1 rounded-full"
                           >
                             {tech}
                           </span>
@@ -1190,9 +1285,9 @@ export function RequirementsResultPanel({
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <p>기술 스택 정보가 아직 설정되지 않았습니다.</p>
-                  <p className="text-sm mt-2">
+                <div className="text-center py-6 md:py-8 text-gray-500">
+                  <p className="text-sm md:text-base">기술 스택 정보가 아직 설정되지 않았습니다.</p>
+                  <p className="text-xs md:text-sm mt-2">
                     프로젝트 개요에서 기술 스택을 먼저 설정해주세요.
                   </p>
                 </div>
