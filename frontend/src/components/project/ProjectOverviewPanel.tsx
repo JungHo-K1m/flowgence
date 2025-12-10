@@ -110,25 +110,8 @@ export function ProjectOverviewPanel({
   const isLoading = internalIsLoading || externalIsLoading;
 
   // 실시간 업데이트된 개요가 있으면 우선 사용
+  // 내부 훅의 overview도 함께 확인 (두 훅이 독립적인 상태를 가지므로)
   const displayOverview = realtimeOverview || overview;
-
-  // 디버깅: displayOverview 상태 확인
-  React.useEffect(() => {
-    console.log("[ProjectOverviewPanel] displayOverview 상태:", {
-      hasRealtimeOverview: !!realtimeOverview,
-      hasInternalOverview: !!overview,
-      hasDisplayOverview: !!displayOverview,
-      realtimeOverviewKeys: realtimeOverview ? Object.keys(realtimeOverview) : null,
-      serviceCoreElements: displayOverview?.serviceCoreElements ? {
-        hasTargetUsers: !!displayOverview.serviceCoreElements.targetUsers,
-        targetUsersLength: displayOverview.serviceCoreElements.targetUsers?.length,
-        targetUsers: displayOverview.serviceCoreElements.targetUsers,
-        hasDescription: !!displayOverview.serviceCoreElements.description,
-        description: displayOverview.serviceCoreElements.description,
-      } : "serviceCoreElements 없음",
-      fullRealtimeOverview: realtimeOverview,
-    });
-  }, [realtimeOverview, overview, displayOverview]);
 
   // 버튼 활성화를 위한 상태 (displayOverview가 있으면 활성화)
   const isButtonEnabled = !!displayOverview && !isLoading;
@@ -168,6 +151,20 @@ export function ProjectOverviewPanel({
       data: string;
     }>
   >([]);
+
+  // 디버깅: displayOverview 상태 확인
+  const renderCountRef = useRef(0);
+  renderCountRef.current += 1;
+
+  console.log(`[ProjectOverviewPanel] 렌더링 #${renderCountRef.current}:`, {
+    hasRealtimeOverview: !!realtimeOverview,
+    hasInternalOverview: !!overview,
+    hasDisplayOverview: !!displayOverview,
+    targetUsers: displayOverview?.serviceCoreElements?.targetUsers,
+    isLoading,
+    streamingQueueLength: streamingQueue?.length || 0,
+    streamingDataType: streamingData?.type,
+  });
 
   // 수동으로 프로젝트 개요 생성하는 함수 (useCallback으로 최적화)
   const handleGenerateOverview = useCallback(() => {
