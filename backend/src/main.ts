@@ -26,6 +26,12 @@ async function bootstrap() {
         console.log('CORS 허용: Vercel deployment');
         return callback(null, true);
       }
+
+      // Allow flowgence.ai domain (프로덕션 커스텀 도메인)
+      if (origin.includes('flowgence.ai')) {
+        console.log('CORS 허용: flowgence.ai domain');
+        return callback(null, true);
+      }
       
       // Check if origin is in allowed list
       if (allowedOrigins.includes(origin)) {
