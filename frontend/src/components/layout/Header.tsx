@@ -51,7 +51,7 @@ export function Header() {
             <Link href="/" className="flex items-center" onClick={handleLogoClick}>
               <div className="relative w-[100px] h-[30px] sm:w-[124px] sm:h-[37px]">
                 <Image
-                  src="/images/flowgence-logo.png"
+                  src="/images/meta-studio.png"
                   alt="메타스튜디오 Logo"
                   fill
                   className="object-contain"
