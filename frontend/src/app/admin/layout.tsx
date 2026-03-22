@@ -124,10 +124,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               {/* Logo */}
               <Link href="/" className="flex items-center mb-6 md:mb-8" onClick={() => setIsMobileSidebarOpen(false)}>
                 <div className="w-8 h-8 md:w-10 md:h-10 bg-[#6366F1] rounded-full flex items-center justify-center mr-2 md:mr-3">
-                  <span className="text-white text-lg md:text-xl font-bold">F</span>
+                  <span className="text-white text-lg md:text-xl font-bold">M</span>
                 </div>
                 <span className="text-lg md:text-xl font-bold text-gray-900">
-                  FLOWGENCE
+                  메타스튜디오
                 </span>
               </Link>
 

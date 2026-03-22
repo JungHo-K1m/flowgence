@@ -11,7 +11,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Flowgence - AI Agent 기반 SI 전과정 자동화",
+  title: "메타스튜디오 - AI Agent 기반 SI 전과정 자동화",
   description: "AI agent를 활용한 SI 프로젝트 자동화 서비스",
 };
 

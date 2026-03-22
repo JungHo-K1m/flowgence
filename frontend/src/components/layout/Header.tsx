@@ -52,7 +52,7 @@ export function Header() {
               <div className="relative w-[100px] h-[30px] sm:w-[124px] sm:h-[37px]">
                 <Image
                   src="/images/flowgence-logo.png"
-                  alt="Flowgence Logo"
+                  alt="메타스튜디오 Logo"
                   fill
                   className="object-contain"
                 />

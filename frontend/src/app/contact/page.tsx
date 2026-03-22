@@ -71,7 +71,7 @@ export default function ContactPage() {
               <div className="space-y-3">
                 <p className="text-gray-600">
                   <span className="font-medium">이메일:</span>{" "}
-                  contact@flowgence.ai
+                  contact@metastudio.ai
                 </p>
                 {/* <p className="text-gray-600">
                   <span className="font-medium">전화:</span> 02-1234-5678

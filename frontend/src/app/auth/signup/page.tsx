@@ -111,7 +111,7 @@ export default function SignupPage() {
                     </p>
                     <ol className="text-xs text-gray-700 space-y-1 list-decimal list-inside">
                       <li>받은 편지함을 확인하세요</li>
-                      <li>Flowgence 이메일 찾기</li>
+                      <li>메타스튜디오 이메일 찾기</li>
                       <li>확인 링크 클릭</li>
                       <li>자동 로그인 완료</li>
                     </ol>
@@ -147,7 +147,7 @@ export default function SignupPage() {
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900">회원가입</h2>
           <p className="mt-1 text-sm text-gray-600">
-            Flowgence와 함께 프로젝트를 시작하세요
+            메타스튜디오와 함께 프로젝트를 시작하세요
           </p>
         </div>
 

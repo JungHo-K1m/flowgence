@@ -60,7 +60,7 @@ function LoginForm() {
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900">로그인</h2>
           <p className="mt-1 text-sm text-gray-600">
-            Flowgence에 오신 것을 환영합니다
+            메타스튜디오에 오신 것을 환영합니다
           </p>
         </div>
 

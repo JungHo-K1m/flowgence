@@ -3,9 +3,12 @@
     "allow": [
       "Bash(npm install)",
       "Bash(npm view:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(find /c/Users/dhwan/Desktop/work/flowgence-project -name docker-compose* -o -name .env*)",
+      "Bash(grep -E \"\\\\.\\(tsx|ts\\)$\")"
     ],
     "deny": [],
-    "ask": []
+    "ask": [],
+    "defaultMode": "bypassPermissions"
   }
 }
