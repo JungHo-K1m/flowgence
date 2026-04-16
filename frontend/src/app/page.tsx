@@ -389,13 +389,14 @@ function HomePageContent() {
         .select("id, title, updated_at, status")
         .eq("user_id", user.id)
         .in("status", [
+          "completed",
           "requirements_review",
           "requirements_extraction",
           "estimation",
           "contract",
           "in_progress",
-          "draft", // 초기 상태도 포함
-        ]) // 진행중인 프로젝트만 포함 (마이페이지와 동일한 조건)
+          "draft",
+        ])
         .order("updated_at", { ascending: false })
         .limit(5);
       if (error) throw error;
