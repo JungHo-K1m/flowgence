@@ -15,7 +15,7 @@ import { toPng } from "html-to-image";
 import { UserJourneyMermaidDiagram } from "./UserJourneyMermaidDiagram";
 import { mermaidToImage } from "@/lib/mermaidImageGenerator";
 import { generateUserJourneyMermaidDefault } from "@/lib/mermaidGenerator";
-import { API_ROOT_URL } from '@/lib/constants';
+import { API_BASE_URL } from '@/lib/constants';
 
 interface ProjectOverview {
   serviceCoreElements: {
@@ -470,7 +470,7 @@ export function RequirementsResultPanel({
         headers['Authorization'] = `Bearer ${session.access_token}`;
       }
       
-      const response = await fetch(`${API_ROOT_URL}/notion/share/requirements`, {
+      const response = await fetch(`${API_BASE_URL}/notion/share/requirements`, {
         method: 'POST',
         credentials: 'include',
         headers,

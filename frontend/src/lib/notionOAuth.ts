@@ -1,7 +1,7 @@
 // Notion OAuth 관련 유틸리티 함수
 
 import { supabase } from './supabase';
-import { API_ROOT_URL } from '@/lib/constants';
+import { API_BASE_URL } from '@/lib/constants';
 
 export interface NotionConnection {
   connected: boolean;
@@ -33,7 +33,7 @@ async function getAuthHeaders(): Promise<HeadersInit> {
 export async function getNotionConnection(): Promise<NotionConnection> {
   try {
     const headers = await getAuthHeaders();
-    const response = await fetch(`${API_ROOT_URL}/notion/connection`, {
+    const response = await fetch(`${API_BASE_URL}/notion/connection`, {
       method: 'GET',
       credentials: 'include', // 쿠키 포함
       headers,
@@ -62,7 +62,7 @@ export async function getNotionConnection(): Promise<NotionConnection> {
 export async function startNotionOAuth(): Promise<void> {
   try {
     const headers = await getAuthHeaders();
-    const response = await fetch(`${API_ROOT_URL}/notion/oauth/authorize`, {
+    const response = await fetch(`${API_BASE_URL}/notion/oauth/authorize`, {
       method: 'GET',
       credentials: 'include',
       headers,
@@ -92,7 +92,7 @@ export async function startNotionOAuth(): Promise<void> {
 export async function disconnectNotion(): Promise<void> {
   try {
     const headers = await getAuthHeaders();
-    const response = await fetch(`${API_ROOT_URL}/notion/connection`, {
+    const response = await fetch(`${API_BASE_URL}/notion/connection`, {
       method: 'DELETE',
       credentials: 'include',
       headers,
@@ -112,7 +112,7 @@ export async function disconnectNotion(): Promise<void> {
 export async function updateDatabaseId(databaseId: string): Promise<void> {
   try {
     const headers = await getAuthHeaders();
-    const response = await fetch(`${API_ROOT_URL}/notion/connection/database`, {
+    const response = await fetch(`${API_BASE_URL}/notion/connection/database`, {
       method: 'POST',
       credentials: 'include',
       headers,

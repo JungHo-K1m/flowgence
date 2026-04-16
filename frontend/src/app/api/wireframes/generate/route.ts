@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { API_ROOT_URL } from '@/lib/constants';
+import { API_BASE_URL } from '@/lib/constants';
 
 export async function POST(request: NextRequest) {
   try {
     const { projectId } = await request.json();
 
     // 백엔드로 요청 프록시
-    const response = await fetch(`${API_ROOT_URL}/wireframes/generate`, {
+    const response = await fetch(`${API_BASE_URL}/wireframes/generate`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

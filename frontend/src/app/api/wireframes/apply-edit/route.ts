@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { API_ROOT_URL } from '@/lib/constants';
+import { API_BASE_URL } from '@/lib/constants';
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const response = await fetch(`${API_ROOT_URL}/wireframes/apply-edit`, {
+    const response = await fetch(`${API_BASE_URL}/wireframes/apply-edit`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
