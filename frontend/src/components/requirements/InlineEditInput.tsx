@@ -73,7 +73,6 @@ export function InlineEditInput({
       await onSave(editValue.trim());
       setIsEditing(false);
     } catch (err) {
-      console.error("저장 실패:", err);
       setError(err instanceof Error ? err.message : "저장에 실패했습니다");
     } finally {
       setIsProcessing(false);

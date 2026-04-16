@@ -59,7 +59,6 @@ function SettingsContent() {
         setDatabaseId(data.databaseId);
       }
     } catch (error) {
-      console.error("연결 정보 조회 실패:", error);
       setConnection({ connected: false });
     } finally {
       setLoading(false);
@@ -84,7 +83,6 @@ function SettingsContent() {
       await startNotionOAuth();
       // 리디렉션되므로 여기까지 도달하지 않음
     } catch (error) {
-      console.error("Notion 연결 실패:", error);
       setMessage(error instanceof Error ? error.message : "Notion 연결에 실패했습니다.");
       setMessageType("error");
       setConnecting(false);
@@ -105,7 +103,6 @@ function SettingsContent() {
       setMessageType("success");
       await loadConnection();
     } catch (error) {
-      console.error("데이터베이스 ID 업데이트 실패:", error);
       setMessage(error instanceof Error ? error.message : "데이터베이스 ID 업데이트에 실패했습니다.");
       setMessageType("error");
     } finally {
@@ -131,7 +128,6 @@ function SettingsContent() {
       setMessageType("success");
       await loadConnection();
     } catch (error) {
-      console.error("Notion 연결 해제 실패:", error);
       setMessage(error instanceof Error ? error.message : "연결 해제에 실패했습니다.");
       setMessageType("error");
     } finally {

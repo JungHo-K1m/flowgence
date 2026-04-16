@@ -1,16 +1,17 @@
-import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { NotionConnection } from '../entities/notion-connection.entity';
+import { NOTION_API_URL, NOTION_API_VERSION, NOTION_MAX_BLOCKS_PER_REQUEST } from '../common/constants';
 import * as crypto from 'crypto';
 
 @Injectable()
 export class NotionService {
+  private readonly logger = new Logger(NotionService.name);
   private readonly clientId: string;
   private readonly clientSecret: string;
   private readonly redirectUri: string;
-  private readonly notionApiUrl = 'https://api.notion.com/v1';
 
   constructor(
     @InjectRepository(NotionConnection)
@@ -23,7 +24,7 @@ export class NotionService {
       `${this.configService.get<string>('BACKEND_URL') || 'http://localhost:3001'}/api/notion/oauth/callback`;
 
     if (!this.clientId || !this.clientSecret) {
-      console.warn('Notion OAuth 설정이 완료되지 않았습니다. NOTION_CLIENT_ID와 NOTION_CLIENT_SECRET을 설정해주세요.');
+      this.logger.warn('Notion OAuth 설정 미완료: NOTION_CLIENT_ID / NOTION_CLIENT_SECRET 필요');
     }
   }
 
@@ -156,7 +157,7 @@ export class NotionService {
     // 토큰 만료 확인
     if (connection.expiresAt && connection.expiresAt < new Date()) {
       // 토큰이 만료되었으면 연결 해제 또는 갱신 필요
-      console.warn(`Notion 토큰이 만료되었습니다. userId: ${userId}`);
+      this.logger.warn('Notion token expired – userId: %s', userId);
       return null;
     }
 
@@ -243,7 +244,7 @@ export class NotionService {
       decrypted += decipher.final('utf8');
       return decrypted;
     } catch (error) {
-      console.error('State 복호화 실패:', error);
+      this.logger.error('State decryption failed: %s', (error as Error).message);
       return null;
     }
   }
@@ -331,7 +332,7 @@ export class NotionService {
     const blocks = this.convertMarkdownToBlocks(markdown);
 
     // Notion API 제한: 한 번에 최대 100개 블록만 전송 가능
-    const MAX_BLOCKS_PER_REQUEST = 100;
+    const MAX_BLOCKS_PER_REQUEST = NOTION_MAX_BLOCKS_PER_REQUEST;
     const initialBlocks = blocks.slice(0, MAX_BLOCKS_PER_REQUEST);
     const remainingBlocks = blocks.slice(MAX_BLOCKS_PER_REQUEST);
 
@@ -345,12 +346,12 @@ export class NotionService {
     };
 
     // 페이지 생성 (첫 100개 블록 포함)
-    const response = await fetch(`${this.notionApiUrl}/pages`, {
+    const response = await fetch(`${NOTION_API_URL}/pages`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
-        'Notion-Version': '2022-06-28',
+        'Notion-Version': NOTION_API_VERSION,
       },
       body: JSON.stringify({
         parent: { database_id: targetDatabaseId },
@@ -385,12 +386,12 @@ export class NotionService {
       for (let i = 0; i < remainingBlocks.length; i += MAX_BLOCKS_PER_REQUEST) {
         const chunk = remainingBlocks.slice(i, i + MAX_BLOCKS_PER_REQUEST);
         
-        const appendResponse = await fetch(`${this.notionApiUrl}/blocks/${pageId}/children`, {
+        const appendResponse = await fetch(`${NOTION_API_URL}/blocks/${pageId}/children`, {
           method: 'PATCH',
           headers: {
             'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
-            'Notion-Version': '2022-06-28',
+            'Notion-Version': NOTION_API_VERSION,
           },
           body: JSON.stringify({
             children: chunk,
@@ -400,8 +401,11 @@ export class NotionService {
         if (!appendResponse.ok) {
           const errorData = await appendResponse.json().catch(() => ({}));
           // 페이지는 이미 생성되었으므로 경고만 로그하고 계속 진행
-          console.warn(
-            `Notion 블록 추가 실패 (청크 ${i / MAX_BLOCKS_PER_REQUEST + 1}): ${appendResponse.status} - ${JSON.stringify(errorData)}`,
+          this.logger.warn(
+            'Notion block append failed (chunk %d): %d – %s',
+            i / MAX_BLOCKS_PER_REQUEST + 1,
+            appendResponse.status,
+            JSON.stringify(errorData),
           );
         }
       }

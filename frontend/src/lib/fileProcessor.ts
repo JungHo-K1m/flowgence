@@ -101,7 +101,6 @@ export async function extractTextFromPDF(file: File): Promise<string> {
     
     return fullText.trim();
   } catch (error) {
-    console.error("PDF 텍스트 추출 실패:", error);
     const errorMessage =
       error instanceof Error
         ? error.message
@@ -163,7 +162,6 @@ export async function extractContentFromFiles(
         const text = await extractContentFromFile(file);
         return `\n[파일: ${file.name}]\n${text}\n`;
       } catch (error) {
-        console.error(`파일 ${file.name} 처리 실패:`, error);
         return `\n[파일: ${file.name} - 처리 실패]\n`;
       }
     })

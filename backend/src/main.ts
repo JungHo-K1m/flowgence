@@ -1,52 +1,45 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
+import { AnthropicExceptionFilter } from './common/filters/anthropic-exception.filter';
+import {
+  CORS_TRUSTED_PATTERNS,
+  CORS_DEFAULT_ORIGIN,
+  DEFAULT_PORT,
+  HEALTH_CHECK_DELAY_MS,
+} from './common/constants';
 
 async function bootstrap() {
+  const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
-  
-  // Enable CORS for frontend communication
+
+  // ── CORS ──────────────────────────────────────────────────────
   const corsOrigin = configService.get('CORS_ORIGIN');
-  const allowedOrigins = corsOrigin ? corsOrigin.split(',') : ['http://localhost:3000'];
-  
+  const allowedOrigins = corsOrigin
+    ? corsOrigin.split(',')
+    : [CORS_DEFAULT_ORIGIN];
+
   app.enableCors({
     origin: (origin, callback) => {
-      console.log('CORS 체크 - Origin:', origin);
-      
-      // Allow requests with no origin (like mobile apps or curl requests)
-      if (!origin) {
-        console.log('CORS 허용: origin 없음');
-        return callback(null, true);
-      }
-      
-      // Allow Vercel deployments (모든 vercel.app 서브도메인 허용)
-      if (origin.includes('vercel.app')) {
-        console.log('CORS 허용: Vercel deployment');
+      // Allow requests with no origin (mobile apps, curl, etc.)
+      if (!origin) return callback(null, true);
+
+      // Allow trusted domain patterns
+      if (CORS_TRUSTED_PATTERNS.some(pattern => origin.includes(pattern))) {
         return callback(null, true);
       }
 
-      // Allow flowgence.ai domain (프로덕션 커스텀 도메인)
-      if (origin.includes('flowgence.ai')) {
-        console.log('CORS 허용: flowgence.ai domain');
-        return callback(null, true);
-      }
-      
-      // Check if origin is in allowed list
-      if (allowedOrigins.includes(origin)) {
-        console.log('CORS 허용: 허용 목록에 포함');
-        return callback(null, true);
-      }
-      
-      // For development, allow localhost with any port
+      // Check explicit allow-list
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+
+      // Development: allow any localhost
       if (process.env.NODE_ENV === 'development' && origin.includes('localhost')) {
-        console.log('CORS 허용: localhost (development)');
         return callback(null, true);
       }
-      
-      console.log('CORS 거부:', origin);
-      console.log('허용된 Origins:', allowedOrigins);
+
+      logger.warn('CORS rejected: %s', origin);
       callback(new Error(`Not allowed by CORS: ${origin}`));
     },
     credentials: true,
@@ -56,46 +49,32 @@ async function bootstrap() {
     optionsSuccessStatus: 204,
   });
 
-  // Global validation pipe
-  app.useGlobalPipes(new ValidationPipe({
-    whitelist: true,
-    forbidNonWhitelisted: true,
-    transform: true,
-  }));
+  // ── Global pipes & filters ────────────────────────────────────
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    }),
+  );
+  app.useGlobalFilters(new AnthropicExceptionFilter());
 
-  // Set global prefix
+  // ── Global prefix ─────────────────────────────────────────────
   app.setGlobalPrefix('api');
 
-  const port = process.env.PORT || 3001;
-  
-  // Railway 환경에서 포트 확인
-  console.log(`🔧 Environment: ${process.env.NODE_ENV}`);
-  console.log(`🔧 PORT from env: ${process.env.PORT}`);
-  console.log(`🔧 Using port: ${port}`);
-  
+  // ── Start ─────────────────────────────────────────────────────
+  const port = process.env.PORT || DEFAULT_PORT;
+
+  logger.log('Environment: %s', process.env.NODE_ENV);
+  logger.log('Using port: %s', port);
+
   await app.listen(port, '0.0.0.0');
-  
-  console.log(`🚀 Backend server is running on: http://0.0.0.0:${port}`);
-  console.log(`📚 API Documentation: http://0.0.0.0:${port}/api`);
-  console.log(`🔍 Health check: http://0.0.0.0:${port}/api/health`);
-  console.log(`✅ Server started successfully on port ${port}`);
-  
-  // Railway 헬스체크를 위한 추가 대기 시간
-  console.log(`⏳ Waiting for health check readiness...`);
-  await new Promise(resolve => setTimeout(resolve, 5000));
-  console.log(`🎯 Server is ready for health checks`);
-  
-  // 추가 안정성 확인
-  console.log(`🔍 Testing health endpoint...`);
-  try {
-    const testResponse = await fetch(`http://localhost:${port}/api/health`);
-    if (testResponse.ok) {
-      console.log(`✅ Health endpoint is working`);
-    } else {
-      console.log(`⚠️ Health endpoint returned: ${testResponse.status}`);
-    }
-  } catch (error) {
-    console.log(`⚠️ Health endpoint test failed:`, error.message);
-  }
+
+  logger.log('Server is running on http://0.0.0.0:%s', port);
+  logger.log('Health check: http://0.0.0.0:%s/api/health', port);
+
+  // Railway health-check readiness delay
+  await new Promise(resolve => setTimeout(resolve, HEALTH_CHECK_DELAY_MS));
+  logger.log('Server is ready for health checks');
 }
 bootstrap();

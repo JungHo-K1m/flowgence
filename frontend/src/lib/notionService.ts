@@ -93,7 +93,6 @@ class NotionService {
       const page = await response.json();
       return page.id;
     } catch (error) {
-      console.error('Notion 페이지 생성 실패:', error);
       throw error;
     }
   }
@@ -117,7 +116,6 @@ class NotionService {
         throw new Error(`Notion API error: ${response.status} ${response.statusText}`);
       }
     } catch (error) {
-      console.error('Notion 블록 추가 실패:', error);
       throw error;
     }
   }
@@ -257,7 +255,6 @@ class NotionService {
       // 대신 페이지 URL을 반환하여 사용자가 수동으로 공개 설정할 수 있도록 함
       return `https://notion.so/${pageId.replace(/-/g, '')}`;
     } catch (error) {
-      console.error('Notion 페이지 공개 설정 실패:', error);
       throw error;
     }
   }
@@ -373,7 +370,6 @@ export async function shareRequirementsToNotion(
     // 페이지 URL 반환
     return await notionService.makePagePublic(pageId);
   } catch (error) {
-    console.error('Notion 공유 실패:', error);
     throw error;
   }
 }
@@ -417,7 +413,6 @@ export async function shareEstimateToNotion(
     // 페이지 URL 반환
     return await notionService.makePagePublic(pageId);
   } catch (error) {
-    console.error('Notion 공유 실패:', error);
     throw error;
   }
 }

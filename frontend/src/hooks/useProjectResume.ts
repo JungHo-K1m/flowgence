@@ -26,21 +26,6 @@ export function useProjectResume() {
       if (projectError) throw projectError;
       if (!project) throw new Error("프로젝트를 찾을 수 없습니다");
 
-      // 프로젝트 개요가 있는지 확인
-      if (project.project_overview) {
-        console.log("DB에서 프로젝트 개요 확인됨:", {
-          projectId: project.id,
-          hasProjectOverview: !!project.project_overview,
-          targetUsers: project.project_overview?.serviceCoreElements?.targetUsers,
-          estimatedDuration: project.project_overview?.serviceCoreElements?.estimatedDuration,
-        });
-      } else {
-        console.log("DB에 프로젝트 개요가 저장되지 않음:", {
-          projectId: project.id,
-          projectStatus: project.status,
-        });
-      }
-
       // 채팅 메시지 조회
       const { data: messages, error: messagesError } = await supabase
         .from("chat_messages")
@@ -74,43 +59,10 @@ export function useProjectResume() {
         .order("created_at", { ascending: false })
         .limit(1);
 
-      if (wireframeError) {
-        console.warn("와이어프레임 조회 실패 (무시):", wireframeError);
-      }
-
       const latestWireframe = wireframeData && wireframeData.length > 0 ? wireframeData[0] : null;
 
-      console.log("프로젝트 복구 - 와이어프레임 데이터:", {
-        projectId: project.id,
-        hasWireframe: !!latestWireframe,
-        wireframeVersion: latestWireframe?.version,
-        wireframeScreenCount: latestWireframe?.spec?.screens?.length || 0,
-      });
-
-      // 프로젝트 개요 확인 및 로깅
+      // 프로젝트 개요 확인
       const projectOverview = project.project_overview || project.overview || null;
-      console.log("프로젝트 복구 - 개요 데이터:", {
-        projectId: project.id,
-        projectStatus: project.status,
-        hasProjectOverview: !!projectOverview,
-        projectOverviewType: typeof projectOverview,
-        projectOverviewKeys: projectOverview ? Object.keys(projectOverview) : [],
-        projectOverviewRaw: projectOverview,
-        targetUsers: projectOverview?.serviceCoreElements?.targetUsers,
-        estimatedDuration: projectOverview?.serviceCoreElements?.estimatedDuration,
-        // DB에서 실제로 가져온 값 확인
-        dbProjectOverview: project.project_overview,
-        dbOverview: project.overview,
-      });
-      
-      // 프로젝트 개요가 없을 때 정보 로그
-      if (!projectOverview) {
-        console.info("프로젝트 개요가 없습니다. 이는 정상일 수 있습니다:", {
-          projectId: project.id,
-          projectStatus: project.status,
-          note: "프로젝트 개요는 1단계(프로젝트 개요)에서 생성되며, 요구사항만 추출한 경우에는 없을 수 있습니다.",
-        });
-      }
 
       // 프로젝트 데이터를 sessionStorage에 저장
       const projectData = {
@@ -139,7 +91,6 @@ export function useProjectResume() {
       // 메인 페이지로 이동 (쿼리 파라미터로 단계 전달)
       router.push(`${targetUrl}?resume=${projectId}&step=${targetStep}`);
     } catch (error) {
-      console.error("프로젝트 복구 실패:", error);
       alert(
         "프로젝트를 불러오는데 실패했습니다. 다시 시도해주세요."
       );

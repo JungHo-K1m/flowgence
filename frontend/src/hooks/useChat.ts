@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { Message } from '@/types/chat';
 import { isDevelopmentMode } from '@/lib/dummyData';
+import { API_BASE_URL } from '@/lib/constants';
 
 // 개발 모드용 더미 AI 응답
 const DUMMY_AI_RESPONSES = [
@@ -21,7 +22,6 @@ export function useChat() {
     try {
       // 개발 모드: 더미 응답 반환
       if (isDevelopmentMode()) {
-        console.log('[DEV MODE] 더미 채팅 응답 사용');
         await new Promise(resolve => setTimeout(resolve, 800)); // 로딩 시뮬레이션
 
         const userMessage: Message = {
@@ -45,8 +45,7 @@ export function useChat() {
       }
 
       // Railway 백엔드 API 호출
-      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
-      const response = await fetch(`${backendUrl}/chat/message`, {
+      const response = await fetch(`${API_BASE_URL}/chat/message`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -84,8 +83,6 @@ export function useChat() {
       
       return data;
     } catch (error) {
-      console.error('Chat error:', error);
-      
       // 에러 메시지 추가
       const errorMessage: Message = {
         id: Date.now().toString(),

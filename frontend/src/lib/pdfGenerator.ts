@@ -29,7 +29,6 @@ export async function downloadMarkdownAsPDF(
     await printToPDF(htmlDocument, filename);
     
   } catch (error) {
-    console.error('PDF 생성 중 오류 발생:', error);
     throw new Error('PDF 생성에 실패했습니다.');
   }
 }
@@ -698,35 +697,14 @@ async function printToPDF(htmlDocument: string, filename: string): Promise<void>
       // 문서 로드 완료 후 이미지 로드 대기
       printWindow.onload = async () => {
         try {
-          // 이미지 요소 확인 및 디버깅
+          // 이미지 요소 확인
           const images = printWindow.document.querySelectorAll('img');
-          console.log('PDF 생성 - 이미지 개수:', images.length);
-          images.forEach((img, index) => {
-            console.log(`이미지 ${index + 1}:`, {
-              srcLength: img.src.length,
-              srcPreview: img.src.substring(0, 100),
-              isBase64: img.src.startsWith('data:'),
-              naturalWidth: img.naturalWidth,
-              naturalHeight: img.naturalHeight,
-              complete: img.complete,
-            });
-          });
 
           // 이미지 로드 완료 대기 (최대 5초)
           await Promise.race([
             waitForImages(),
             new Promise((resolve) => setTimeout(resolve, 5000))
           ]);
-
-          // 이미지 로드 후 다시 확인
-          images.forEach((img, index) => {
-            if (img.complete) {
-              console.log(`이미지 ${index + 1} 로드 완료:`, {
-                naturalWidth: img.naturalWidth,
-                naturalHeight: img.naturalHeight,
-              });
-            }
-          });
 
           // 추가 대기 시간 (렌더링 완료 보장)
           setTimeout(() => {
@@ -739,7 +717,6 @@ async function printToPDF(htmlDocument: string, filename: string): Promise<void>
             }, 1000);
           }, 500);
         } catch (error) {
-          console.error('이미지 로드 대기 중 오류:', error);
           // 오류가 나도 인쇄 진행
           setTimeout(() => {
             printWindow.print();

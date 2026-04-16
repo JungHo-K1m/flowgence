@@ -432,7 +432,6 @@ export function ConfirmationPanel({
         subject: "프로젝트 견적서",
       });
     } catch (error) {
-      console.error("PDF 다운로드 실패:", error);
       alert("PDF 다운로드에 실패했습니다. 다시 시도해주세요.");
     }
   };
@@ -455,7 +454,6 @@ export function ConfirmationPanel({
         }.md`
       );
     } catch (error) {
-      console.error("마크다운 다운로드 실패:", error);
       alert("마크다운 다운로드에 실패했습니다.");
     }
   };
@@ -496,7 +494,6 @@ export function ConfirmationPanel({
         }.html`
       );
     } catch (error) {
-      console.error("HTML 다운로드 실패:", error);
       alert("HTML 다운로드에 실패했습니다.");
     }
   };
@@ -588,7 +585,6 @@ export function ConfirmationPanel({
         window.open(notionUrl, "_blank");
       }
     } catch (error) {
-      console.error("Notion 공유 실패:", error);
       alert("Notion 공유에 실패했습니다. 다시 시도해주세요.");
     } finally {
       // 버튼 상태 복원

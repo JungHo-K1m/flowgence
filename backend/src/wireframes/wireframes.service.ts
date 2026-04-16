@@ -1,12 +1,25 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient } from '@supabase/supabase-js';
+import { ClaudeApiService } from '../common/services/claude-api.service';
+import { JsonParserService } from '../common/services/json-parser.service';
+import { CLAUDE_MAX_TOKENS_WIREFRAME_EDIT } from '../common/constants';
+import {
+  SYSTEM_PROMPT_WIREFRAME_GENERATE,
+  SYSTEM_PROMPT_WIREFRAME_EDIT,
+  buildWireframeUserPrompt,
+} from './prompts';
 
 @Injectable()
 export class WireframesService {
+  private readonly logger = new Logger(WireframesService.name);
   private supabase;
 
-  constructor(private configService: ConfigService) {
+  constructor(
+    private configService: ConfigService,
+    private claudeApi: ClaudeApiService,
+    private jsonParser: JsonParserService,
+  ) {
     this.supabase = createClient(
       this.configService.get<string>('SUPABASE_URL') || '',
       this.configService.get<string>('SUPABASE_SERVICE_ROLE_KEY') || '',
@@ -14,8 +27,7 @@ export class WireframesService {
   }
 
   async generateWireframe(projectId: string) {
-    console.log('=== 와이어프레임 생성 시작 ===');
-    console.log('프로젝트 ID:', projectId);
+    this.logger.log('Wireframe generation started – project: %s', projectId);
 
     try {
       // 1. 프로젝트 요구사항 로드
@@ -25,50 +37,28 @@ export class WireframesService {
         .eq('id', projectId)
         .single();
 
-      if (projectError) {
-        throw new Error(`프로젝트 로드 실패: ${projectError.message}`);
-      }
+      if (projectError) throw new Error(`프로젝트 로드 실패: ${projectError.message}`);
+      if (!project) throw new Error('프로젝트를 찾을 수 없습니다');
 
-      if (!project) {
-        throw new Error('프로젝트를 찾을 수 없습니다');
-      }
-
-      // 2. 요구사항 요약 생성
+      // 2. 요구사항 요약 → LLM 호출
       const summary = this.createRequirementsSummary(project);
-
-      // 3. LLM으로 와이어프레임 JSON 생성
       const spec = await this.generateSpecFromLLM(summary);
 
-      // 4. 기존 와이어프레임 삭제 (재생성 시)
-      const { error: deleteError } = await this.supabase
-        .from('wireframes')
-        .delete()
-        .eq('project_id', projectId);
+      // 3. 기존 와이어프레임 삭제 후 저장
+      await this.supabase.from('wireframes').delete().eq('project_id', projectId);
 
-      if (deleteError) {
-        console.warn('기존 와이어프레임 삭제 실패:', deleteError.message);
-        // 삭제 실패는 무시 (처음 생성 시 데이터가 없을 수 있음)
-      }
-
-      // 5. 새 와이어프레임 저장
       const { data: saved, error: saveError } = await this.supabase
         .from('wireframes')
-        .insert({
-          project_id: projectId,
-          version: 1,
-          spec: spec,
-        })
+        .insert({ project_id: projectId, version: 1, spec })
         .select()
         .single();
 
-      if (saveError) {
-        throw new Error(`와이어프레임 저장 실패: ${saveError.message}`);
-      }
+      if (saveError) throw new Error(`와이어프레임 저장 실패: ${saveError.message}`);
 
-      console.log('=== 와이어프레임 생성 완료 ===');
+      this.logger.log('Wireframe generation completed – project: %s', projectId);
       return { ok: true, spec: saved.spec, wireframe: saved };
     } catch (error) {
-      console.error('와이어프레임 생성 실패:', error);
+      this.logger.error('Wireframe generation failed: %s', (error as Error).message);
       throw error;
     }
   }
@@ -82,445 +72,21 @@ export class WireframesService {
       .limit(1)
       .single();
 
-    if (error) {
-      throw new Error(`와이어프레임 조회 실패: ${error.message}`);
-    }
-
+    if (error) throw new Error(`와이어프레임 조회 실패: ${error.message}`);
     return data;
   }
 
-  private createRequirementsSummary(project: any): string {
-    // 요구사항을 LLM이 이해하기 쉬운 형태로 요약
-    const requirements = project.requirements || {};
-    const overview = project.project_overview || {};
-
-    let summary = '프로젝트 요약:\n';
-    summary += `- 제목: ${project.title || '제목 없음'}\n`;
-    summary += `- 설명: ${project.description || '설명 없음'}\n\n`;
-
-    // 서비스 유형
-    if (overview.serviceCoreElements?.title) {
-      summary += `서비스 유형: ${overview.serviceCoreElements.title}\n\n`;
-    }
-
-    // 핵심 기능
-    if (
-      overview.serviceCoreElements?.keyFeatures &&
-      overview.serviceCoreElements.keyFeatures.length > 0
-    ) {
-      summary += '핵심 기능:\n';
-      overview.serviceCoreElements.keyFeatures.forEach(
-        (feature: string, idx: number) => {
-          summary += `${idx + 1}. ${feature}\n`;
-        },
-      );
-      summary += '\n';
-    }
-
-    // 기능 요구사항
-    if (requirements.categories && requirements.categories.length > 0) {
-      summary += '주요 요구사항:\n';
-      let count = 1;
-      requirements.categories.forEach((cat: any) => {
-        if (cat.subCategories) {
-          cat.subCategories.forEach((sub: any) => {
-            if (sub.requirements && sub.requirements.length > 0) {
-              sub.requirements.slice(0, 3).forEach((req: any) => {
-                // 상위 3개만
-                summary += `${count}. ${req.title}: ${req.description}\n`;
-                count++;
-              });
-            }
-          });
-        }
-      });
-    }
-
-    return summary;
-  }
-
-  private async generateSpecFromLLM(summary: string): Promise<any> {
-    const apiKey = this.configService.get<string>('ANTHROPIC_API_KEY');
-    if (!apiKey) {
-      throw new Error('ANTHROPIC_API_KEY is not configured');
-    }
-
-    const systemPrompt = `당신은 제품 디자이너 보조 에이전트입니다. 저해상도(Lo-Fi) 와이어프레임을 JSON 형태로 출력합니다.
-
-규칙:
-- 반드시 유효한 JSON만 출력합니다. 마크다운 코드블록이나 추가 텍스트 금지.
-- 스키마: { viewport?: { width, height, device }, screens: [{ id, name, viewport: { width, height, device }, layout, elements[] }, ...] }
-- 모바일과 웹(데스크톱) 화면을 모두 포함합니다. 각 화면의 viewport.device는 "mobile" 또는 "desktop"이어야 하며, viewport.width/height는 해당 디바이스 해상도를 반영합니다.
-- 최소 1개의 모바일 화면과 1개의 데스크톱 화면을 생성하고, 요구사항에 따라 필요한 추가 화면들을 포함합니다 (보통 총 4-8개)
-- elements[].type은 다음 중 하나만: text, button, input, image, card, list, navbar, footer, chip, checkbox, radio, select, table, divider, icon
-- 좌표(x,y), 크기(w,h)는 px 단위 정수. (0,0)은 좌측 상단.
-- 모바일 기본 크기: 390x844 (iPhone 14 기준), 데스크톱 기본 크기: 1440x900
-- 필수 요소: 상단 네비게이션, 핵심 액션(버튼), 입력 필드, 리스트/카드
-- 로파이 디자인: 단순한 박스와 레이블만. 색상/스타일/아이콘 디테일 최소화.
-
-레이아웃 가이드:
-- navbar 높이: 56px
-- 버튼 높이: 44-48px
-- 입력 필드 높이: 44px
-- 카드 간격: 16px
-- 좌우 패딩: 16px
-- 하단 탭바 높이: 60px
-
-예시 JSON (여러 화면):
-{
-  "viewport": { "width": 390, "height": 844, "device": "mobile" },
-  "screens": [
-    {
-      "id": "home_mobile",
-      "name": "모바일 홈 화면",
-      "viewport": { "width": 390, "height": 844, "device": "mobile" },
-      "layout": { "type": "free" },
-      "elements": [
-        { "id": "e1", "type": "navbar", "label": "상단바", "x": 0, "y": 0, "w": 390, "h": 56 },
-        { "id": "e2", "type": "input", "label": "검색", "x": 16, "y": 72, "w": 358, "h": 44 },
-        { "id": "e3", "type": "list", "label": "목록", "x": 16, "y": 132, "w": 358, "h": 652 }
-      ]
-    },
-    {
-      "id": "dashboard_desktop",
-      "name": "데스크톱 대시보드",
-      "viewport": { "width": 1440, "height": 900, "device": "desktop" },
-      "layout": { "type": "free" },
-      "elements": [
-        { "id": "d1", "type": "navbar", "label": "헤더", "x": 0, "y": 0, "w": 1440, "h": 72 },
-        { "id": "d2", "type": "list", "label": "프로젝트 카드 리스트", "x": 24, "y": 120, "w": 1392, "h": 600 },
-        { "id": "d3", "type": "button", "label": "프로젝트 생성", "x": 1200, "y": 60, "w": 200, "h": 48 }
-      ]
-    }
-  ]
-}`;
-
-    const userPrompt = `다음 프로젝트의 주요 화면들에 대한 와이어프레임을 생성해주세요:
-
-${summary}
-
-위 요구사항을 분석하여, 이 프로젝트에 필요한 핵심 화면들 (3-7개)의 와이어프레임 JSON을 생성해주세요.
-
-화면 선정 가이드:
-- 모바일 홈/메인 화면 (필수)
-- 데스크톱 메인/대시보드 화면 (필수)
-- 모바일 상세 화면 (있는 경우)
-- 데스크톱 상세/관리 화면 (있는 경우)
-- 검색/필터 화면, 등록/작성 화면, 마이페이지/프로필, 로그인, 설정 화면 등 요구사항에 맞는 화면
-
-모바일과 데스크톱 각각에 대해 필요한 화면을 생성하고, 각 화면의 viewport.device를 올바르게 설정하세요.`;
-
-    try {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 16000,
-          system: systemPrompt,
-          messages: [
-            {
-              role: 'user',
-              content: userPrompt,
-            },
-          ],
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Claude API 오류:', errorText);
-        
-        // 529 (Overloaded) 에러의 경우 재시도
-        if (response.status === 529) {
-          console.log('Claude API 529 (Overloaded) 에러 - 재시도 시도');
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          
-          const retryResponse = await fetch('https://api.anthropic.com/v1/messages', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-api-key': apiKey,
-              'anthropic-version': '2023-06-01',
-            },
-            body: JSON.stringify({
-              model: 'claude-sonnet-4-20250514',
-              max_tokens: 4000,
-              system: systemPrompt,
-              messages: [
-                {
-                  role: 'user',
-                  content: userPrompt,
-                },
-              ],
-            }),
-          });
-          
-          if (retryResponse.ok) {
-            console.log('재시도 성공');
-            const retryData = await retryResponse.json();
-            const retryContent = retryData.content[0].text;
-            
-            // JSON 파싱 (개선된 로직)
-            let spec;
-            try {
-              let jsonText = retryContent.trim();
-              
-              // 마크다운 코드 블록에서 JSON 추출
-              if (jsonText.startsWith('```json')) {
-                console.log('재시도 - 패턴 1: ```json 코드 블록 감지');
-                jsonText = jsonText.replace(/^```json\s*/i, '');
-                jsonText = jsonText.replace(/\s*```\s*$/i, '');
-              } else if (jsonText.startsWith('```')) {
-                console.log('재시도 - 패턴 2: ``` 코드 블록 감지');
-                jsonText = jsonText.replace(/^```\s*/i, '');
-                jsonText = jsonText.replace(/\s*```\s*$/i, '');
-              } else {
-                const jsonBlockMatch = jsonText.match(/```json\s*([\s\S]*?)\s*```/);
-                if (jsonBlockMatch) {
-                  console.log('재시도 - 패턴 3: 정규식으로 코드 블록 추출');
-                  jsonText = jsonBlockMatch[1];
-                }
-              }
-              
-              jsonText = jsonText.trim();
-              spec = JSON.parse(jsonText);
-              console.log('✅ 재시도 - JSON 파싱 성공');
-            } catch (parseError: any) {
-              console.error('❌ 재시도 - JSON 파싱 실패:', parseError.message);
-              console.error('재시도 응답 텍스트 처음 500자:', retryContent.substring(0, 500));
-              console.error('폴백 와이어프레임 사용');
-              spec = this.getFallbackWireframe();
-            }
-            
-            // 기본 검증
-            if (!spec.viewport || !spec.screens || !Array.isArray(spec.screens) || spec.screens.length === 0) {
-              console.warn('⚠️ 재시도 - 잘못된 스키마, 폴백 사용');
-              console.warn('재시도 - spec.viewport:', spec.viewport);
-              console.warn('재시도 - spec.screens:', spec.screens);
-              console.warn('재시도 - spec.screens가 배열인가?', Array.isArray(spec.screens));
-              console.warn('재시도 - spec.screens 길이:', spec.screens?.length);
-              spec = this.getFallbackWireframe();
-            }
-            
-            return spec;
-          } else if (retryResponse.status === 529) {
-            console.error('Claude API 529 (Overloaded) 에러 - 재시도 실패');
-            throw new Error('Claude API is currently overloaded. Please try again later.');
-          }
-        }
-        
-        throw new Error(`Claude API error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      const content = data.content[0].text;
-
-      console.log('=== 와이어프레임 생성 API 응답 디버깅 ===');
-      console.log('응답 텍스트 처음 500자:', content.substring(0, 500));
-      console.log('응답 길이:', content.length);
-
-      // JSON 파싱 (개선된 로직)
-      let spec;
-      try {
-        let jsonText = content.trim();
-        
-        // 마크다운 코드 블록에서 JSON 추출
-        // 패턴 1: ```json\n...\n```
-        if (jsonText.startsWith('```json')) {
-          console.log('패턴 1: ```json 코드 블록 감지');
-          jsonText = jsonText.replace(/^```json\s*/i, '');
-          jsonText = jsonText.replace(/\s*```\s*$/i, '');
-          console.log('코드 블록 제거 후 텍스트 처음 300자:', jsonText.substring(0, 300));
-        }
-        // 패턴 2: ```\n...\n```
-        else if (jsonText.startsWith('```')) {
-          console.log('패턴 2: ``` 코드 블록 감지');
-          jsonText = jsonText.replace(/^```\s*/i, '');
-          jsonText = jsonText.replace(/\s*```\s*$/i, '');
-          console.log('코드 블록 제거 후 텍스트 처음 300자:', jsonText.substring(0, 300));
-        }
-        // 패턴 3: 정규식으로 코드 블록 추출
-        else {
-          const jsonBlockMatch = jsonText.match(/```json\s*([\s\S]*?)\s*```/);
-          if (jsonBlockMatch) {
-            console.log('패턴 3: 정규식으로 코드 블록 추출');
-            jsonText = jsonBlockMatch[1];
-            console.log('추출된 JSON 텍스트 처음 300자:', jsonText.substring(0, 300));
-          } else {
-            console.log('코드 블록 없음, 원본 텍스트 사용');
-          }
-        }
-        
-        // 추가 정리: 앞뒤 공백 제거
-        jsonText = jsonText.trim();
-        
-        // JSON 파싱 시도
-        spec = JSON.parse(jsonText);
-        console.log('✅ JSON 파싱 성공');
-      } catch (parseError: any) {
-        console.error('❌ JSON 파싱 실패:', parseError.message);
-        console.error('파싱 시도한 텍스트 처음 500자:', content.substring(0, 500));
-        console.error('폴백 와이어프레임 사용');
-        spec = this.getFallbackWireframe();
-      }
-
-      // 기본 검증
-      if (!spec.viewport || !spec.screens || !Array.isArray(spec.screens) || spec.screens.length === 0) {
-        console.warn('⚠️ 잘못된 스키마, 폴백 사용');
-        console.warn('spec.viewport:', spec.viewport);
-        console.warn('spec.screens:', spec.screens);
-        console.warn('spec.screens가 배열인가?', Array.isArray(spec.screens));
-        console.warn('spec.screens 길이:', spec.screens?.length);
-        spec = this.getFallbackWireframe();
-      }
-
-      if (!spec.viewport && spec.screens && spec.screens.length > 0) {
-        spec.viewport = spec.screens[0].viewport ?? { width: 390, height: 844, device: 'mobile' };
-      }
-
-      return spec;
-    } catch (error) {
-      console.error('LLM 호출 실패:', error);
-      // 폴백: 기본 와이어프레임 반환
-      return this.getFallbackWireframe();
-    }
-  }
-
-  private getFallbackWireframe(): any {
-    // LLM 실패 시 기본 와이어프레임
-    return {
-      viewport: { width: 390, height: 844, device: 'mobile' },
-      screens: [
-        {
-          id: 'home_mobile',
-          name: '모바일 홈 화면',
-          viewport: { width: 390, height: 844, device: 'mobile' },
-          layout: { type: 'free' },
-          elements: [
-            {
-              id: 'e1',
-              type: 'navbar',
-              label: '상단 네비게이션',
-              x: 0,
-              y: 0,
-              w: 390,
-              h: 56,
-            },
-            {
-              id: 'e2',
-              type: 'input',
-              label: '검색',
-              x: 16,
-              y: 72,
-              w: 270,
-              h: 44,
-            },
-            {
-              id: 'e3',
-              type: 'button',
-              label: '필터',
-              x: 300,
-              y: 72,
-              w: 74,
-              h: 44,
-            },
-            {
-              id: 'e4',
-              type: 'list',
-              label: '목록',
-              x: 16,
-              y: 132,
-              w: 358,
-              h: 652,
-              props: { count: 6 },
-            },
-            {
-              id: 'e5',
-              type: 'navbar',
-              label: '하단 탭',
-              x: 0,
-              y: 784,
-              w: 390,
-              h: 60,
-            },
-          ],
-        },
-        {
-          id: 'dashboard_desktop',
-          name: '데스크톱 대시보드',
-          viewport: { width: 1440, height: 900, device: 'desktop' },
-          layout: { type: 'free' },
-          elements: [
-            {
-              id: 'd1',
-              type: 'navbar',
-              label: '상단바',
-              x: 0,
-              y: 0,
-              w: 1440,
-              h: 72,
-            },
-            {
-              id: 'd2',
-              type: 'card',
-              label: '요약 카드',
-              x: 24,
-              y: 96,
-              w: 1392,
-              h: 160,
-            },
-            {
-              id: 'd3',
-              type: 'table',
-              label: '프로젝트 리스트',
-              x: 24,
-              y: 280,
-              w: 1392,
-              h: 480,
-            },
-            {
-              id: 'd4',
-              type: 'button',
-              label: '신규 프로젝트',
-              x: 1224,
-              y: 40,
-              w: 192,
-              h: 48,
-            },
-          ],
-        },
-      ],
-    };
-  }
-
-  // AI 프롬프트 기반 와이어프레임 수정
   async applyAIEdit(projectId: string, prompt: string) {
-    console.log('=== AI 편집 시작 ===');
-    console.log('프로젝트 ID:', projectId);
-    console.log('프롬프트:', prompt);
+    this.logger.log('AI edit started – project: %s, prompt: %s', projectId, prompt);
 
     try {
-      // 1. 현재 와이어프레임 조회
       const wireframe = await this.getLatestWireframe(projectId);
-      if (!wireframe) {
-        throw new Error('와이어프레임이 존재하지 않습니다');
-      }
+      if (!wireframe) throw new Error('와이어프레임이 존재하지 않습니다');
 
-      // 2. Claude AI로 수정
       const updatedSpec = await this.modifyWithAI(wireframe.spec, prompt);
 
-      // 3. 기존 와이어프레임 삭제
-      await this.supabase
-        .from('wireframes')
-        .delete()
-        .eq('project_id', projectId);
+      await this.supabase.from('wireframes').delete().eq('project_id', projectId);
 
-      // 4. 수정된 와이어프레임 저장
       const { data: saved, error: saveError } = await this.supabase
         .from('wireframes')
         .insert({
@@ -531,163 +97,145 @@ ${summary}
         .select()
         .single();
 
-      if (saveError) {
-        throw new Error(`저장 실패: ${saveError.message}`);
-      }
+      if (saveError) throw new Error(`저장 실패: ${saveError.message}`);
 
-      console.log('=== AI 편집 완료 ===');
+      this.logger.log('AI edit completed – project: %s', projectId);
       return { ok: true, spec: saved.spec };
     } catch (error) {
-      console.error('AI 편집 실패:', error);
+      this.logger.error('AI edit failed: %s', (error as Error).message);
       throw error;
     }
   }
 
-  private async modifyWithAI(currentSpec: any, prompt: string): Promise<any> {
-    const apiKey = this.configService.get<string>('ANTHROPIC_API_KEY');
-    if (!apiKey) {
-      throw new Error('ANTHROPIC_API_KEY is not configured');
+  // ── Private ───────────────────────────────────────────────────
+
+  private createRequirementsSummary(project: any): string {
+    const requirements = project.requirements || {};
+    const overview = project.project_overview || {};
+
+    let summary = '프로젝트 요약:\n';
+    summary += `- 제목: ${project.title || '제목 없음'}\n`;
+    summary += `- 설명: ${project.description || '설명 없음'}\n\n`;
+
+    if (overview.serviceCoreElements?.title) {
+      summary += `서비스 유형: ${overview.serviceCoreElements.title}\n\n`;
     }
 
-    const systemPrompt = `당신은 와이어프레임 편집 전문가입니다.
-현재 와이어프레임 JSON이 주어지고, 사용자의 수정 요청이 주어집니다.
+    if (overview.serviceCoreElements?.keyFeatures?.length > 0) {
+      summary += '핵심 기능:\n';
+      overview.serviceCoreElements.keyFeatures.forEach((feature: string, idx: number) => {
+        summary += `${idx + 1}. ${feature}\n`;
+      });
+      summary += '\n';
+    }
 
-규칙:
-- 반드시 JSON만 출력합니다 (설명 금지, 코드블록 금지)
-- 기존 구조를 최대한 유지하면서 수정합니다
-- 요청된 부분만 정확하게 수정합니다
-- viewport, screen 구조는 동일하게 유지합니다
-- 각 screen.viewport.device 값을 유지하거나 적절히 반영합니다 (mobile/desktop 혼합 구조 유지)
-- elements 배열 내 요소만 수정합니다
-
-수정 가능한 내용:
-- 요소 크기 (w, h)
-- 요소 위치 (x, y)
-- 요소 라벨 (label)
-- 요소 추가/삭제
-- 색상 (props에 color 추가)
-
-수정된 전체 JSON을 출력하세요.`;
-
-    const userPrompt = `현재 와이어프레임:
-${JSON.stringify(currentSpec, null, 2)}
-
-사용자 수정 요청: ${prompt}
-
-위 요청에 따라 수정된 전체 JSON을 출력하세요.`;
-
-    try {
-      const response = await fetch(
-        'https://api.anthropic.com/v1/messages',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': apiKey,
-            'anthropic-version': '2023-06-01',
-          },
-          body: JSON.stringify({
-            model: 'claude-sonnet-4-20250514',
-            max_tokens: 4096,
-            messages: [
-              {
-                role: 'user',
-                content: userPrompt,
-              },
-            ],
-            system: systemPrompt,
-          }),
-        },
-      );
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Claude API 오류:', errorText);
-        
-        // 529 (Overloaded) 에러의 경우 재시도
-        if (response.status === 529) {
-          console.log('Claude API 529 (Overloaded) 에러 - 재시도 시도');
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          
-          const retryResponse = await fetch(
-            'https://api.anthropic.com/v1/messages',
-            {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'x-api-key': apiKey,
-                'anthropic-version': '2023-06-01',
-              },
-              body: JSON.stringify({
-                model: 'claude-sonnet-4-20250514',
-                max_tokens: 4096,
-                messages: [
-                  {
-                    role: 'user',
-                    content: userPrompt,
-                  },
-                ],
-                system: systemPrompt,
-              }),
-            },
-          );
-          
-          if (retryResponse.ok) {
-            console.log('재시도 성공');
-            const retryData = await retryResponse.json();
-            const retryJsonText = retryData.content[0].text;
-            
-            console.log('Claude 응답 (재시도):', retryJsonText);
-            
-            // JSON 파싱
-            let updatedSpec;
-            try {
-              updatedSpec = JSON.parse(retryJsonText);
-              if (!updatedSpec.viewport && updatedSpec.screens && updatedSpec.screens.length > 0) {
-                updatedSpec.viewport = updatedSpec.screens[0].viewport ?? { width: 390, height: 844, device: 'mobile' };
-              }
-            } catch (parseError) {
-              console.error('JSON 파싱 실패:', parseError);
-              console.error('응답 텍스트:', retryJsonText);
-              // 폴백: 기존 spec 반환
-              return currentSpec;
-            }
-            
-            return updatedSpec;
-          } else if (retryResponse.status === 529) {
-            console.error('Claude API 529 (Overloaded) 에러 - 재시도 실패');
-            throw new Error('Claude API is currently overloaded. Please try again later.');
+    if (requirements.categories?.length > 0) {
+      summary += '주요 요구사항:\n';
+      let count = 1;
+      for (const cat of requirements.categories) {
+        for (const sub of cat.subCategories || []) {
+          for (const req of (sub.requirements || []).slice(0, 3)) {
+            summary += `${count}. ${req.title}: ${req.description}\n`;
+            count++;
           }
         }
-        
-        throw new Error(`Claude API 오류: ${response.status}`);
+      }
+    }
+
+    return summary;
+  }
+
+  private async generateSpecFromLLM(summary: string): Promise<any> {
+    try {
+      const data = (await this.claudeApi.callAndParseJson({
+        systemPrompt: SYSTEM_PROMPT_WIREFRAME_GENERATE,
+        messages: [{ role: 'user', content: buildWireframeUserPrompt(summary) }],
+      })) as any;
+
+      const content = this.jsonParser.extractText(data);
+      let spec = this.jsonParser.parse<any>(content);
+
+      if (!spec) {
+        this.logger.warn('JSON parse failed for wireframe, using fallback');
+        return this.getFallbackWireframe();
       }
 
-      const data = await response.json();
-      const jsonText = data.content[0].text;
+      // 스키마 검증
+      if (!spec.viewport || !spec.screens || !Array.isArray(spec.screens) || spec.screens.length === 0) {
+        this.logger.warn('Invalid wireframe schema, using fallback');
+        return this.getFallbackWireframe();
+      }
 
-      console.log('Claude 응답:', jsonText);
+      if (!spec.viewport && spec.screens?.length > 0) {
+        spec.viewport = spec.screens[0].viewport ?? { width: 390, height: 844, device: 'mobile' };
+      }
 
-      // JSON 파싱
-      let updatedSpec;
-      try {
-        updatedSpec = JSON.parse(jsonText);
-        if (!updatedSpec.viewport && updatedSpec.screens && updatedSpec.screens.length > 0) {
-          updatedSpec.viewport = updatedSpec.screens[0].viewport ?? { width: 390, height: 844, device: 'mobile' };
-        }
-      } catch (parseError) {
-        console.error('JSON 파싱 실패:', parseError);
-        console.error('응답 텍스트:', jsonText);
-        // 폴백: 기존 spec 반환
+      return spec;
+    } catch (error) {
+      this.logger.error('LLM wireframe generation failed: %s', (error as Error).message);
+      return this.getFallbackWireframe();
+    }
+  }
+
+  private async modifyWithAI(currentSpec: any, prompt: string): Promise<any> {
+    const userPrompt = `현재 와이어프레임:\n${JSON.stringify(currentSpec, null, 2)}\n\n사용자 수정 요청: ${prompt}\n\n위 요청에 따라 수정된 전체 JSON을 출력하세요.`;
+
+    try {
+      const data = (await this.claudeApi.callAndParseJson({
+        systemPrompt: SYSTEM_PROMPT_WIREFRAME_EDIT,
+        messages: [{ role: 'user', content: userPrompt }],
+        maxTokens: CLAUDE_MAX_TOKENS_WIREFRAME_EDIT,
+      })) as any;
+
+      const jsonText = this.jsonParser.extractText(data);
+      const updatedSpec = this.jsonParser.parse<any>(jsonText);
+
+      if (!updatedSpec) {
+        this.logger.warn('JSON parse failed for AI edit, returning current spec');
         return currentSpec;
+      }
+
+      if (!updatedSpec.viewport && updatedSpec.screens?.length > 0) {
+        updatedSpec.viewport = updatedSpec.screens[0].viewport ?? { width: 390, height: 844, device: 'mobile' };
       }
 
       return updatedSpec;
     } catch (error) {
-      console.error('AI 수정 중 오류:', error);
-      // 폴백: 기존 spec 반환
+      this.logger.error('AI edit error: %s', (error as Error).message);
       return currentSpec;
     }
   }
-}
 
+  private getFallbackWireframe(): any {
+    return {
+      viewport: { width: 390, height: 844, device: 'mobile' },
+      screens: [
+        {
+          id: 'home_mobile',
+          name: '모바일 홈 화면',
+          viewport: { width: 390, height: 844, device: 'mobile' },
+          layout: { type: 'free' },
+          elements: [
+            { id: 'e1', type: 'navbar', label: '상단 네비게이션', x: 0, y: 0, w: 390, h: 56 },
+            { id: 'e2', type: 'input', label: '검색', x: 16, y: 72, w: 270, h: 44 },
+            { id: 'e3', type: 'button', label: '필터', x: 300, y: 72, w: 74, h: 44 },
+            { id: 'e4', type: 'list', label: '목록', x: 16, y: 132, w: 358, h: 652, props: { count: 6 } },
+            { id: 'e5', type: 'navbar', label: '하단 탭', x: 0, y: 784, w: 390, h: 60 },
+          ],
+        },
+        {
+          id: 'dashboard_desktop',
+          name: '데스크톱 대시보드',
+          viewport: { width: 1440, height: 900, device: 'desktop' },
+          layout: { type: 'free' },
+          elements: [
+            { id: 'd1', type: 'navbar', label: '상단바', x: 0, y: 0, w: 1440, h: 72 },
+            { id: 'd2', type: 'card', label: '요약 카드', x: 24, y: 96, w: 1392, h: 160 },
+            { id: 'd3', type: 'table', label: '프로젝트 리스트', x: 24, y: 280, w: 1392, h: 480 },
+            { id: 'd4', type: 'button', label: '신규 프로젝트', x: 1224, y: 40, w: 192, h: 48 },
+          ],
+        },
+      ],
+    };
+  }
+}

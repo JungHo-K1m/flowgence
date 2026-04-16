@@ -12,7 +12,6 @@ export function getNotionConfig(): NotionConfig | null {
   const databaseId = process.env.NEXT_PUBLIC_NOTION_DATABASE_ID;
 
   if (!apiKey || !databaseId) {
-    console.warn('Notion API 설정이 완료되지 않았습니다.');
     return null;
   }
 

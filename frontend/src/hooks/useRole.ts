@@ -26,13 +26,11 @@ export function useRole() {
           .single();
 
         if (error) {
-          console.error('Error fetching user profile:', error);
           setUserProfile(null);
         } else {
           setUserProfile(data);
         }
       } catch (err) {
-        console.error('Error fetching user profile:', err);
         setUserProfile(null);
       } finally {
         setLoading(false);

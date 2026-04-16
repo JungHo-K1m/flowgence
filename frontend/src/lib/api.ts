@@ -36,8 +36,6 @@ async function apiCall<T = any>(
       data,
     };
   } catch (error) {
-    console.error('API 호출 오류:', error);
-    
     // 네트워크 에러인지 확인
     if (error instanceof TypeError && error.message === 'Failed to fetch') {
       return {

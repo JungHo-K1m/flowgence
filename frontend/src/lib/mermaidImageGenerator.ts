@@ -34,12 +34,6 @@ export async function mermaidToImage(
   let container: HTMLDivElement | null = null;
 
   try {
-    console.log("Mermaid 이미지 변환 시작:", {
-      codeLength: mermaidCode.length,
-      theme,
-      scale,
-    });
-
     // Mermaid 초기화
     mermaid.initialize({
       startOnLoad: false,
@@ -102,7 +96,6 @@ export async function mermaidToImage(
       }
       
     } catch (renderError) {
-      console.error("Mermaid SVG 렌더링 실패:", renderError);
       // DOM 정리
       if (container && container.parentNode) {
         document.body.removeChild(container);
@@ -121,8 +114,7 @@ export async function mermaidToImage(
     // SVG가 실제로 삽입되었는지 확인
     const insertedSvg = container.querySelector('svg');
     if (!insertedSvg) {
-      console.warn("SVG가 컨테이너에 삽입되지 않았습니다. innerHTML 확인:", container.innerHTML.substring(0, 200));
-    } else {
+      // SVG insertion failed silently
     }
 
     // DOM이 완전히 렌더링될 때까지 대기
@@ -161,7 +153,6 @@ export async function mermaidToImage(
     const hasContent = container.scrollHeight > 0 && container.scrollWidth > 0;
 
     if (!hasContent) {
-      console.warn("Mermaid 컨테이너에 콘텐츠가 없습니다. 강제로 크기 설정...");
       container.style.minHeight = "800px";
       container.style.minWidth = "1200px";
       // 다시 한 번 렌더링 대기
@@ -189,32 +180,18 @@ export async function mermaidToImage(
     }
 
     if (!dataUrl || !dataUrl.startsWith("data:image/")) {
-      console.error("❌ Mermaid 이미지 변환 결과가 올바르지 않습니다:", {
-        hasDataUrl: !!dataUrl,
-        dataUrlType: dataUrl?.substring(0, 20) || "없음",
-        startsWithDataImage: dataUrl?.startsWith("data:image") || false,
-      });
       throw new Error("이미지 변환 결과가 올바르지 않습니다.");
     }
 
     return dataUrl;
   } catch (error) {
-    console.error("❌ Mermaid 이미지 변환 오류:", error);
-    if (error instanceof Error) {
-      console.error("에러 상세 정보:", {
-        message: error.message,
-        stack: error.stack,
-        name: error.name,
-      });
-    }
-    
     // DOM 정리 (에러 발생 시에도)
     try {
       if (container && container.parentNode) {
         document.body.removeChild(container);
       }
     } catch (cleanupError) {
-      console.warn("DOM 정리 중 오류:", cleanupError);
+      // silently ignore
     }
     
     throw new Error(

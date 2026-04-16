@@ -22,8 +22,6 @@ export function ShareOptionsModal({
   if (!isOpen) return null;
 
   const handleOptionClick = (option: ShareOption) => {
-    // 옵션 클릭 처리 로직
-    console.log("Selected option:", option.id);
     option.action();
     onClose();
   };

@@ -64,7 +64,6 @@ export default function CompletedProjects() {
 
       setProjects(formattedProjects);
     } catch (err) {
-      console.error("프로젝트 로드 실패:", err);
       setError(
         err instanceof Error
           ? err.message
@@ -204,7 +203,6 @@ export default function CompletedProjects() {
         subject: "프로젝트 견적서",
       });
     } catch (error) {
-      console.error("견적서 다운로드 실패:", error);
       alert("견적서 다운로드에 실패했습니다. 다시 시도해주세요.");
     }
   };

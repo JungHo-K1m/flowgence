@@ -187,7 +187,7 @@ export default function AdminPage() {
         });
       setPendingReviews(pending);
     } catch (error) {
-      console.error("대시보드 데이터 로드 실패:", error);
+      // silently ignore
     } finally {
       setLoading(false);
     }
@@ -215,7 +215,6 @@ export default function AdminPage() {
 
       setSelectedProject(data as ProjectDetail);
     } catch (error) {
-      console.error("프로젝트 상세 정보 로드 실패:", error);
       alert("프로젝트 정보를 불러올 수 없습니다.");
       setIsDetailOpen(false);
     } finally {

@@ -1,5 +1,4 @@
-import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ChatMessage } from '../entities/chat-message.entity';
@@ -8,25 +7,37 @@ import { ExtractRequirementsDto } from './dto/extract-requirements.dto';
 import { UpdateRequirementsDto } from './dto/update-requirements.dto';
 import { RecommendationsDto } from './dto/recommendations.dto';
 import { VerifyRequirementsDto } from './dto/verify-requirements.dto';
-import { 
-  validateRequirementsJSON, 
-  convertValidationToOpenIssues 
-} from './validators/requirements-validator';
+import { ClaudeApiService } from '../common/services/claude-api.service';
+import { JsonParserService } from '../common/services/json-parser.service';
+import { CLAUDE_MODEL, ERROR_MESSAGES } from '../common/constants';
+import {
+  SYSTEM_PROMPT_CHAT,
+  SYSTEM_PROMPT_EXTRACT,
+  SYSTEM_PROMPT_UPDATE,
+  SYSTEM_PROMPT_VERIFY,
+  buildRecommendationsPrompt,
+} from './prompts';
 
 @Injectable()
 export class ChatService {
+  private readonly logger = new Logger(ChatService.name);
+
   constructor(
     @InjectRepository(ChatMessage)
     private chatMessageRepository: Repository<ChatMessage>,
-    private configService: ConfigService,
+    private claudeApi: ClaudeApiService,
+    private jsonParser: JsonParserService,
   ) {}
+
+  // ── Public API ────────────────────────────────────────────────
 
   async createMessage(createChatMessageDto: CreateChatMessageDto) {
     try {
-      // Claude API 호출
-      const aiResponse = await this.callClaudeAPI(createChatMessageDto.message, createChatMessageDto.history || []);
-      
-      // 메시지 저장
+      const aiResponse = await this.callClaudeAPI(
+        createChatMessageDto.message,
+        createChatMessageDto.history || [],
+      );
+
       const userMessage = this.chatMessageRepository.create({
         projectId: createChatMessageDto.projectId,
         role: 'user',
@@ -50,92 +61,33 @@ export class ChatService {
         message: 'Chat message processed successfully',
       };
     } catch (error) {
-      console.error('Chat service error:', error);
-      // Claude API 529 에러의 경우 원본 에러 전달 (재시도 실패)
-      if (error instanceof Error && error.message.includes('529')) {
-        throw error; // 원본 에러 전달하여 프론트엔드에서 처리 가능하도록
-      }
-      throw new Error('Failed to process chat message');
+      this.logger.error('Chat service error: %s', (error as Error).message);
+      if (this.claudeApi.isOverloadedError(error)) throw error;
+      throw new Error(ERROR_MESSAGES.CHAT_FAILED);
     }
   }
 
   async extractRequirements(extractRequirementsDto: ExtractRequirementsDto) {
     try {
-      const requirements = await this.extractRequirementsFromHistory(extractRequirementsDto.history || []);
-      return requirements;
+      return await this.extractRequirementsFromHistory(
+        extractRequirementsDto.history || [],
+      );
     } catch (error) {
-      console.error('Requirements extraction error:', error);
-      // Claude API 529 에러의 경우 원본 에러 전달
-      if (error instanceof Error && error.message.includes('529')) {
-        throw error;
-      }
+      this.logger.error('Requirements extraction error: %s', (error as Error).message);
+      if (this.claudeApi.isOverloadedError(error)) throw error;
       throw new Error('Failed to extract requirements');
-    }
-  }
-
-  private parseRequirementsResponse(data: any) {
-    if (!data.content || !data.content[0] || !data.content[0].text) {
-      throw new Error('Invalid response format from Claude API');
-    }
-
-    const responseText = data.content[0].text;
-    
-    console.log('=== 요구사항 추출 API 응답 디버깅 ===');
-    console.log('응답 텍스트:', responseText.substring(0, 300) + '...');
-    console.log('응답 길이:', responseText.length);
-    
-    // 마크다운 코드 블록에서 JSON 추출 (개선된 로직)
-    let jsonText = responseText.trim();
-    
-    // 여러 패턴으로 코드 블록 제거 시도
-    // 패턴 1: ```json\n...\n```
-    if (jsonText.startsWith('```json')) {
-      console.log('패턴 1: ```json 코드 블록 감지');
-      // 시작 부분 제거
-      jsonText = jsonText.replace(/^```json\s*/i, '');
-      // 끝 부분 제거
-      jsonText = jsonText.replace(/\s*```\s*$/i, '');
-      console.log('코드 블록 제거 후 텍스트:', jsonText.substring(0, 200) + '...');
-    }
-    // 패턴 2: ```\n...\n```
-    else if (jsonText.startsWith('```')) {
-      console.log('패턴 2: ``` 코드 블록 감지');
-      jsonText = jsonText.replace(/^```\s*/i, '');
-      jsonText = jsonText.replace(/\s*```\s*$/i, '');
-      console.log('코드 블록 제거 후 텍스트:', jsonText.substring(0, 200) + '...');
-    } else {
-      console.log('코드 블록 없음, 원본 텍스트 사용');
-    }
-    
-    // 추가 정리: 앞뒤 공백 제거
-    jsonText = jsonText.trim();
-    
-    // JSON 응답 파싱
-    try {
-      const result = JSON.parse(jsonText);
-      console.log('요구사항 추출 JSON 파싱 성공');
-      return result;
-    } catch (parseError) {
-      console.error('JSON 파싱 오류:', parseError);
-      console.error('추출된 JSON 텍스트:', jsonText.substring(0, 500));
-      console.error('원본 응답 텍스트:', responseText.substring(0, 500));
-      throw new Error('요구사항 추출 응답 파싱 실패');
     }
   }
 
   async updateRequirements(updateRequirementsDto: UpdateRequirementsDto) {
     try {
-      const updatedRequirements = await this.updateRequirementsFromChat(
+      return await this.updateRequirementsFromChat(
         updateRequirementsDto.existingRequirements,
-        updateRequirementsDto.history || []
+        updateRequirementsDto.history || [],
       );
-      return updatedRequirements;
     } catch (error) {
-      console.error('Requirements update error:', error);
-      // Claude API 529 에러의 경우 원본 에러 전달
-      if (error instanceof Error && error.message.includes('529')) {
-        throw error;
-      }
+      this.logger.error('Requirements update error: %s', (error as Error).message);
+      if (this.claudeApi.isOverloadedError(error)) throw error;
       throw new Error('Failed to update requirements');
     }
   }
@@ -147,799 +99,44 @@ export class ChatService {
     });
   }
 
-  private async callClaudeAPI(message: string, history: any[]) {
-    const apiKey = this.configService.get<string>('ANTHROPIC_API_KEY');
-    
-    if (!apiKey) {
-      throw new Error('ANTHROPIC_API_KEY is not configured');
-    }
-
-    // 대화 히스토리를 Claude API 형식으로 변환
-    const messages = history.map(msg => ({
-      role: msg.role || (msg.type === 'user' ? 'user' : 'assistant'),
-      content: msg.content || msg.message
-    }));
-
-    // 현재 메시지 추가
-    messages.push({
-      role: 'user',
-      content: message
-    });
-
-    const systemPrompt = `당신은 SI 프로젝트 요구사항 분석 전문가입니다. 
-사용자와의 대화를 통해 프로젝트 개요를 실시간으로 업데이트하고, 
-반드시 아래 JSON 형식으로만 응답해주세요.
-
-중요 지침:
-1. 이전 대화 내용을 모두 고려하여 프로젝트 개요를 누적적으로 업데이트하세요.
-2. 새로운 정보만 추가하지 말고, 기존 정보와 새로운 정보를 통합하세요.
-3. keyFeatures 배열에는 이전에 언급된 모든 기능들을 포함하세요.
-4. 비즈니스 모델 정보를 분석하여 수익 모델을 제안하세요.
-5. aiAnalysis 섹션에는 프로젝트의 강점, 개선 제안, 주의사항을 구체적으로 분석하여 3개의 insights를 제공하세요.
-6. aiAnalysis의 insights는 프로젝트의 타겟 사용자, 비즈니스 모델, 기술 스택, 시장 경쟁력을 종합적으로 고려하여 작성하세요.
-7. 응답은 반드시 유효한 JSON 형식이어야 하며, 다른 텍스트나 설명은 포함하지 마세요.
-
-응답 형식:
-{
-  "content": "사용자에게 보여줄 자연어 응답",
-  "projectOverview": {
-    "serviceCoreElements": {
-      "title": "프로젝트 제목",
-      "description": "프로젝트 설명",
-      "keyFeatures": ["이전에 언급된 모든 핵심 기능들", "새로 추가된 기능"],
-      "targetUsers": ["타겟 사용자1", "타겟 사용자2"],
-      "projectScale": "소규모/중규모/대규모",
-      "techComplexity": "단순/보통/복잡", 
-      "estimatedDuration": "예상 개발 기간 (예: 2-3개월)",
-      "requiredTeam": ["프론트엔드 개발자", "백엔드 개발자", "UI/UX 디자이너"],
-      "techStack": {
-        "frontend": ["React", "Next.js", "TypeScript"],
-        "backend": ["Node.js", "NestJS", "PostgreSQL"],
-        "database": ["PostgreSQL", "Redis"],
-        "infrastructure": ["AWS", "Vercel", "Railway"]
-      },
-      "businessModel": {
-        "revenueStreams": ["주요 수익원 1", "주요 수익원 2"],
-        "monetizationStrategy": "수익화 전략 설명",
-        "pricingModel": "가격 모델 (예: 구독, 수수료, 일회성)",
-        "targetMarketSize": "타겟 시장 규모",
-        "competitiveAdvantage": "경쟁 우위 요소"
-      }
-    },
-    "userJourney": {
-      "steps": [
-        {
-          "step": 1,
-          "title": "단계 제목",
-          "description": "단계 설명", 
-          "userAction": "사용자 행동",
-          "systemResponse": "시스템 응답",
-          "estimatedHours": "예상 소요 시간",
-          "requiredSkills": ["필요한 기술 스택"]
-        }
-      ]
-    },
-    "aiAnalysis": {
-      "insights": [
-        {
-          "type": "strength",
-          "icon": "✔",
-          "message": "프로젝트의 강점이나 긍정적인 분석 내용"
-        },
-        {
-          "type": "suggestion",
-          "icon": "💡",
-          "message": "개선 제안이나 추가 기능 아이디어"
-        },
-        {
-          "type": "warning",
-          "icon": "⚠",
-          "message": "주의해야 할 사항이나 핵심 고려 요소"
-        }
-      ]
-    }
-  }
-}`;
-
-    try {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01'
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 16000,
-          system: systemPrompt,
-          messages: messages
-        })
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Claude API error details:', {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorText
-        });
-        
-        // 529 (Overloaded) 에러의 경우 재시도 로직 추가
-        // 529는 API가 일시적으로 과부하된 경우이므로 재시도 유용
-        // 429는 계정의 rate limit 또는 acceleration limit이므로 재시도해도 실패
-        if (response.status === 529) {
-          console.log('Claude API 529 (Overloaded) 에러 - 재시도 시도');
-          // 짧은 지연 후 재시도
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          
-          const retryResponse = await fetch('https://api.anthropic.com/v1/messages', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-api-key': apiKey,
-              'anthropic-version': '2023-06-01'
-            },
-            body: JSON.stringify({
-              model: 'claude-sonnet-4-20250514',
-              max_tokens: 16000,
-              system: systemPrompt,
-              messages: messages
-            })
-          });
-          
-          if (retryResponse.ok) {
-            console.log('재시도 성공');
-            const retryData = await retryResponse.json();
-            
-            if (!retryData.content || !retryData.content[0] || !retryData.content[0].text) {
-              throw new Error('Invalid response format from Claude API');
-            }
-            
-            const retryResponseText = retryData.content[0].text;
-            let jsonText = retryResponseText;
-            
-            const jsonBlockMatch = retryResponseText.match(/```json\s*([\s\S]*?)\s*```/);
-            if (jsonBlockMatch) {
-              jsonText = jsonBlockMatch[1];
-            }
-            
-            try {
-              const jsonResponse = JSON.parse(jsonText);
-              console.log('재시도 응답 - JSON 파싱 성공:', jsonResponse);
-              console.log('재시도 응답 - projectOverview 존재:', !!jsonResponse.projectOverview);
-              
-              // projectOverview가 빈 객체인지 확인
-              if (jsonResponse.projectOverview && typeof jsonResponse.projectOverview === 'object') {
-                const overviewKeys = Object.keys(jsonResponse.projectOverview);
-                console.log('재시도 응답 - projectOverview 키 목록:', overviewKeys);
-                if (overviewKeys.length === 0) {
-                  console.warn('⚠️ 재시도 응답 - projectOverview가 빈 객체입니다. null로 설정합니다.');
-                  jsonResponse.projectOverview = null;
-                }
-              }
-              
-              return {
-                content: jsonResponse.content || retryResponseText,
-                metadata: { 
-                  timestamp: new Date().toISOString(),
-                  model: 'claude-sonnet-4-20250514'
-                },
-                projectOverview: jsonResponse.projectOverview || null
-              };
-            } catch (parseError) {
-              return {
-                content: retryResponseText,
-                metadata: { 
-                  timestamp: new Date().toISOString(),
-                  model: 'claude-sonnet-4-20250514'
-                },
-                projectOverview: null
-              };
-            }
-          } else if (retryResponse.status === 529) {
-            // 재시도도 실패한 경우 529 에러를 명확히 표시
-            console.error('Claude API 529 (Overloaded) 에러 - 재시도 실패');
-            const overloadError: any = new Error('Claude API is currently overloaded. Please try again later.');
-            overloadError.status = 529;
-            overloadError.type = 'overloaded_error';
-            throw overloadError;
-          }
-        }
-        
-        // 529가 아닌 다른 에러의 경우
-        throw new Error(`Claude API error: ${response.status} - ${errorText}`);
-      }
-
-      const data = await response.json();
-      
-      if (!data.content || !data.content[0] || !data.content[0].text) {
-        throw new Error('Invalid response format from Claude API');
-      }
-
-      const responseText = data.content[0].text;
-      
-      console.log('=== Claude API 응답 디버깅 ===');
-      console.log('응답 텍스트 전체:', responseText);
-      console.log('응답 길이:', responseText.length);
-      console.log('응답 텍스트 처음 500자:', responseText.substring(0, 500));
-      console.log('응답 텍스트 마지막 500자:', responseText.substring(Math.max(0, responseText.length - 500)));
-      
-      // 마크다운 코드 블록에서 JSON 추출
-      let jsonText = responseText;
-      
-      // ```json ... ``` 형태의 코드 블록에서 JSON 추출
-      const jsonBlockMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/);
-      if (jsonBlockMatch) {
-        jsonText = jsonBlockMatch[1];
-        console.log('✅ 코드 블록에서 JSON 추출 성공');
-        console.log('추출된 JSON 텍스트 처음 500자:', jsonText.substring(0, 500));
-      } else {
-        // 코드 블록이 없는 경우 원본 텍스트 사용
-        console.log('⚠️ 코드 블록 없음, 원본 텍스트에서 JSON 추출 시도');
-        // 원본 텍스트가 JSON으로 시작하는지 확인
-        const trimmedText = responseText.trim();
-        if (trimmedText.startsWith('{')) {
-          console.log('✅ 원본 텍스트가 JSON 형식으로 시작함');
-          jsonText = trimmedText;
-        } else {
-          console.warn('⚠️ 원본 텍스트가 JSON 형식이 아닐 수 있음');
-        }
-      }
-      
-      // JSON 응답 파싱 시도
-      try {
-        const jsonResponse = JSON.parse(jsonText);
-        console.log('JSON 파싱 성공');
-        console.log('jsonResponse 전체 구조:', {
-          hasContent: !!jsonResponse.content,
-          hasProjectOverview: !!jsonResponse.projectOverview,
-          projectOverviewType: typeof jsonResponse.projectOverview,
-          projectOverviewValue: jsonResponse.projectOverview,
-          allKeys: Object.keys(jsonResponse),
-        });
-        
-        // projectOverview가 빈 객체인지 확인
-        if (jsonResponse.projectOverview && typeof jsonResponse.projectOverview === 'object') {
-          const overviewKeys = Object.keys(jsonResponse.projectOverview);
-          console.log('projectOverview 키 목록:', overviewKeys);
-          console.log('projectOverview가 빈 객체인가?', overviewKeys.length === 0);
-          
-          if (overviewKeys.length === 0) {
-            console.warn('⚠️ projectOverview가 빈 객체입니다. null로 설정합니다.');
-            jsonResponse.projectOverview = null;
-          } else {
-            // serviceCoreElements 확인
-            if (jsonResponse.projectOverview.serviceCoreElements) {
-              const serviceKeys = Object.keys(jsonResponse.projectOverview.serviceCoreElements);
-              console.log('serviceCoreElements 키 목록:', serviceKeys);
-              console.log('targetUsers:', jsonResponse.projectOverview.serviceCoreElements.targetUsers);
-              console.log('estimatedDuration:', jsonResponse.projectOverview.serviceCoreElements.estimatedDuration);
-            } else {
-              console.warn('⚠️ serviceCoreElements가 없습니다.');
-            }
-          }
-        }
-        
-        return {
-          content: jsonResponse.content || responseText,
-          metadata: { 
-            timestamp: new Date().toISOString(),
-            model: 'claude-sonnet-4-20250514'
-          },
-          projectOverview: jsonResponse.projectOverview || null
-        };
-      } catch (parseError) {
-        console.log('JSON 파싱 실패:', parseError.message);
-        console.log('추출된 JSON 텍스트:', jsonText.substring(0, 500));
-        console.log('원본 응답 텍스트:', responseText.substring(0, 500));
-        
-        // JSON 파싱 실패 시 기본 응답
-        return {
-          content: responseText,
-          metadata: { 
-            timestamp: new Date().toISOString(),
-            model: 'claude-sonnet-4-20250514'
-          },
-          projectOverview: null
-        };
-      }
-    } catch (error) {
-      console.error('Claude API 호출 오류:', error);
-      throw new Error(`Claude API 호출 실패: ${error.message}`);
-    }
-  }
-
-  private async extractRequirementsFromHistory(history: any[]) {
-    const apiKey = this.configService.get<string>('ANTHROPIC_API_KEY');
-    
-    if (!apiKey) {
-      throw new Error('ANTHROPIC_API_KEY is not configured');
-    }
-
-    // 대화 히스토리를 텍스트로 변환
-    const conversationText = history.map(msg => 
-      `${msg.role || (msg.type === 'user' ? '사용자' : 'AI')}: ${msg.content || msg.message}`
-    ).join('\n');
-
-    const systemPrompt = `[역할] 당신은 SI 프로젝트 요구사항 분석 전문가이며 기술 문서 작성자입니다.
-
-[목표] 대화 내용을 분석하여 프로젝트 요구사항을 추출하고, 문서만 보고 설계/개발/QA/견적까지 연결 가능한 수준의 상세한 JSON을 생성합니다.
-
-[기술 스택 컨텍스트]
-- Frontend: Next.js 14 (App Router), Tailwind CSS, shadcn, Zustand, TanStack Query, Vercel AI SDK
-- Backend: NestJS, Supabase (PostgreSQL), Redis, Socket.io, BullMQ
-- Infrastructure: Vercel (Frontend), Railway (Backend)
-- LLM: Claude, GPT-4
-
-[금지 사항 - 매우 중요]
-다음 문자열은 절대 사용 금지. 발견 시 openIssues[]에 "확인 필요: ..."로 기록하고 본문에 노출하지 말 것:
-- "qwe", "asd", "undefined", "미정", "TBD", "TODO"
-
-[정합성 규칙 - 필수]
-1. 백엔드 스택은 반드시 "NestJS"로 표기 (Express 금지)
-2. 화면 수(totalScreens) == screens.length
-3. 일정(scheduleWeeks) == Σ(WBS effortPW) / 5PW per week
-
-[기능 요구사항(FR) 최소 기준 - 각 항목마다]
-- ac (수용기준): 최소 3개. 반드시 functional, accessibility, error/edge 중 최소 1개 포함
-- dataRules: 최소 3개 (형식 검증, 보관 규칙, 마스킹 등)
-- exceptions: 최소 2개 (네트워크 오류, 검증 실패, 권한 부족 등)
-- roles: 명시 (guest, user, admin, agent 등)
-- trace: screens[], apis[], tables[], tests[] 상호 참조
-
-[비기능 요구사항(NFR) 기준]
-- metric: 정량 지표 필수 (예: P95≤1.5s, WCAG 2.1 AA, AES-256)
-- howToVerify: 검증 방법 및 도구 명시
-
-[응답 형식 - JSON only, 설명/주석 금지]
-{
-  "categories": [
-    {
-      "category": "대분류 (예: 인증, 결제)",
-      "subCategories": [
-        {
-          "subcategory": "중분류 (예: 로그인)",
-          "requirements": [
-            {
-              "id": "FR-1-1",
-              "title": "소분류 (예: 이메일/비밀번호 로그인)",
-              "description": "최소 40자 이상 상세 설명",
-              "priority": "MUST|SHOULD|COULD",
-              "roles": ["guest", "user"],
-              "dataRules": ["이메일 RFC5322 검증", "비밀번호 SHA-256 암호화", "세션 7일 보관"],
-              "exceptions": ["네트워크 타임아웃 5초", "비밀번호 5회 실패 시 잠금", "미등록 이메일 안내"],
-              "ac": [
-                {"id":"AC-1","text":"유효한 이메일/비밀번호 입력 시 2초 이내 로그인","type":"functional"},
-                {"id":"AC-2","text":"Tab 키로 필드 이동 가능","type":"accessibility"},
-                {"id":"AC-3","text":"네트워크 오류 시 재시도 버튼 표시","type":"error"}
-              ],
-              "trace": {
-                "screens": ["M-01-로그인"],
-                "apis": ["POST /auth/login"],
-                "tables": ["users", "sessions"],
-                "tests": ["FT-001"]
-              },
-              "source": "사용자 요청 / 보안 기본 요구",
-              "needsClarification": false,
-              "clarificationQuestions": []
-            }
-          ]
-        }
-      ]
-    }
-  ],
-  "nonFunctionalRequirements": [
-    {
-      "id": "NFR-1",
-      "category": "performance|security|usability|availability|compatibility|maintainability",
-      "statement": "측정 가능한 문장",
-      "metric": "예: P95≤1.5s, SLO 99.9%, WCAG 2.1 AA, AES-256, RTO<4h",
-      "howToVerify": "도구(Lighthouse, JMeter) 및 절차",
-      "priority": "MUST|SHOULD|COULD"
-    }
-  ],
-  "assumptions": ["가정 1", "가정 2"],
-  "outOfScope": ["범위 밖 1"],
-  "risks": ["리스크 1"],
-  "openIssues": ["확인 필요: ..."]
-}
-
-[불충분 정보 처리]
-임의의 placeholder 금지. 모호하거나 미정인 부분은 openIssues[]에 기록하고 본문에 삽입하지 말 것.`;
-
-    try {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01'
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 16000,
-          system: systemPrompt,
-          messages: [
-            {
-              role: 'user',
-              content: `다음 대화 내용을 분석하여 요구사항을 추출해주세요:\n\n${conversationText}`
-            }
-          ]
-        })
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Claude API error details:', {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorText
-        });
-        
-        // 529 (Overloaded) 또는 500 에러의 경우 재시도 로직 추가
-        if (response.status === 529 || response.status === 500) {
-          console.log(`Claude API ${response.status} 에러 - 재시도 시도`);
-          // 짧은 지연 후 재시도
-          await new Promise(resolve => setTimeout(resolve, response.status === 529 ? 2000 : 1000));
-          
-          const retryResponse = await fetch('https://api.anthropic.com/v1/messages', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-api-key': apiKey,
-              'anthropic-version': '2023-06-01'
-            },
-            body: JSON.stringify({
-              model: 'claude-sonnet-4-20250514',
-              max_tokens: 16000,
-              system: systemPrompt,
-              messages: [
-                {
-                  role: 'user',
-                  content: `다음 대화 내용을 분석하여 요구사항을 추출해주세요:\n\n${conversationText}`
-                }
-              ]
-            })
-          });
-          
-          if (retryResponse.ok) {
-            console.log('재시도 성공');
-            const retryData = await retryResponse.json();
-            return this.parseRequirementsResponse(retryData);
-          } else if (retryResponse.status === 529) {
-            // 재시도도 실패한 경우 529 에러를 명확히 표시
-            console.error('Claude API 529 (Overloaded) 에러 - 재시도 실패');
-            const overloadError: any = new Error('Claude API is currently overloaded. Please try again later.');
-            overloadError.status = 529;
-            overloadError.type = 'overloaded_error';
-            throw overloadError;
-          }
-        }
-        
-        // 529 에러인 경우 명확히 표시
-        if (response.status === 529) {
-          const overloadError: any = new Error('Claude API is currently overloaded. Please try again later.');
-          overloadError.status = 529;
-          overloadError.type = 'overloaded_error';
-          throw overloadError;
-        }
-        
-        throw new Error(`Claude API error: ${response.status} - ${errorText}`);
-      }
-
-      const data = await response.json();
-      return this.parseRequirementsResponse(data);
-    } catch (error: any) {
-      console.error('요구사항 추출 오류:', error);
-      // 529 에러는 그대로 전달
-      if (error.status === 529 || error.type === 'overloaded_error') {
-        throw error;
-      }
-      throw new Error(`요구사항 추출 실패: ${error.message}`);
-    }
-  }
-
-  private async updateRequirementsFromChat(existingRequirements: any, history: any[]) {
-    const apiKey = this.configService.get<string>('ANTHROPIC_API_KEY');
-    
-    if (!apiKey) {
-      throw new Error('ANTHROPIC_API_KEY is not configured');
-    }
-
-    // 대화 히스토리를 텍스트로 변환
-    const conversationText = history.map(msg => 
-      `${msg.role || (msg.type === 'user' ? '사용자' : 'AI')}: ${msg.content || msg.message}`
-    ).join('\n');
-
-    const systemPrompt = `당신은 SI 프로젝트 요구사항 분석 전문가입니다.
-기존 요구사항과 새로운 대화 내용을 분석하여 요구사항을 업데이트해주세요.
-
-중요: 응답은 반드시 유효한 JSON 형식이어야 하며, 다른 텍스트나 설명은 포함하지 마세요.
-
-기존 요구사항:
-${JSON.stringify(existingRequirements, null, 2)}
-
-새로운 대화 내용:
-${conversationText}
-
-업데이트 규칙:
-1. 사용자가 기존 요구사항에 대한 구체적인 설명이나 추가 정보를 제공한 경우, 해당 요구사항의 needsClarification을 false로 설정하고 clarificationQuestions를 빈 배열로 설정하세요.
-2. 사용자가 요구사항의 내용을 수정하거나 보완한 경우, 해당 요구사항은 자동으로 승인된 것으로 간주하여 needsClarification을 false로 설정하세요.
-3. 새로운 요구사항이 추가된 경우에만 needsClarification을 true로 설정하고 적절한 명확화 질문을 제공하세요.
-4. 기존 요구사항의 description이 더 구체적이고 상세해진 경우, 이는 사용자가 명확화를 완료한 것으로 간주하세요.
-
-응답 형식:
-{
-  "categories": [
-    {
-      "category": "대분류",
-      "subCategories": [
-        {
-          "subcategory": "중분류",
-          "requirements": [
-            {
-              "title": "소분류",
-              "description": "상세 설명",
-              "priority": "high|medium|low",
-              "needsClarification": true|false,
-              "clarificationQuestions": ["질문1", "질문2"]
-            }
-          ]
-        }
-      ]
-    }
-  ],
-  "updatedAt": "2025-09-24T12:00:00.000Z",
-  "message": "업데이트 완료 메시지"
-}`;
-
-    try {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01'
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 16000,
-          system: systemPrompt,
-          messages: [
-            {
-              role: 'user',
-              content: '기존 요구사항을 새로운 대화 내용을 바탕으로 업데이트해주세요.'
-            }
-          ]
-        })
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Claude API error details:', {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorText
-        });
-        throw new Error(`Claude API error: ${response.status} - ${errorText}`);
-      }
-
-      const data = await response.json();
-      
-      if (!data.content || !data.content[0] || !data.content[0].text) {
-        throw new Error('Invalid response format from Claude API');
-      }
-
-      const responseText = data.content[0].text;
-      
-      console.log('=== 요구사항 업데이트 API 응답 디버깅 ===');
-      console.log('응답 텍스트:', responseText.substring(0, 300) + '...');
-      console.log('응답 길이:', responseText.length);
-      
-      // 마크다운 코드 블록에서 JSON 추출
-      let jsonText = responseText;
-      
-      // ```json ... ``` 형태의 코드 블록에서 JSON 추출
-      const jsonBlockMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/);
-      if (jsonBlockMatch) {
-        jsonText = jsonBlockMatch[1];
-        console.log('코드 블록에서 JSON 추출 성공:', jsonText.substring(0, 200) + '...');
-      } else {
-        console.log('코드 블록 없음, 원본 텍스트 사용');
-      }
-      
-      // JSON 응답 파싱
-      try {
-        const result = JSON.parse(jsonText);
-        console.log('요구사항 업데이트 JSON 파싱 성공');
-        return result;
-      } catch (parseError) {
-        console.error('JSON 파싱 오류:', parseError);
-        console.error('추출된 JSON 텍스트:', jsonText.substring(0, 500));
-        console.error('원본 응답 텍스트:', responseText.substring(0, 500));
-        throw new Error('요구사항 업데이트 응답 파싱 실패');
-      }
-    } catch (error) {
-      console.error('요구사항 업데이트 오류:', error);
-      throw new Error(`요구사항 업데이트 실패: ${error.message}`);
-    }
-  }
-
-  private parseRecommendationsFromText(text: string): Array<{ title: string; description: string; priority: string }> {
-    const recommendations: Array<{ title: string; description: string; priority: string }> = [];
-    
-    // 여러 추천 항목을 구분하기 위해 번호나 항목 구분자로 분리
-    // 패턴 1: "1. 제목: ...", "2. 제목: ..." 형식
-    // 패턴 2: "제목: ...", "설명: ...", "우선순위: ..." 형식 (반복)
-    
-    // 번호로 시작하는 패턴으로 항목 분리
-    const items = text.split(/(?=\d+\.\s*(?:제목|Title|요구사항|Feature))/i);
-    
-    for (const item of items) {
-      if (!item.trim()) continue;
-      
-      let title = '';
-      let description = '';
-      let priority = 'medium';
-      
-      // 제목 추출 (여러 패턴 시도)
-      const titlePatterns = [
-        /(?:제목|Title)[:：]\s*(.+?)(?:\n|$)/i,
-        /^\d+\.\s*(.+?)(?:\n|$)/,
-        /^[-*]\s*(.+?)(?:\n|$)/,
-      ];
-      
-      for (const pattern of titlePatterns) {
-        const match = item.match(pattern);
-        if (match && match[1]) {
-          title = match[1].trim();
-          break;
-        }
-      }
-      
-      // 설명 추출
-      const descPatterns = [
-        /(?:설명|Description)[:：]\s*(.+?)(?:\n(?:우선순위|Priority)|$)/is,
-        /(?:제목|Title)[:：].*?\n(.+?)(?:\n(?:우선순위|Priority)|$)/is,
-      ];
-      
-      for (const pattern of descPatterns) {
-        const match = item.match(pattern);
-        if (match && match[1]) {
-          description = match[1].trim();
-          break;
-        }
-      }
-      
-      // 설명이 없으면 제목 다음 줄을 설명으로 사용
-      if (!description && title) {
-        const lines = item.split('\n');
-        for (let i = 0; i < lines.length; i++) {
-          if (lines[i].includes(title)) {
-            if (i + 1 < lines.length && lines[i + 1].trim() && !lines[i + 1].match(/(?:우선순위|Priority)[:：]/i)) {
-              description = lines[i + 1].trim();
-            }
-            break;
-          }
-        }
-      }
-      
-      // 우선순위 추출
-      const priorityMatch = item.match(/(?:우선순위|Priority)[:：]\s*(high|medium|low)/i);
-      if (priorityMatch && priorityMatch[1]) {
-        priority = priorityMatch[1].toLowerCase();
-      }
-      
-      // 제목과 설명이 모두 있으면 추가
-      if (title && description) {
-        recommendations.push({ title, description, priority });
-      }
-    }
-    
-    // 번호 패턴이 없으면 전체 텍스트를 하나의 추천으로 처리
-    if (recommendations.length === 0 && text.trim().length > 0) {
-      const lines = text.trim().split('\n').filter(l => l.trim());
-      if (lines.length > 0) {
-        const firstLine = lines[0].trim();
-        const rest = lines.slice(1).join(' ').trim();
-        recommendations.push({
-          title: firstLine.substring(0, 100),
-          description: rest || firstLine,
-          priority: 'medium'
-        });
-      }
-    }
-    
-    return recommendations;
-  }
-
   async getRecommendations(recommendationsDto: RecommendationsDto, res: any) {
-    const apiKey = this.configService.get<string>('ANTHROPIC_API_KEY');
-    
-    if (!apiKey) {
-      throw new Error('ANTHROPIC_API_KEY is not configured');
-    }
-
     const { categoryTitle, existingRequirements = [], projectData = {} } = recommendationsDto;
 
-    // 기존 요구사항 목록 생성
-    const existingRequirementsText = existingRequirements.length > 0
-      ? existingRequirements.map((req, idx) => `${idx + 1}. ${req.title}: ${req.description}`).join('\n')
-      : '없음';
-
-    const systemPrompt = `당신은 SI 프로젝트 요구사항 분석 전문가입니다.
-특정 카테고리에 대한 새로운 요구사항을 추천해주세요.
-
-프로젝트 정보:
-- 설명: ${projectData.description || '없음'}
-- 서비스 타입: ${projectData.serviceType || '없음'}
-
-카테고리: ${categoryTitle}
-
-기존 요구사항:
-${existingRequirementsText}
-
-중요 지침:
-1. 기존 요구사항과 중복되지 않는 새로운 요구사항을 3-5개 추천하세요.
-2. 각 요구사항은 구체적이고 실현 가능해야 합니다.
-3. 카테고리와 관련된 실용적인 기능이나 요구사항을 제안하세요.
-4. 각 요구사항은 다음 형식으로 작성하세요:
-   제목: [요구사항 제목]
-   설명: [상세 설명]
-   우선순위: [high|medium|low]
-5. 여러 요구사항을 추천할 때는 각각을 명확히 구분하세요.`;
-
     try {
-      // SSE 헤더 설정
       res.setHeader('Content-Type', 'text/event-stream');
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Connection', 'keep-alive');
 
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 16000,
-          stream: true, // 스트리밍 활성화
-          system: systemPrompt,
-          messages: [
-            {
-              role: 'user',
-              content: `${categoryTitle} 카테고리에 대한 새로운 요구사항을 3-5개 추천해주세요. 각 요구사항은 제목, 설명, 우선순위를 포함해야 합니다.`
-            }
-          ]
-        })
+      const systemPrompt = buildRecommendationsPrompt(
+        categoryTitle,
+        existingRequirements,
+        projectData,
+      );
+
+      const response = await this.claudeApi.callStream({
+        systemPrompt,
+        messages: [
+          {
+            role: 'user',
+            content: `${categoryTitle} 카테고리에 대한 새로운 요구사항을 3-5개 추천해주세요. 각 요구사항은 제목, 설명, 우선순위를 포함해야 합니다.`,
+          },
+        ],
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        // 529 (Overloaded) 에러 처리
-        if (response.status === 529) {
-          res.write(`data: ${JSON.stringify({ 
-            type: 'error', 
-            message: '현재 사용량이 많아 서비스가 일시적으로 지연되고 있습니다. 잠시 후 다시 시도해주세요.',
-            code: 529,
-            errorType: 'overloaded_error'
-          })}\n\n`);
+        const status = response.status;
+        if (status === 529) {
+          res.write(`data: ${JSON.stringify({ type: 'error', message: ERROR_MESSAGES.OVERLOADED, code: 529, errorType: 'overloaded_error' })}\n\n`);
         } else {
-          res.write(`data: ${JSON.stringify({ type: 'error', message: `API Error: ${response.status}` })}\n\n`);
+          res.write(`data: ${JSON.stringify({ type: 'error', message: `API Error: ${status}` })}\n\n`);
         }
         res.end();
         return;
       }
 
-      // 현재 추천 항목 추적
-      let currentRecommendation: { title?: string; description?: string; priority?: string } = {};
+      // Stream 처리
       let accumulatedText = '';
       let buffer = '';
-      const sentRecommendations = new Set<string>(); // 전송한 추천 항목 추적 (title 기준)
-
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
 
@@ -949,312 +146,290 @@ ${existingRequirementsText}
         return;
       }
 
-      console.log('스트리밍 시작');
-
       while (true) {
         const { done, value } = await reader.read();
-        if (done) {
-          console.log('스트리밍 완료 (done=true)');
-          break;
-        }
+        if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
         buffer = lines.pop() || '';
 
         for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6);
-            if (data === '[DONE]') {
-              console.log('Claude API 스트리밍 완료');
-              // 마지막 추천 항목 처리
-              if (currentRecommendation.title && currentRecommendation.description) {
-                if (!currentRecommendation.priority) {
-                  currentRecommendation.priority = 'medium';
-                }
-                res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'priority', value: currentRecommendation.priority })}\n\n`);
-              }
-              res.write('data: [DONE]\n\n');
-              res.end();
-              return;
+          if (!line.startsWith('data: ')) continue;
+          const data = line.slice(6);
+          if (data === '[DONE]') {
+            // 최종 파싱 후 전송
+            this.sendParsedRecommendations(accumulatedText, res);
+            return;
+          }
+          try {
+            const json = JSON.parse(data);
+            if (
+              json.type === 'content_block_delta' &&
+              (json.delta?.type === 'text' || json.delta?.type === 'text_delta') &&
+              json.delta?.text
+            ) {
+              accumulatedText += json.delta.text;
             }
-
-            try {
-              const json = JSON.parse(data);
-              
-              // Claude API 스트리밍 이벤트 타입 확인
-              // Claude API는 delta.type이 'text' 또는 'text_delta'일 수 있음
-              if (json.type === 'content_block_delta' && 
-                  (json.delta?.type === 'text' || json.delta?.type === 'text_delta') && 
-                  json.delta?.text) {
-                const text = json.delta.text;
-                accumulatedText += text;
-                
-                // 스트리밍 중에는 파싱하지 않고 텍스트만 누적
-                // 최종 파싱은 스트리밍 완료 후에만 수행
-              } else if (json.type === 'message_start' || json.type === 'content_block_start') {
-                // 메시지 시작 이벤트는 무시 (로그 제거)
-              } else if (json.type === 'message_delta' || json.type === 'content_block_stop') {
-                // 메시지 델타나 블록 종료 이벤트는 무시 (로그 제거)
-              } else if (json.type === 'content_block_delta') {
-                // text_delta 타입이 아닌 다른 delta 타입은 무시 (로그 제거)
-              }
-            } catch (e) {
-              // JSON 파싱 실패 무시 (스트리밍 중일 수 있음)
-              console.log('JSON 파싱 실패 (무시):', data.substring(0, 100));
-            }
+          } catch {
+            // 스트리밍 중 파싱 실패 무시
           }
         }
       }
 
-      // 스트리밍 완료 시 최종 파싱
-      console.log('누적 텍스트 (전체):', accumulatedText);
-      console.log('누적 텍스트 (처음 500자):', accumulatedText.substring(0, 500));
-      const finalRecommendations = this.parseRecommendationsFromText(accumulatedText);
-      console.log('파싱된 추천 항목 수:', finalRecommendations.length);
-      console.log('파싱된 추천 항목:', finalRecommendations);
-      
-      if (finalRecommendations.length > 0) {
-        // 모든 완성된 추천 항목 전송 (중복 제거)
-        for (const rec of finalRecommendations) {
-          if (rec.title && rec.description) {
-            // 제목 정리 (마크다운 제거, 앞뒤 공백 제거)
-            const cleanTitle = rec.title.trim().replace(/^\*\*\s*/, '').replace(/\*\*$/, '').trim();
-            
-            if (!sentRecommendations.has(cleanTitle)) {
-              console.log('최종 추천 항목 전송:', rec);
-              sentRecommendations.add(cleanTitle);
-              
-              // 설명 정리 (마크다운 제거)
-              let cleanDescription = rec.description.trim();
-              // 마크다운 헤더 제거 (##, ### 등)
-              cleanDescription = cleanDescription.replace(/^#+\s*/gm, '');
-              // 볼드 제거 (**)
-              cleanDescription = cleanDescription.replace(/\*\*/g, '');
-              // 제목 라인 제거 (제목: 형식)
-              cleanDescription = cleanDescription.replace(/^제목[:：]\s*.+$/gmi, '');
-              // 설명 라인 제거 (설명: 형식)
-              cleanDescription = cleanDescription.replace(/^설명[:：]\s*/gmi, '');
-              // 우선순위 라인 제거
-              cleanDescription = cleanDescription.replace(/^우선순위[:：]\s*.+$/gmi, '');
-              // 빈 줄 정리
-              cleanDescription = cleanDescription.replace(/\n\s*\n/g, '\n').trim();
-              
-              res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'title', value: cleanTitle })}\n\n`);
-              res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'description', value: cleanDescription })}\n\n`);
-              res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'priority', value: rec.priority || 'medium' })}\n\n`);
-            }
-          }
-        }
-      } else {
-        // 파싱 실패 시 원본 텍스트를 설명으로 사용
-        console.log('파싱 실패 - 원본 텍스트 사용');
-        if (accumulatedText.trim().length > 0) {
-          const lines = accumulatedText.trim().split('\n').filter(l => l.trim().length > 0);
-          if (lines.length > 0) {
-            const firstLine = lines[0].trim().replace(/^#+\s*/, '').replace(/\*\*/g, '').trim();
-            const cleanText = accumulatedText.trim().replace(/^#+\s*/gm, '').replace(/\*\*/g, '');
-            res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'title', value: firstLine.substring(0, 100) })}\n\n`);
-            res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'description', value: cleanText })}\n\n`);
-            res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'priority', value: 'medium' })}\n\n`);
-          }
-        }
-      }
-
-      res.write('data: [DONE]\n\n');
-      res.end();
-      console.log('스트리밍 응답 전송 완료');
+      // 스트리밍 완료
+      this.sendParsedRecommendations(accumulatedText, res);
     } catch (error) {
-      console.error('추천 요청 오류:', error);
-      res.write(`data: ${JSON.stringify({ type: 'error', message: error.message })}\n\n`);
+      this.logger.error('Recommendations error: %s', (error as Error).message);
+      res.write(`data: ${JSON.stringify({ type: 'error', message: (error as Error).message })}\n\n`);
       res.end();
     }
   }
 
   async verifyRequirements(verifyRequirementsDto: VerifyRequirementsDto) {
-    console.log('=== AI 요구사항 검증 시작 (Backend) ===');
-    console.log('프로젝트 ID:', verifyRequirementsDto.projectId);
-    console.log('요구사항 개수:', verifyRequirementsDto.requirements?.categories?.length || 0);
+    this.logger.log('AI 요구사항 검증 시작 – project: %s', verifyRequirementsDto.projectId);
 
-    const apiKey = this.configService.get<string>('ANTHROPIC_API_KEY');
-    if (!apiKey) {
-      throw new Error('ANTHROPIC_API_KEY is not configured');
-    }
-
-    const systemPrompt = `당신은 SI 프로젝트 요구사항 검증 전문가입니다.
-주어진 요구사항을 분석하여 다음을 확인해주세요:
-
-1. 일관성 검사: 요구사항 간 모순이나 충돌이 있는지 확인
-2. 완성도 검사: 명확하지 않거나 모호한 요구사항 확인
-3. 우선순위 검증: 우선순위가 적절히 설정되었는지 확인
-4. 누락 항목: 일반적으로 필요하지만 빠진 요구사항 확인
-5. 중복 확인: 중복되거나 유사한 요구사항 확인
-
-응답은 반드시 다음 JSON 형식으로만 제공해주세요:
-{
-  "status": "ok" | "warning" | "error",
-  "score": 0-100,
-  "suggestions": [
-    {
-      "type": "missing" | "duplicate" | "unclear" | "priority" | "conflict",
-      "severity": "low" | "medium" | "high",
-      "message": "구체적인 제안 내용",
-      "category": "해당 카테고리 (있는 경우)"
-    }
-  ],
-  "warnings": [
-    {
-      "message": "경고 내용",
-      "affectedRequirements": ["요구사항 ID"]
-    }
-  ],
-  "summary": {
-    "totalRequirements": 숫자,
-    "issuesFound": 숫자,
-    "criticalIssues": 숫자
-  }
-}`;
-
-    const userPrompt = `다음 요구사항을 검증해주세요:
-
-${JSON.stringify(verifyRequirementsDto.requirements, null, 2)}
-
-위 요구사항의 일관성, 완성도, 우선순위를 검토하고 개선 제안을 해주세요.`;
+    const userPrompt = `다음 요구사항을 검증해주세요:\n\n${JSON.stringify(verifyRequirementsDto.requirements, null, 2)}\n\n위 요구사항의 일관성, 완성도, 우선순위를 검토하고 개선 제안을 해주세요.`;
 
     try {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 16000,
-          system: systemPrompt,
-          messages: [
-            {
-              role: 'user',
-              content: userPrompt,
-            },
-          ],
-        }),
+      const data = await this.claudeApi.callAndParseJson({
+        systemPrompt: SYSTEM_PROMPT_VERIFY,
+        messages: [{ role: 'user', content: userPrompt }],
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Claude API 오류:', errorText);
-
-        // 529 (Overloaded) 에러 처리
-        if (response.status === 529) {
-          console.log('Claude API 과부하 - 재시도');
-          await new Promise((resolve) => setTimeout(resolve, 2000));
-
-          const retryResponse = await fetch('https://api.anthropic.com/v1/messages', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-api-key': apiKey,
-              'anthropic-version': '2023-06-01',
-            },
-            body: JSON.stringify({
-              model: 'claude-sonnet-4-20250514',
-              max_tokens: 16000,
-              system: systemPrompt,
-              messages: [
-                {
-                  role: 'user',
-                  content: userPrompt,
-                },
-              ],
-            }),
-          });
-
-          if (retryResponse.ok) {
-            const retryData = await retryResponse.json();
-            return this.parseVerificationResponse(retryData, verifyRequirementsDto.requirements);
-          } else if (retryResponse.status === 529) {
-            throw new Error('529');
-          }
-        }
-
-        throw new Error(`Claude API 오류: ${response.status}`);
-      }
-
-      const data = await response.json();
       return this.parseVerificationResponse(data, verifyRequirementsDto.requirements);
     } catch (error) {
-      console.error('Claude API 호출 실패:', error);
-
-      // Fallback: 기본 검증 결과 반환
-      return {
-        status: 'ok',
-        score: 85,
-        suggestions: [],
-        warnings: [],
-        summary: {
-          totalRequirements: verifyRequirementsDto.requirements?.categories?.reduce(
-            (total: number, cat: any) =>
-              total +
-              (cat.subCategories?.reduce(
-                (subTotal: number, sub: any) =>
-                  subTotal + (sub.requirements?.length || 0),
-                0
-              ) || 0),
-            0
-          ) || 0,
-          issuesFound: 0,
-          criticalIssues: 0,
-        },
-      };
+      this.logger.error('Verification failed: %s', (error as Error).message);
+      return this.buildFallbackVerification(verifyRequirementsDto.requirements);
     }
   }
 
-  private parseVerificationResponse(data: any, requirements: any) {
-    if (!data.content || !data.content[0] || !data.content[0].text) {
-      throw new Error('Invalid response format from Claude API');
-    }
+  // ── Private: Claude API calls ─────────────────────────────────
 
-    const responseText = data.content[0].text;
-    console.log('Claude 응답:', responseText.substring(0, 200) + '...');
-
-    // JSON 추출
-    let jsonText = responseText;
-    const jsonBlockMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/);
-    if (jsonBlockMatch) {
-      jsonText = jsonBlockMatch[1];
-    }
+  private async callClaudeAPI(message: string, history: any[]) {
+    const messages = history.map(msg => ({
+      role: (msg.role || (msg.type === 'user' ? 'user' : 'assistant')) as 'user' | 'assistant',
+      content: msg.content || msg.message,
+    }));
+    messages.push({ role: 'user', content: message });
 
     try {
-      const result = JSON.parse(jsonText);
-      return result;
-    } catch (parseError) {
-      console.error('JSON 파싱 오류:', parseError);
-      console.error('응답 텍스트:', responseText);
+      const data = (await this.claudeApi.callAndParseJson({
+        systemPrompt: SYSTEM_PROMPT_CHAT,
+        messages,
+      })) as any;
 
-      // Fallback
+      const responseText = this.jsonParser.extractText(data);
+      const jsonResponse = this.jsonParser.parse<any>(responseText);
+
+      if (jsonResponse) {
+        // 빈 projectOverview 처리
+        if (
+          jsonResponse.projectOverview &&
+          typeof jsonResponse.projectOverview === 'object' &&
+          Object.keys(jsonResponse.projectOverview).length === 0
+        ) {
+          jsonResponse.projectOverview = null;
+        }
+
+        return {
+          content: jsonResponse.content || responseText,
+          metadata: { timestamp: new Date().toISOString(), model: CLAUDE_MODEL },
+          projectOverview: jsonResponse.projectOverview || null,
+        };
+      }
+
+      // JSON 파싱 실패 시 기본 응답
       return {
-        status: 'ok',
-        score: 85,
-        suggestions: [],
-        warnings: [],
-        summary: {
-          totalRequirements: requirements?.categories?.reduce(
-            (total: number, cat: any) =>
-              total +
-              (cat.subCategories?.reduce(
-                (subTotal: number, sub: any) =>
-                  subTotal + (sub.requirements?.length || 0),
-                0
-              ) || 0),
-            0
-          ) || 0,
-          issuesFound: 0,
-          criticalIssues: 0,
-        },
+        content: responseText,
+        metadata: { timestamp: new Date().toISOString(), model: CLAUDE_MODEL },
+        projectOverview: null,
       };
+    } catch (error) {
+      this.logger.error('callClaudeAPI error: %s', (error as Error).message);
+      throw error;
     }
   }
-}
 
+  private async extractRequirementsFromHistory(history: any[]) {
+    const conversationText = history
+      .map(msg => `${msg.role || (msg.type === 'user' ? '사용자' : 'AI')}: ${msg.content || msg.message}`)
+      .join('\n');
+
+    try {
+      const data = (await this.claudeApi.callAndParseJson({
+        systemPrompt: SYSTEM_PROMPT_EXTRACT,
+        messages: [
+          {
+            role: 'user',
+            content: `다음 대화 내용을 분석하여 요구사항을 추출해주세요:\n\n${conversationText}`,
+          },
+        ],
+      })) as any;
+
+      const responseText = this.jsonParser.extractText(data);
+      return this.jsonParser.parseOrThrow(responseText, ERROR_MESSAGES.EXTRACTION_FAILED);
+    } catch (error) {
+      if (this.claudeApi.isOverloadedError(error)) throw error;
+      this.logger.error('extractRequirementsFromHistory error: %s', (error as Error).message);
+      throw new Error(`${ERROR_MESSAGES.EXTRACTION_FAILED}: ${(error as Error).message}`);
+    }
+  }
+
+  private async updateRequirementsFromChat(existingRequirements: any, history: any[]) {
+    const conversationText = history
+      .map(msg => `${msg.role || (msg.type === 'user' ? '사용자' : 'AI')}: ${msg.content || msg.message}`)
+      .join('\n');
+
+    const systemPrompt = SYSTEM_PROMPT_UPDATE(existingRequirements, conversationText);
+
+    try {
+      const data = (await this.claudeApi.callAndParseJson({
+        systemPrompt,
+        messages: [
+          {
+            role: 'user',
+            content: '기존 요구사항을 새로운 대화 내용을 바탕으로 업데이트해주세요.',
+          },
+        ],
+      })) as any;
+
+      const responseText = this.jsonParser.extractText(data);
+      return this.jsonParser.parseOrThrow(responseText, ERROR_MESSAGES.UPDATE_FAILED);
+    } catch (error) {
+      this.logger.error('updateRequirementsFromChat error: %s', (error as Error).message);
+      throw new Error(`${ERROR_MESSAGES.UPDATE_FAILED}: ${(error as Error).message}`);
+    }
+  }
+
+  // ── Private: response parsing ─────────────────────────────────
+
+  private parseVerificationResponse(data: any, requirements: any) {
+    const responseText = this.jsonParser.extractText(data);
+    const result = this.jsonParser.parse(responseText);
+    return result ?? this.buildFallbackVerification(requirements);
+  }
+
+  private buildFallbackVerification(requirements: any) {
+    return {
+      status: 'ok',
+      score: 85,
+      suggestions: [],
+      warnings: [],
+      summary: {
+        totalRequirements: this.countRequirements(requirements),
+        issuesFound: 0,
+        criticalIssues: 0,
+      },
+    };
+  }
+
+  private countRequirements(requirements: any): number {
+    return (
+      requirements?.categories?.reduce(
+        (total: number, cat: any) =>
+          total +
+          (cat.subCategories?.reduce(
+            (subTotal: number, sub: any) => subTotal + (sub.requirements?.length || 0),
+            0,
+          ) || 0),
+        0,
+      ) || 0
+    );
+  }
+
+  // ── Private: recommendations parsing ──────────────────────────
+
+  private sendParsedRecommendations(text: string, res: any): void {
+    const recommendations = this.parseRecommendationsFromText(text);
+    const sentTitles = new Set<string>();
+
+    for (const rec of recommendations) {
+      if (!rec.title || !rec.description) continue;
+
+      const cleanTitle = rec.title.trim().replace(/^\*\*\s*/, '').replace(/\*\*$/, '').trim();
+      if (sentTitles.has(cleanTitle)) continue;
+      sentTitles.add(cleanTitle);
+
+      let cleanDescription = rec.description.trim();
+      cleanDescription = cleanDescription.replace(/^#+\s*/gm, '');
+      cleanDescription = cleanDescription.replace(/\*\*/g, '');
+      cleanDescription = cleanDescription.replace(/^제목[:：]\s*.+$/gmi, '');
+      cleanDescription = cleanDescription.replace(/^설명[:：]\s*/gmi, '');
+      cleanDescription = cleanDescription.replace(/^우선순위[:：]\s*.+$/gmi, '');
+      cleanDescription = cleanDescription.replace(/\n\s*\n/g, '\n').trim();
+
+      res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'title', value: cleanTitle })}\n\n`);
+      res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'description', value: cleanDescription })}\n\n`);
+      res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'priority', value: rec.priority || 'medium' })}\n\n`);
+    }
+
+    if (recommendations.length === 0 && text.trim().length > 0) {
+      const lines = text.trim().split('\n').filter(l => l.trim().length > 0);
+      if (lines.length > 0) {
+        const firstLine = lines[0].trim().replace(/^#+\s*/, '').replace(/\*\*/g, '').trim();
+        const cleanText = text.trim().replace(/^#+\s*/gm, '').replace(/\*\*/g, '');
+        res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'title', value: firstLine.substring(0, 100) })}\n\n`);
+        res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'description', value: cleanText })}\n\n`);
+        res.write(`data: ${JSON.stringify({ type: 'recommendation', field: 'priority', value: 'medium' })}\n\n`);
+      }
+    }
+
+    res.write('data: [DONE]\n\n');
+    res.end();
+  }
+
+  private parseRecommendationsFromText(text: string): Array<{ title: string; description: string; priority: string }> {
+    const recommendations: Array<{ title: string; description: string; priority: string }> = [];
+    const items = text.split(/(?=\d+\.\s*(?:제목|Title|요구사항|Feature))/i);
+
+    for (const item of items) {
+      if (!item.trim()) continue;
+
+      let title = '';
+      let description = '';
+      let priority = 'medium';
+
+      const titlePatterns = [
+        /(?:제목|Title)[:：]\s*(.+?)(?:\n|$)/i,
+        /^\d+\.\s*(.+?)(?:\n|$)/,
+        /^[-*]\s*(.+?)(?:\n|$)/,
+      ];
+      for (const pattern of titlePatterns) {
+        const match = item.match(pattern);
+        if (match?.[1]) { title = match[1].trim(); break; }
+      }
+
+      const descPatterns = [
+        /(?:설명|Description)[:：]\s*(.+?)(?:\n(?:우선순위|Priority)|$)/is,
+        /(?:제목|Title)[:：].*?\n(.+?)(?:\n(?:우선순위|Priority)|$)/is,
+      ];
+      for (const pattern of descPatterns) {
+        const match = item.match(pattern);
+        if (match?.[1]) { description = match[1].trim(); break; }
+      }
+
+      if (!description && title) {
+        const lines = item.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          if (lines[i].includes(title) && i + 1 < lines.length) {
+            const next = lines[i + 1].trim();
+            if (next && !next.match(/(?:우선순위|Priority)[:：]/i)) {
+              description = next;
+            }
+            break;
+          }
+        }
+      }
+
+      const priorityMatch = item.match(/(?:우선순위|Priority)[:：]\s*(high|medium|low)/i);
+      if (priorityMatch?.[1]) priority = priorityMatch[1].toLowerCase();
+
+      if (title && description) {
+        recommendations.push({ title, description, priority });
+      }
+    }
+
+    return recommendations;
+  }
+}

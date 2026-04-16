@@ -184,7 +184,7 @@ export default function ProjectsPage() {
       setProjects(formattedProjects);
       setFilteredProjects(formattedProjects);
     } catch (error) {
-      console.error("프로젝트 로드 실패:", error);
+      // silently ignore
     } finally {
       setLoading(false);
     }
@@ -235,7 +235,6 @@ export default function ProjectsPage() {
 
       setSelectedProject(project);
     } catch (error) {
-      console.error("프로젝트 상세 로드 실패:", error);
       setSelectedProject(null);
     } finally {
       setDetailLoading(false);

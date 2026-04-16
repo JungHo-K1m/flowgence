@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { isDevelopmentMode } from "@/lib/dummyData";
+import { API_BASE_URL } from '@/lib/constants';
 
 interface AIRecommendation {
   id: string;
@@ -62,7 +63,6 @@ export function AIRecommendationsPanel({
 
     // 개발 모드에서는 API 호출하지 않음
     if (isDevelopmentMode()) {
-      console.log('[DEV MODE] AI 추천 기능 API 호출 건너뜀');
       setRecommendations([]);
       return;
     }
@@ -79,8 +79,7 @@ export function AIRecommendationsPanel({
     abortControllerRef.current = new AbortController();
 
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
-      const response = await fetch(`${backendUrl}/chat/requirements/recommendations`, {
+      const response = await fetch(`${API_BASE_URL}/chat/requirements/recommendations`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -114,11 +113,9 @@ export function AIRecommendationsPanel({
       let currentRec: Partial<AIRecommendation> = {};
 
       if (reader) {
-        console.log('스트리밍 시작 - reader 생성됨');
         while (true) {
           const { done, value } = await reader.read();
           if (done) {
-            console.log('스트리밍 완료 (done=true)');
             break;
           }
 
@@ -229,7 +226,6 @@ export function AIRecommendationsPanel({
                     }
                   }
                 } else if (json.type === 'error') {
-                  console.error('추천 API 에러:', json.message);
                   setIsLoading(false);
                   setIsStreaming(false);
                   setRecommendations([]);
@@ -279,9 +275,8 @@ export function AIRecommendationsPanel({
       });
     } catch (error: any) {
       if (error.name === 'AbortError') {
-        console.log('요청이 취소되었습니다.');
+        // silently ignore
       } else {
-        console.error('추천 요청 실패:', error);
         setIsLoading(false);
         setIsStreaming(false);
         // 에러 시 빈 배열 유지

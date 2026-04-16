@@ -1,8 +1,7 @@
 // Notion OAuth 관련 유틸리티 함수
 
 import { supabase } from './supabase';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+import { API_ROOT_URL } from '@/lib/constants';
 
 export interface NotionConnection {
   connected: boolean;
@@ -34,7 +33,7 @@ async function getAuthHeaders(): Promise<HeadersInit> {
 export async function getNotionConnection(): Promise<NotionConnection> {
   try {
     const headers = await getAuthHeaders();
-    const response = await fetch(`${API_BASE_URL}/notion/connection`, {
+    const response = await fetch(`${API_ROOT_URL}/notion/connection`, {
       method: 'GET',
       credentials: 'include', // 쿠키 포함
       headers,
@@ -49,7 +48,6 @@ export async function getNotionConnection(): Promise<NotionConnection> {
 
     return await response.json();
   } catch (error) {
-    console.error('Notion 연결 정보 조회 실패:', error);
     return {
       connected: false,
       message: error instanceof Error ? error.message : '연결 정보 조회 실패',
@@ -64,7 +62,7 @@ export async function getNotionConnection(): Promise<NotionConnection> {
 export async function startNotionOAuth(): Promise<void> {
   try {
     const headers = await getAuthHeaders();
-    const response = await fetch(`${API_BASE_URL}/notion/oauth/authorize`, {
+    const response = await fetch(`${API_ROOT_URL}/notion/oauth/authorize`, {
       method: 'GET',
       credentials: 'include',
       headers,
@@ -84,7 +82,6 @@ export async function startNotionOAuth(): Promise<void> {
       throw new Error('OAuth URL을 받지 못했습니다.');
     }
   } catch (error) {
-    console.error('Notion OAuth 시작 실패:', error);
     throw error;
   }
 }
@@ -95,7 +92,7 @@ export async function startNotionOAuth(): Promise<void> {
 export async function disconnectNotion(): Promise<void> {
   try {
     const headers = await getAuthHeaders();
-    const response = await fetch(`${API_BASE_URL}/notion/connection`, {
+    const response = await fetch(`${API_ROOT_URL}/notion/connection`, {
       method: 'DELETE',
       credentials: 'include',
       headers,
@@ -105,7 +102,6 @@ export async function disconnectNotion(): Promise<void> {
       throw new Error('연결 해제 실패');
     }
   } catch (error) {
-    console.error('Notion 연결 해제 실패:', error);
     throw error;
   }
 }
@@ -116,7 +112,7 @@ export async function disconnectNotion(): Promise<void> {
 export async function updateDatabaseId(databaseId: string): Promise<void> {
   try {
     const headers = await getAuthHeaders();
-    const response = await fetch(`${API_BASE_URL}/notion/connection/database`, {
+    const response = await fetch(`${API_ROOT_URL}/notion/connection/database`, {
       method: 'POST',
       credentials: 'include',
       headers,
@@ -128,7 +124,6 @@ export async function updateDatabaseId(databaseId: string): Promise<void> {
       throw new Error(errorData.message || '데이터베이스 ID 업데이트 실패');
     }
   } catch (error) {
-    console.error('데이터베이스 ID 업데이트 실패:', error);
     throw error;
   }
 }

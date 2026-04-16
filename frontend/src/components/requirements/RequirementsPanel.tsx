@@ -107,15 +107,6 @@ export function RequirementsPanel({
 
   // 인증 가드
   const { showLoginModal, requireAuth, closeLoginModal } = useAuthGuard();
-  console.log("RequirementsPanel - requirementsData:", requirementsData);
-  console.log(
-    "RequirementsPanel - requirementsData?.categories:",
-    data?.categories
-  );
-  console.log(
-    "RequirementsPanel - requirementsData?.categories?.length:",
-    data?.categories?.length
-  );
 
   // 요구사항 데이터가 있으면 사용, 없으면 샘플 데이터 사용
   const allRequirements: Requirement[] = useMemo(() => {
@@ -222,18 +213,6 @@ export function RequirementsPanel({
     });
   }, [data]);
 
-  // 디버깅: allRequirements 로그
-  useEffect(() => {
-    console.log("RequirementsPanel - allRequirements:", allRequirements);
-    console.log(
-      "RequirementsPanel - allRequirements with needsClarification true:",
-      allRequirements.filter((req) => req.needsClarification === true)
-    );
-    console.log(
-      "RequirementsPanel - allRequirements with status approved:",
-      allRequirements.filter((req) => req.status === "approved")
-    );
-  }, [allRequirements]);
 
   // needsClarification이 true인 요구사항들을 별도로 분리
   const needsClarificationRequirements = allRequirements.filter(
@@ -577,7 +556,7 @@ export function RequirementsPanel({
                           onClick={(e) => {
                             e.stopPropagation();
                             requireAuth(() => {
-                              console.log("새 요구사항 추가");
+                              // TODO: 새 요구사항 추가
                             });
                           }}
                           className="px-3 py-1 text-sm font-medium text-[#4F46E5] rounded transition-colors"
@@ -716,7 +695,6 @@ export function RequirementsPanel({
               setShowNFRModal(false);
               setEditingNFR(null);
             } catch (error) {
-              console.error("저장 실패:", error);
               alert("저장 중 오류가 발생했습니다.");
             }
           }}

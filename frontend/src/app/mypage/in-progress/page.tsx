@@ -62,7 +62,6 @@ export default function InProgressProjects() {
 
       setProjects(formattedProjects);
     } catch (err) {
-      console.error("프로젝트 로드 실패:", err);
       setError(
         err instanceof Error
           ? err.message

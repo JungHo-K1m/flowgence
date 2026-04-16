@@ -1,8 +1,9 @@
 import { useState, useCallback, useRef } from 'react';
-import { 
-  ExtractedRequirements, 
-  RequirementsUpdateRequest 
+import {
+  ExtractedRequirements,
+  RequirementsUpdateRequest
 } from '@/types/requirements';
+import { API_BASE_URL } from '@/lib/constants';
 
 interface ProjectInput {
   description: string;
@@ -39,15 +40,8 @@ export const useRequirementsUpdate = () => {
     // 중복 호출 방지: 요청 해시 생성
     const requestHash = JSON.stringify({ input, messages, existingRequirements });
     if (lastRequestHashRef.current === requestHash || state.isLoading) {
-      console.log('중복 요구사항 업데이트 요청 무시');
       return existingRequirements;
     }
-
-    console.log('요구사항 업데이트 시작:', {
-      description: input.description,
-      messagesCount: messages.length,
-      existingRequirementsCount: existingRequirements?.totalCount || 0
-    });
 
     setState(prev => ({
       ...prev,
@@ -59,8 +53,7 @@ export const useRequirementsUpdate = () => {
     
     try {
       // Railway 백엔드로 직접 요청
-      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
-      const response = await fetch(`${backendUrl}/chat/requirements/update`, {
+      const response = await fetch(`${API_BASE_URL}/chat/requirements/update`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -73,17 +66,13 @@ export const useRequirementsUpdate = () => {
         })
       });
       
-      console.log('요구사항 업데이트 API 응답 상태:', response.status);
-      
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('요구사항 업데이트 API 오류 응답:', errorData);
         throw new Error(`API Error: ${response.status} - ${errorData.error || 'Unknown error'}`);
       }
       
       const data = await response.json();
-      console.log('요구사항 업데이트 API 응답 데이터:', data);
-      
+
       setState(prev => ({
         ...prev,
         lastUpdateTime: new Date().toISOString(),
@@ -93,7 +82,6 @@ export const useRequirementsUpdate = () => {
 
       return data;
     } catch (err) {
-      console.error('요구사항 업데이트 오류:', err);
       setState(prev => ({
         ...prev,
         error: err instanceof Error ? err.message : 'Unknown error',

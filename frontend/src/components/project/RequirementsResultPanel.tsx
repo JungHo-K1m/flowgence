@@ -15,6 +15,7 @@ import { toPng } from "html-to-image";
 import { UserJourneyMermaidDiagram } from "./UserJourneyMermaidDiagram";
 import { mermaidToImage } from "@/lib/mermaidImageGenerator";
 import { generateUserJourneyMermaidDefault } from "@/lib/mermaidGenerator";
+import { API_ROOT_URL } from '@/lib/constants';
 
 interface ProjectOverview {
   serviceCoreElements: {
@@ -262,11 +263,9 @@ export function RequirementsResultPanel({
             setWireframeImageUrl(dataUrl);
             setIsGeneratingImage(false); // 성공 시 즉시 false로 설정
           } else {
-            console.error("생성된 이미지가 올바른 형식이 아닙니다:", dataUrl?.substring(0, 100));
             setIsGeneratingImage(false);
           }
         } catch (error) {
-          console.error("와이어프레임 이미지 생성 실패:", error);
           setWireframeImageUrl(null);
           setIsGeneratingImage(false);
           
@@ -337,7 +336,6 @@ export function RequirementsResultPanel({
                 mermaidImage = undefined; // 유효하지 않은 이미지는 undefined로 설정
               }
             } catch (mermaidError) {
-              console.error(`PDF 생성 - Mermaid 다이어그램 이미지 변환 실패 (시도 ${retryCount + 1}):`, mermaidError);
               mermaidImage = undefined;
             }
             
@@ -415,7 +413,6 @@ export function RequirementsResultPanel({
         subject: "프로젝트 요구사항 명세서",
       });
     } catch (error) {
-      console.error("PDF 다운로드 실패:", error);
       alert("PDF 다운로드에 실패했습니다. 다시 시도해주세요.");
     }
   };
@@ -465,7 +462,6 @@ export function RequirementsResultPanel({
       const { supabase } = await import('@/lib/supabase');
       const { data: { session } } = await supabase.auth.getSession();
       
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
       const headers: HeadersInit = {
         'Content-Type': 'application/json',
       };
@@ -474,7 +470,7 @@ export function RequirementsResultPanel({
         headers['Authorization'] = `Bearer ${session.access_token}`;
       }
       
-      const response = await fetch(`${API_BASE_URL}/notion/share/requirements`, {
+      const response = await fetch(`${API_ROOT_URL}/notion/share/requirements`, {
         method: 'POST',
         credentials: 'include',
         headers,
@@ -503,7 +499,6 @@ export function RequirementsResultPanel({
         window.open(result.pageUrl, "_blank");
       }
     } catch (error) {
-      console.error("Notion 공유 실패:", error);
       alert(error instanceof Error ? error.message : "Notion 공유에 실패했습니다. 다시 시도해주세요.");
     } finally {
       // 버튼 상태 복원
@@ -1195,9 +1190,6 @@ export function RequirementsResultPanel({
                               // 이미지 로드 완료
                             }}
                             onError={(e) => {
-                              console.error("와이어프레임 이미지 로드 실패:", e);
-                              console.error("이미지 URL 길이:", wireframeImageUrl.length);
-                              console.error("이미지 URL 시작:", wireframeImageUrl.substring(0, 100));
                               // 이미지 로드 실패 시 fallback으로 LoFiCanvas 표시
                               setWireframeImageUrl(null);
                             }}

@@ -35,7 +35,6 @@ export function useStatePersistence() {
             localStorage.removeItem('flowgence_temp_state');
           }
         } catch (error) {
-          console.error('Error parsing saved state:', error);
           localStorage.removeItem('flowgence_temp_state');
         }
       }

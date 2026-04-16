@@ -139,7 +139,6 @@ export function RequirementManagementPanel({
     try {
       await onCategoryTitleChange(newTitle);
     } catch (error) {
-      console.error("카테고리 제목 저장 실패:", error);
       throw error;
     }
   };
@@ -196,8 +195,7 @@ export function RequirementManagementPanel({
               size="sm"
               className="transition-opacity p-2"
               onClick={() => {
-                // 편집 모드 토글 로직
-                console.log("편집 모드");
+                // TODO: 편집 모드 토글 로직
               }}
             >
               <Image
@@ -252,7 +250,7 @@ export function RequirementManagementPanel({
               });
             }
           } catch (error) {
-            console.error("드롭 처리 실패:", error);
+            // silently ignore
           }
         }}
       >
@@ -368,7 +366,7 @@ export function RequirementManagementPanel({
                               "approved"
                             );
                           } catch (error) {
-                            console.error("상태 변경 실패:", error);
+                            // silently ignore
                           }
                         }}
                         className="transition-opacity p-2"
@@ -394,7 +392,7 @@ export function RequirementManagementPanel({
                       try {
                         await onDeleteRequirement(requirement);
                       } catch (error) {
-                        console.error("삭제 실패:", error);
+                        // silently ignore
                       }
                     }}
                     className="transition-opacity p-2"

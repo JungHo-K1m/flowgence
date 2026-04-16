@@ -35,8 +35,6 @@ export function useProjectRestore() {
       setWireframe?: (wireframe: any) => void;
       }
     ) => {
-      console.log("프로젝트 상태 복원 시작:", { step, hasData: !!projectData });
-
       // 1. 프로젝트 기본 정보 복원
       if (projectData.description) {
         setState.setProjectDescription(projectData.description);
@@ -46,15 +44,6 @@ export function useProjectRestore() {
       }
 
       // 2. 프로젝트 개요 복원 (API 호출 없이 직접 설정)
-      console.log("프로젝트 상태 복원 - 개요 데이터:", {
-        hasOverview: !!projectData.overview,
-        overviewType: typeof projectData.overview,
-        overviewKeys: projectData.overview ? Object.keys(projectData.overview) : [],
-        hasSetOverviewDirectly: !!setState.setOverviewDirectly,
-        hasUpdateOverview: !!setState.updateOverview,
-        targetUsers: projectData.overview?.serviceCoreElements?.targetUsers,
-        estimatedDuration: projectData.overview?.serviceCoreElements?.estimatedDuration,
-      });
 
       // overview가 객체인지 확인 (null, undefined, 빈 객체 체크)
       const hasValidOverview = projectData.overview && 
@@ -65,15 +54,9 @@ export function useProjectRestore() {
       if (hasValidOverview) {
         if (setState.setOverviewDirectly) {
           // 복원 시에는 API를 호출하지 않고 직접 설정
-          console.log("프로젝트 개요 직접 설정:", {
-            overview: projectData.overview,
-            targetUsers: projectData.overview?.serviceCoreElements?.targetUsers,
-            estimatedDuration: projectData.overview?.serviceCoreElements?.estimatedDuration,
-          });
           setState.setOverviewDirectly(projectData.overview);
         } else if (setState.updateOverview) {
           // setOverviewDirectly가 없으면 updateOverview 사용 (API 호출됨)
-          console.log("프로젝트 개요 API 호출로 업데이트");
           setState.updateOverview(
             {
               description: projectData.description || "",
@@ -85,15 +68,6 @@ export function useProjectRestore() {
         }
       } else {
         // 프로젝트 개요가 없는 경우는 정상일 수 있음 (요구사항만 추출한 경우 등)
-        // 경고 대신 정보 로그로 변경
-        console.info("프로젝트 개요 데이터가 없습니다:", {
-          overview: projectData.overview,
-          type: typeof projectData.overview,
-          isNull: projectData.overview === null,
-          isUndefined: projectData.overview === undefined,
-          keys: projectData.overview ? Object.keys(projectData.overview) : [],
-          note: "프로젝트 개요가 없어도 요구사항 관리와 견적 확인은 정상적으로 진행됩니다.",
-        });
       }
 
       // 3. 채팅 메시지 복원
@@ -121,10 +95,6 @@ export function useProjectRestore() {
 
       // 5. 와이어프레임 복원
       if (projectData.wireframe && setState.setWireframe) {
-        console.log("와이어프레임 복원:", {
-          hasWireframe: !!projectData.wireframe,
-          screenCount: projectData.wireframe?.screens?.length || 0,
-        });
         setState.setWireframe(projectData.wireframe);
       }
 
@@ -132,10 +102,6 @@ export function useProjectRestore() {
       setState.setCurrentStep(step);
       setUIStateForStep(step, setState);
 
-      console.log("프로젝트 상태 복원 완료:", { 
-        step,
-        hasWireframe: !!projectData.wireframe,
-      });
     },
     []
   );

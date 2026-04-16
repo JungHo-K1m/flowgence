@@ -1,5 +1,8 @@
 // API Configuration
+/** Backend base URL with /api prefix (e.g. http://localhost:3001/api) */
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+/** Backend root URL without /api prefix (e.g. http://localhost:3001) */
+export const API_ROOT_URL = API_BASE_URL.replace(/\/api\/?$/, '');
 
 // API Endpoints
 export const API_ENDPOINTS = {

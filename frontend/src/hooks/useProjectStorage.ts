@@ -88,11 +88,6 @@ export const useProjectStorage = () => {
     }));
 
     try {
-      console.log('요구사항 저장 시작:', {
-        projectId,
-        requirementsCount: requirements.totalCount
-      });
-
       // Supabase 함수 호출
       const { data, error } = await supabase.rpc('save_requirements_dual', {
         project_id_param: projectId,
@@ -100,11 +95,8 @@ export const useProjectStorage = () => {
       });
 
       if (error) {
-        console.error('요구사항 저장 오류:', error);
         throw new Error(`Database error: ${error.message}`);
       }
-
-      console.log('요구사항 저장 성공:', data);
 
       const result: SaveRequirementsResponse = {
         status: data.status,
@@ -119,9 +111,8 @@ export const useProjectStorage = () => {
 
       return result;
     } catch (err) {
-      console.error('요구사항 저장 실패:', err);
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      
+
       setState(prev => ({
         ...prev,
         isLoading: false,
@@ -146,19 +137,14 @@ export const useProjectStorage = () => {
     }));
 
     try {
-      console.log('프로젝트 상태 업데이트:', { projectId, newStatus });
-
       const { data, error } = await supabase.rpc('update_project_status', {
         project_id_param: projectId,
         new_status: newStatus
       });
 
       if (error) {
-        console.error('프로젝트 상태 업데이트 오류:', error);
         throw new Error(`Database error: ${error.message}`);
       }
-
-      console.log('프로젝트 상태 업데이트 성공:', data);
 
       setState(prev => ({
         ...prev,
@@ -168,7 +154,6 @@ export const useProjectStorage = () => {
 
       return data;
     } catch (err) {
-      console.error('프로젝트 상태 업데이트 실패:', err);
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       
       setState(prev => ({
@@ -192,31 +177,6 @@ export const useProjectStorage = () => {
     }));
 
     try {
-      console.log('=== updateProjectOverview 함수 호출 ===');
-      console.log('프로젝트 개요 업데이트:', { 
-        projectId, 
-        hasOverview: !!overview,
-        overviewType: typeof overview,
-        overviewKeys: overview ? Object.keys(overview) : [],
-      });
-      
-      if (overview) {
-        console.log('📋 업데이트할 overview 상세 정보:', {
-          serviceCoreElements: overview.serviceCoreElements ? {
-            targetUsers: overview.serviceCoreElements.targetUsers,
-            estimatedDuration: overview.serviceCoreElements.estimatedDuration,
-            hasUserJourney: !!overview.userJourney,
-          } : null,
-        });
-      }
-
-      console.log('📤 Supabase UPDATE 쿼리 실행:', {
-        table: 'projects',
-        projectId: projectId,
-        hasOverview: !!overview,
-        overviewValue: overview,
-      });
-      
       const { data, error } = await supabase
         .from('projects')
         .update({ project_overview: overview })
@@ -224,41 +184,9 @@ export const useProjectStorage = () => {
         .select()
         .single();
       
-      console.log('📥 Supabase UPDATE 응답:', {
-        hasData: !!data,
-        hasError: !!error,
-        responseData: data,
-        errorDetails: error,
-        updatedProjectOverview: data?.project_overview ? {
-          hasServiceCoreElements: !!data.project_overview.serviceCoreElements,
-          targetUsers: data.project_overview.serviceCoreElements?.targetUsers,
-          estimatedDuration: data.project_overview.serviceCoreElements?.estimatedDuration,
-          serviceCoreElementsKeys: data.project_overview.serviceCoreElements ? Object.keys(data.project_overview.serviceCoreElements) : [],
-        } : null,
-      });
-      
-      // 저장된 데이터 상세 확인
-      if (data?.project_overview?.serviceCoreElements) {
-        console.log('✅ DB에 저장된 project_overview 상세:', {
-          targetUsers: data.project_overview.serviceCoreElements.targetUsers,
-          targetUsersLength: data.project_overview.serviceCoreElements.targetUsers?.length,
-          targetUsersType: Array.isArray(data.project_overview.serviceCoreElements.targetUsers) ? 'array' : typeof data.project_overview.serviceCoreElements.targetUsers,
-          estimatedDuration: data.project_overview.serviceCoreElements.estimatedDuration,
-          estimatedDurationType: typeof data.project_overview.serviceCoreElements.estimatedDuration,
-        });
-      } else {
-        console.warn('⚠️ DB 응답에 serviceCoreElements가 없습니다:', {
-          hasProjectOverview: !!data?.project_overview,
-          projectOverviewKeys: data?.project_overview ? Object.keys(data.project_overview) : [],
-        });
-      }
-
       if (error) {
-        console.error('프로젝트 개요 업데이트 오류:', error);
         throw new Error(`Database error: ${error.message}`);
       }
-
-      console.log('프로젝트 개요 업데이트 성공:', data);
 
       setState(prev => ({
         ...prev,
@@ -268,9 +196,8 @@ export const useProjectStorage = () => {
 
       return data;
     } catch (err) {
-      console.error('프로젝트 개요 업데이트 실패:', err);
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      
+
       setState(prev => ({
         ...prev,
         isLoading: false,
@@ -289,8 +216,6 @@ export const useProjectStorage = () => {
     }));
 
     try {
-      console.log('기존 프로젝트 데이터 가져오기:', projectId);
-
       // 프로젝트 기본 정보 가져오기
       const { data: projectData, error: projectError } = await supabase
         .from('projects')
@@ -299,18 +224,10 @@ export const useProjectStorage = () => {
         .single();
 
       if (projectError) {
-        console.error('프로젝트 데이터 조회 오류:', {
-          error: projectError,
-          code: projectError.code,
-          message: projectError.message,
-          details: projectError.details,
-          hint: projectError.hint,
-        });
         throw new Error(`프로젝트 조회 실패: ${projectError.message}`);
       }
 
       if (!projectData) {
-        console.error('프로젝트 데이터가 null입니다:', projectId);
         throw new Error('프로젝트 데이터를 찾을 수 없습니다');
       }
 
@@ -322,7 +239,6 @@ export const useProjectStorage = () => {
         .order('created_at', { ascending: true });
 
       if (messagesError) {
-        console.error('채팅 메시지 조회 오류:', messagesError);
         throw new Error(`메시지 조회 실패: ${messagesError.message}`);
       }
 
@@ -330,17 +246,6 @@ export const useProjectStorage = () => {
       // requirements 테이블은 JSONB 필드가 없으므로 projects 테이블의 requirements JSONB 필드 사용
       // requirements 테이블은 정규화된 개별 요구사항이므로, 여기서는 projects.requirements JSONB 사용
       const requirementsFromProject = projectData?.requirements || null;
-
-      console.log('기존 프로젝트 데이터 로드 성공:', {
-        project: projectData ? {
-          id: projectData.id,
-          title: projectData.title,
-          hasProjectOverview: !!projectData.project_overview,
-          hasRequirements: !!requirementsFromProject,
-        } : null,
-        messagesCount: messagesData?.length || 0,
-        hasRequirements: !!requirementsFromProject,
-      });
 
       const result = {
         project: projectData || {},
@@ -358,7 +263,6 @@ export const useProjectStorage = () => {
 
       return result;
     } catch (err) {
-      console.error('기존 프로젝트 데이터 로드 실패:', err);
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       
       setState(prev => ({

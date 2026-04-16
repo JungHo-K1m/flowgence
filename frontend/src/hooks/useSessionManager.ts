@@ -86,7 +86,6 @@ export function useSessionManager() {
 
         // 세션 만료 확인
         if (Date.now() - sessionData.timestamp > SESSION_EXPIRY_MS) {
-          console.log("세션이 만료되었습니다. 새 세션을 생성합니다.");
           clearSession(sessionId);
           sessionData.sessionId = generateSessionId();
           sessionData.timestamp = Date.now();
@@ -95,11 +94,9 @@ export function useSessionManager() {
 
         // localStorage에 저장
         localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(sessionData));
-        console.log("세션 저장 완료:", sessionData.sessionId);
 
         return sessionData;
       } catch (error) {
-        console.error("세션 저장 실패:", error);
         return null;
       }
     },
@@ -121,14 +118,12 @@ export function useSessionManager() {
 
       // 세션 만료 확인
       if (Date.now() - sessionData.timestamp > SESSION_EXPIRY_MS) {
-        console.log("세션이 만료되었습니다.");
-        clearSession(sessionData.sessionId);
+          clearSession(sessionData.sessionId);
         return null;
       }
 
       return sessionData;
     } catch (error) {
-      console.error("세션 로드 실패:", error);
       return null;
     }
   }, []);
@@ -163,9 +158,8 @@ export function useSessionManager() {
         localStorage.removeItem(SESSION_STORAGE_KEY);
       }
       sessionIdRef.current = null;
-      console.log("세션 삭제 완료");
     } catch (error) {
-      console.error("세션 삭제 실패:", error);
+      // silently ignore
     }
   }, []);
 

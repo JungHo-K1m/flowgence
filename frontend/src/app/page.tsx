@@ -26,7 +26,6 @@ import { MobileTabLayout } from "@/components/layout/MobileTabLayout";
 import { MobileRequirementsPanel } from "@/components/requirements/MobileRequirementsPanel";
 import { LoginRequiredModal } from "@/components/auth/LoginRequiredModal";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
-import { useStatePersistence } from "@/hooks/useStatePersistence";
 import { useSessionManager, SessionData } from "@/hooks/useSessionManager";
 import { SimpleRequirementModal } from "@/components/requirements/SimpleRequirementModal";
 import { CategoryDeleteConfirmModal } from "@/components/requirements/CategoryDeleteConfirmModal";
@@ -49,6 +48,12 @@ import {
   SUPPORTED_FILE_TYPES,
   MAX_FILE_SIZE_MB,
 } from "@/lib/fileProcessor";
+import {
+  buildDescriptionWithFileContents,
+  buildDisplayDescription,
+  splitDescriptionAndFileNames,
+} from "@/lib/descriptionBuilder";
+import { enrichRequirements } from "@/lib/requirementsEnricher";
 
 interface Message {
   id: string;
@@ -100,32 +105,6 @@ function HomePageContent() {
   } = useSessionManager();
   
   const hasRestoredSession = useRef(false);
-
-  // 페이지 로드 시 스크롤 위치 조정 제거 (전체 화면 레이아웃으로 변경)
-  // useEffect(() => {
-  //   // 채팅 UI가 있는 단계(2단계)에서는 스크롤하지 않음
-  //   if (showChatInterface && showRequirements) {
-  //     return; // 채팅 UI에서는 스크롤 위치 유지
-  //   }
-
-  //   // 메인 페이지(1단계)에서만 상단으로 스크롤
-  //   if (
-  //     !showChatInterface &&
-  //     !showRequirements &&
-  //     !showConfirmation &&
-  //     !showFinalResult
-  //   ) {
-  //     // 즉시 스크롤
-  //     window.scrollTo(0, 0);
-
-  //     // 추가적으로 약간의 지연 후에도 스크롤 (일부 브라우저에서 지연 로딩으로 인한 문제 방지)
-  //     const timeoutId = setTimeout(() => {
-  //       window.scrollTo(0, 0);
-  //     }, 100);
-
-  //     return () => clearTimeout(timeoutId);
-  //   }
-  // }, [showChatInterface, showRequirements, showConfirmation, showFinalResult]);
 
   // useProjectOverview 훅 사용
   const {
@@ -272,15 +251,15 @@ function HomePageContent() {
                   setOverviewDirectly(data.project.project_overview);
                 }
               })
-              .catch((error) => {
-                console.error("DB에서 프로젝트 개요 조회 실패:", error);
+              .catch(() => {
+                // silently ignore
               });
           }
 
           // 복구 완료 후 sessionStorage 정리
           sessionStorage.removeItem("flowgence_resume_project");
-        } catch (error) {
-          console.error("프로젝트 복구 실패:", error);
+        } catch {
+          // silently ignore
         }
       }
     }
@@ -427,8 +406,7 @@ function HomePageContent() {
       }));
       setRecentProjects(items);
       hasLoadedRecent.current = true;
-    } catch (e) {
-      console.error("최근 작업 불러오기 실패:", e);
+    } catch {
       setRecentProjects([]);
       hasLoadedRecent.current = false;
       // 60초 쿨다운 설정 (연속 실패 방지)
@@ -451,10 +429,6 @@ function HomePageContent() {
     async (updatedRequirements: ExtractedRequirements) => {
 
       if (!savedProjectId) {
-        console.warn("⚠️ 저장된 프로젝트 ID가 없습니다. DB 저장을 건너뜁니다.", {
-          savedProjectId,
-          requirementsCount: updatedRequirements.totalCount,
-        });
         return;
       }
 
@@ -479,50 +453,28 @@ function HomePageContent() {
                 if (setOverviewDirectly) {
                   setOverviewDirectly(overviewToSave);
                 }
-              } else {
-                console.warn("DB에서도 프로젝트 개요를 찾을 수 없음");
               }
-            } catch (fetchError) {
-              console.error("DB에서 overview 조회 실패:", fetchError);
+            } catch {
+              // silently ignore
             }
           }
 
           if (overviewToSave) {
             try {
               await updateProjectOverview(savedProjectId, overviewToSave);
-            } catch (overviewError) {
-              console.error("❌ 프로젝트 개요 저장 실패:", {
-                error: overviewError,
-                projectId: savedProjectId,
-                hasOverview: !!overviewToSave,
-              });
+            } catch {
               // 개요 저장 실패해도 요구사항은 저장되었으므로 계속 진행
             }
-          } else {
-            console.warn("⚠️ 프로젝트 개요가 없어서 저장하지 않습니다:", {
-              hasOverviewState: !!overview,
-              savedProjectId,
-            });
           }
 
           // 성공 토스트 표시 (추후 구현)
           // 최근 작업 목록 갱신 (프로젝트 updated_at이 업데이트되었으므로)
           loadRecentProjects(true);
         } else {
-          console.error("편집된 요구사항 DB 저장 실패:", {
-            status: result.status,
-            message: result.message,
-          });
           // 실패 토스트 표시 (추후 구현)
           throw new Error(result.message || "저장에 실패했습니다");
         }
       } catch (error) {
-        console.error("편집된 요구사항 DB 저장 중 오류:", error, {
-          savedProjectId,
-          errorType:
-            error instanceof Error ? error.constructor.name : typeof error,
-          errorMessage: error instanceof Error ? error.message : String(error),
-        });
         // 오류 토스트 표시 (추후 구현)
         throw error;
       }
@@ -546,33 +498,19 @@ function HomePageContent() {
       // 채팅 편집 모드 시작
       setIsEditingMode(true);
 
+      const descriptionForApi = buildDescriptionWithFileContents(data.description, fileContents);
+
       // 1. 프로젝트 개요 업데이트
       try {
-        // API 요청 시에는 사용자 코멘트 + 파일 내용을 포함 (UI에는 파일명만 표시되지만 API에는 전체 내용 전송)
-        const descriptionWithFileContents = (() => {
-          // data.description에서 파일명 부분 제거 (사용자 코멘트만 추출)
-          const fileSectionRegex = /\n\n\[업로드된 파일\]\n[\s\S]*$/;
-          const pureComment = data.description.replace(fileSectionRegex, "").trim();
-          
-          // 사용자 코멘트 + 파일 내용 결합
-          if (fileContents) {
-            return pureComment
-              ? `${pureComment}\n\n[업로드된 파일 내용]\n${fileContents}`
-              : `[업로드된 파일 내용]\n${fileContents}`;
-          }
-          return pureComment;
-        })();
-        
         await updateOverview(
           {
-            description: descriptionWithFileContents,
+            description: descriptionForApi,
             serviceType: data.serviceType,
             uploadedFiles: data.uploadedFiles,
           },
           data.messages
         );
       } catch (error) {
-        console.error("프로젝트 개요 업데이트 실패:", error);
         const errorMessage =
           error instanceof Error ? error.message : "Unknown error";
 
@@ -594,24 +532,9 @@ function HomePageContent() {
       if (currentRequirements && savedProjectId) {
 
         try {
-          // API 요청 시에는 사용자 코멘트 + 파일 내용을 포함
-          const descriptionWithFileContents = (() => {
-            // data.description에서 파일명 부분 제거 (사용자 코멘트만 추출)
-            const fileSectionRegex = /\n\n\[업로드된 파일\]\n[\s\S]*$/;
-            const pureComment = data.description.replace(fileSectionRegex, "").trim();
-            
-            // 사용자 코멘트 + 파일 내용 결합
-            if (fileContents) {
-              return pureComment
-                ? `${pureComment}\n\n[업로드된 파일 내용]\n${fileContents}`
-                : `[업로드된 파일 내용]\n${fileContents}`;
-            }
-            return pureComment;
-          })();
-          
           const updatedRequirements = await updateRequirementsFromChat(
             {
-              description: descriptionWithFileContents,
+              description: descriptionForApi,
               serviceType: data.serviceType,
               uploadedFiles: data.uploadedFiles,
               projectOverview: overview,
@@ -630,7 +553,6 @@ function HomePageContent() {
           // DB에 저장
           await saveEditedRequirements(updatedRequirements);
         } catch (error) {
-          console.error("요구사항 업데이트 실패:", error);
           const errorMessage =
             error instanceof Error ? error.message : "Unknown error";
 
@@ -797,7 +719,6 @@ function HomePageContent() {
         // DB 저장
         await saveEditedRequirements(updatedRequirements);
       } catch (error) {
-        console.error("카테고리 제목 업데이트 실패:", error);
         throw error;
       }
     },
@@ -844,7 +765,6 @@ function HomePageContent() {
         setEditableRequirements(updatedRequirements);
         await saveEditedRequirements(updatedRequirements);
       } catch (error) {
-        console.error("요구사항 상태 변경 실패:", error);
         throw error;
       }
     },
@@ -877,7 +797,6 @@ function HomePageContent() {
         setEditableRequirements(updatedRequirements);
         await saveEditedRequirements(updatedRequirements);
       } catch (error) {
-        console.error("비기능 요구사항 추가 실패:", error);
         throw error;
       }
     },
@@ -915,7 +834,6 @@ function HomePageContent() {
         setEditableRequirements(updatedRequirements);
         await saveEditedRequirements(updatedRequirements);
       } catch (error) {
-        console.error("비기능 요구사항 편집 실패:", error);
         throw error;
       }
     },
@@ -938,7 +856,6 @@ function HomePageContent() {
         setEditableRequirements(updatedRequirements);
         await saveEditedRequirements(updatedRequirements);
       } catch (error) {
-        console.error("비기능 요구사항 삭제 실패:", error);
         throw error;
       }
     },
@@ -979,7 +896,6 @@ function HomePageContent() {
         setShowCategoryDeleteModal(false);
         setCategoryToDelete(null);
       } catch (error) {
-        console.error("카테고리 삭제 실패:", error);
         throw error;
       }
     },
@@ -1232,8 +1148,7 @@ function HomePageContent() {
       // 변경사항을 즉시 DB에 저장 (낙관적 업데이트)
       try {
         await saveEditedRequirements(next);
-      } catch (error) {
-        console.error("편집된 요구사항 저장 실패:", error);
+      } catch {
         // 저장 실패해도 UI는 업데이트된 상태 유지 (낙관적 업데이트)
         // 사용자에게는 저장 실패 알림이 필요할 수 있음 (추후 구현)
       }
@@ -1311,11 +1226,6 @@ function HomePageContent() {
     showFinalResult,
   ]);
 
-  // showLoginModal 상태 디버깅
-  // useEffect(() => {
-  //   console.log("showLoginModal 상태 변경:", showLoginModal);
-  // }, [showLoginModal]);
-  const {} = useStatePersistence();
   const targetStep = searchParams.get("step");
 
   // 로그인 후 상태 복원 및 자동 단계 이동
@@ -1331,46 +1241,21 @@ function HomePageContent() {
       if (user && !loading) {
         // 로그인 유도 후 로그인한 사용자만 복구 (tempState가 있는 경우)
         if (hasTempState && tempState?.projectData) {
-          // console.log("로그인 후 상태 복원 시작:", tempState);
-
           try {
             // 1. 임시 상태를 실제 DB로 이전
             const result = await processLoginState();
 
             if (result && result.success) {
-              // console.log("로그인 후 상태 이전 성공:", result);
-
               // 2. UI 상태 복원
               const { projectData, targetStep: savedTargetStep } = tempState;
 
               const restoredDescription = projectData.description || "";
-              
+
               // 복원된 설명에서 파일명 부분 분리
-              const fileSectionRegex = /\n\n\[업로드된 파일\]\n([\s\S]*)$/;
-              const fileSectionMatch = restoredDescription.match(fileSectionRegex);
-              
-              if (fileSectionMatch) {
-                // 파일명 부분이 있는 경우
-                let fileNames = fileSectionMatch[1].trim();
-                // 이모지(📄) 제거하여 순수 파일명만 저장
-                fileNames = fileNames
-                  .split("\n")
-                  .map((name) => name.replace(/^📄\s*/, "").trim())
-                  .filter((name) => name)
-                  .join("\n");
-                
-                const pureComment = restoredDescription.replace(fileSectionRegex, "").trim();
-                
-                setUserComment(pureComment);
-                setFileNamesDisplay(fileNames);
-                // 복원 시에는 저장된 형식 그대로 사용 (이모지 포함)
-                setProjectDescription(restoredDescription);
-              } else {
-                // 파일명 부분이 없는 경우 (사용자 코멘트만)
-                setUserComment(restoredDescription);
-                setFileNamesDisplay("");
-                setProjectDescription(restoredDescription);
-              }
+              const [pureComment, fileNames] = splitDescriptionAndFileNames(restoredDescription);
+              setUserComment(pureComment);
+              setFileNamesDisplay(fileNames);
+              setProjectDescription(restoredDescription);
               
               setSelectedServiceType(projectData.serviceType || "");
               setUploadedFiles(projectData.uploadedFiles || []);
@@ -1408,9 +1293,6 @@ function HomePageContent() {
               // 복원 완료 플래그 설정
               hasRestoredState.current = true;
             } else {
-              const errorMessage =
-                result?.error || "알 수 없는 오류가 발생했습니다";
-              console.error("로그인 후 상태 이전 실패:", errorMessage);
               // 실패해도 기본 상태 복원은 진행 (로그인은 성공했으므로)
               const { projectData, targetStep: savedTargetStep } = tempState;
 
@@ -1441,8 +1323,7 @@ function HomePageContent() {
               // 기본 복원 완료 플래그 설정
               hasRestoredState.current = true;
             }
-          } catch (error) {
-            console.error("로그인 후 상태 복원 중 오류:", error);
+          } catch {
             // 오류 발생 시 기본 상태 복원
             const { projectData } = tempState;
             if (projectData) {
@@ -1585,24 +1466,11 @@ function HomePageContent() {
         setIsRequirementsLoading(true);
 
         try {
-          // API 요청 시에는 사용자 코멘트 + 파일 내용을 포함 (UI에는 파일명만 표시되지만 API에는 전체 내용 전송)
-          const descriptionWithFileContents = (() => {
-            // projectDescription에서 파일명 부분 제거 (사용자 코멘트만 추출)
-            const fileSectionRegex = /\n\n\[업로드된 파일\]\n[\s\S]*$/;
-            const pureComment = projectDescription.replace(fileSectionRegex, "").trim();
-            
-            // 사용자 코멘트 + 파일 내용 결합
-            if (fileContents) {
-              return pureComment
-                ? `${pureComment}\n\n[업로드된 파일 내용]\n${fileContents}`
-                : `[업로드된 파일 내용]\n${fileContents}`;
-            }
-            return pureComment;
-          })();
-          
+          const descriptionForApi = buildDescriptionWithFileContents(projectDescription, fileContents);
+
           const requirements = await extractRequirements(
             {
-              description: descriptionWithFileContents,
+              description: descriptionForApi,
               serviceType: selectedServiceType,
               uploadedFiles,
               projectOverview: overview,
@@ -1614,38 +1482,21 @@ function HomePageContent() {
           );
 
           if (requirements) {
-            // 요청자 및 날짜 정보 자동 설정
-            const currentDate = new Date().toISOString();
             const requesterName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || '익명';
-            
-            const enrichedRequirements = {
-              ...requirements,
-              categories: requirements.categories?.map((cat: any) => ({
-                ...cat,
-                subCategories: cat.subCategories?.map((sub: any) => ({
-                  ...sub,
-                  requirements: sub.requirements?.map((req: any) => ({
-                    ...req,
-                    requester: req.requester || requesterName,
-                    initialRequestDate: req.initialRequestDate || currentDate,
-                  }))
-                }))
-              }))
-            };
-            
+            const enrichedRequirements = enrichRequirements(requirements, requesterName);
+
             setEditableRequirements(enrichedRequirements);
 
             // 로그인된 사용자면 DB에 저장
             if (user && savedProjectId) {
               try {
                 await saveRequirements(savedProjectId, enrichedRequirements);
-              } catch (error) {
-                console.error("요구사항 저장 실패:", error);
+              } catch {
+                // silently ignore
               }
             }
           }
         } catch (error) {
-          console.error("요구사항 추출 실패:", error);
           const errorMessage =
             error instanceof Error ? error.message : "Unknown error";
 
@@ -1854,7 +1705,6 @@ function HomePageContent() {
         setFileProcessingMessage("");
       }, 2000);
     } catch (error) {
-      console.error("파일 처리 실패:", error);
       setFileProcessingError(
         error instanceof Error
           ? error.message
@@ -1879,25 +1729,7 @@ function HomePageContent() {
   // 프로젝트 설명 표시 업데이트 함수 (사용자 코멘트 + 파일명 조합)
   const updateProjectDescriptionDisplay = useCallback(
     (comment: string, fileNames: string) => {
-      if (fileNames) {
-        // 파일명에 이모지 추가하여 표시
-        const fileNamesWithIcon = fileNames
-          .split("\n")
-          .filter((name) => name.trim())
-          .map((name) => `📄 ${name}`)
-          .join("\n");
-        
-        if (comment.trim()) {
-          // 사용자 코멘트와 파일명 모두 있는 경우
-          setProjectDescription(`${comment}\n\n[업로드된 파일]\n${fileNamesWithIcon}`);
-        } else {
-          // 파일명만 있는 경우
-          setProjectDescription(`[업로드된 파일]\n${fileNamesWithIcon}`);
-        }
-      } else {
-        // 파일명이 없는 경우 (사용자 코멘트만)
-        setProjectDescription(comment);
-      }
+      setProjectDescription(buildDisplayDescription(comment, fileNames));
     },
     []
   );
@@ -1939,8 +1771,7 @@ function HomePageContent() {
           .then((content) => {
             setFileContents(content);
           })
-          .catch((error) => {
-            console.error("파일 내용 추출 실패:", error);
+          .catch(() => {
             // 에러가 발생해도 파일 삭제는 성공으로 처리
           });
       }
@@ -2011,24 +1842,11 @@ function HomePageContent() {
 
       try {
         // 2. 요구사항 추출 (로그인 없이도 가능)
-        // API 요청 시에는 사용자 코멘트 + 파일 내용을 포함 (UI에는 파일명만 표시되지만 API에는 전체 내용 전송)
-        const descriptionWithFileContents = (() => {
-          // projectDescription에서 파일명 부분 제거 (사용자 코멘트만 추출)
-          const fileSectionRegex = /\n\n\[업로드된 파일\]\n[\s\S]*$/;
-          const pureComment = projectDescription.replace(fileSectionRegex, "").trim();
-          
-          // 사용자 코멘트 + 파일 내용 결합
-          if (fileContents) {
-            return pureComment
-              ? `${pureComment}\n\n[업로드된 파일 내용]\n${fileContents}`
-              : `[업로드된 파일 내용]\n${fileContents}`;
-          }
-          return pureComment;
-        })();
-        
+        const descriptionForApi = buildDescriptionWithFileContents(projectDescription, fileContents);
+
         const requirements = await extractRequirements(
           {
-            description: descriptionWithFileContents,
+            description: descriptionForApi,
             serviceType: selectedServiceType,
             uploadedFiles,
             projectOverview: overview, // 프로젝트 개요 정보 추가
@@ -2103,33 +1921,16 @@ function HomePageContent() {
             if (overviewToSave) {
               try {
                 await updateProjectOverview(projectResult.project_id, overviewToSave);
-              } catch (overviewError) {
-                console.error("프로젝트 개요 명시적 저장 실패:", overviewError);
+              } catch {
                 // 개요 저장 실패해도 계속 진행 (saveProjectWithMessages에서 이미 저장했을 수 있음)
               }
             }
 
             // 4. 요구사항 저장
             if (requirements) {
-              // 요구사항 데이터 보강 (요청자 및 날짜 추가)
-              const currentDate = new Date().toISOString();
               const requesterName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || '익명';
-              
-              const enrichedRequirements = {
-                ...requirements,
-                categories: requirements.categories?.map((cat: any) => ({
-                  ...cat,
-                  subCategories: cat.subCategories?.map((sub: any) => ({
-                    ...sub,
-                    requirements: sub.requirements?.map((req: any) => ({
-                      ...req,
-                      requester: req.requester || requesterName,
-                      initialRequestDate: req.initialRequestDate || currentDate,
-                    }))
-                  }))
-                }))
-              };
-              
+              const enrichedRequirements = enrichRequirements(requirements, requesterName);
+
               const requirementsResult = await saveRequirements(
                 projectResult.project_id,
                 enrichedRequirements
@@ -2137,41 +1938,14 @@ function HomePageContent() {
 
               if (requirementsResult.status === "success") {
                 setEditableRequirements(enrichedRequirements);
-              } else {
-                console.error(
-                  "요구사항 저장 실패:",
-                  requirementsResult.message
-                );
               }
             }
-          } else {
-            console.error("프로젝트 저장 실패:", projectResult.message);
           }
           } else {
             // 로그인하지 않은 사용자는 로컬 상태로만 저장
-            // 요구사항 데이터 보강 (요청자 및 날짜 추가)
-          const currentDate = new Date().toISOString();
-          const requesterName = '익명';
-          
-          const enrichedRequirements = {
-            ...requirements,
-            categories: requirements.categories?.map((cat: any) => ({
-              ...cat,
-              subCategories: cat.subCategories?.map((sub: any) => ({
-                ...sub,
-                requirements: sub.requirements?.map((req: any) => ({
-                  ...req,
-                  requester: req.requester || requesterName,
-                  initialRequestDate: req.initialRequestDate || currentDate,
-                }))
-              }))
-            }))
-          };
-          
-          setEditableRequirements(enrichedRequirements);
+          setEditableRequirements(enrichRequirements(requirements, '익명'));
         }
       } catch (error) {
-        console.error("요구사항 추출 또는 저장 중 오류:", error);
         const errorMessage =
           error instanceof Error ? error.message : "Unknown error";
 
@@ -2190,34 +1964,6 @@ function HomePageContent() {
         setIsRequirementsLoading(false);
         isProcessingStep1To2.current = false; // 처리 완료 플래그 해제
         
-        // 세션 자동 저장 재개 (전환 완료 후)
-        // 자동 저장은 useEffect에서 자동으로 재개되므로 여기서는 제거
-        // setTimeout(() => {
-        //   startAutoSave(() => {
-        //     return {
-        //       currentStep,
-        //       projectDescription,
-        //       userComment,
-        //       fileNamesDisplay,
-        //       selectedServiceType,
-        //       uploadedFiles: uploadedFiles.map((file) => ({
-        //         name: file.name,
-        //         size: file.size,
-        //         type: file.type,
-        //         lastModified: file.lastModified,
-        //       })),
-        //       chatMessages,
-        //       editableRequirements,
-        //       extractedRequirements,
-        //       overview,
-        //       showChatInterface,
-        //       showRequirements,
-        //       showConfirmation,
-        //       showFinalResult,
-        //       fileContents,
-        //     };
-        //   });
-        // }, 1000);
       }
     } else if (currentStep === 2) {
       // 2단계에서 3단계로 넘어갈 때는 로그인 필요 + AI 검증
@@ -2261,8 +2007,7 @@ function HomePageContent() {
               setShowConfirmation(true);
               setCurrentStep(3);
             }
-          } catch (error) {
-            console.error("AI 검증 중 오류:", error);
+          } catch {
             // 검증 실패 시: 모달 표시
             setVerificationResult({
               status: "error",
@@ -2313,8 +2058,8 @@ function HomePageContent() {
     if (user && savedProjectId) {
       try {
         await updateProjectStatus(savedProjectId, "completed");
-      } catch (error) {
-        console.error("프로젝트 상태 업데이트 실패:", error);
+      } catch {
+        // silently ignore
       }
     }
 
@@ -2866,8 +2611,8 @@ function HomePageContent() {
               editingCategory,
               newRequirements
             );
-          } catch (error) {
-            console.error("요구사항 변경 실패:", error);
+          } catch {
+            // silently ignore
           }
         }}
         categoryTitle={getCategoryTitle(editingCategory)}
@@ -2875,7 +2620,6 @@ function HomePageContent() {
           try {
             await handleCategoryTitleUpdate(editingCategory, newTitle);
           } catch (error) {
-            console.error("카테고리 제목 변경 실패:", error);
             throw error;
           }
         }}

@@ -295,7 +295,6 @@ export async function wireframeToImage(
     const hasContent = container.scrollHeight > 0 && container.scrollWidth > 0;
 
     if (!hasContent) {
-      console.warn("컨테이너에 콘텐츠가 없습니다. 강제로 크기 설정...");
       container.style.minHeight = "800px";
       container.style.minWidth = "1200px";
       // 다시 한 번 렌더링 대기
@@ -326,7 +325,6 @@ export async function wireframeToImage(
 
     return dataUrl;
   } catch (error) {
-    console.error("와이어프레임 이미지 변환 실패:", error);
     throw new Error(`와이어프레임을 이미지로 변환하는데 실패했습니다: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
@@ -443,7 +441,6 @@ export async function wireframeToImages(
 
       images.push(dataUrl);
     } catch (error) {
-      console.error(`화면 ${screen.name} 이미지 변환 실패:`, error);
       // 실패해도 계속 진행
     }
   }

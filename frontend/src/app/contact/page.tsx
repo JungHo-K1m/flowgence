@@ -52,7 +52,6 @@ export default function ContactPage() {
       setSuccessMessage(result?.message ?? "문의가 정상적으로 접수되었습니다.");
       reset();
     } catch (error) {
-      console.error("문의 전송 실패:", error);
       setServerError("네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
     }
   };

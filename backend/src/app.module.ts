@@ -14,7 +14,10 @@ import { Estimation } from './entities/estimation.entity';
 import { File } from './entities/file.entity';
 import { NotionConnection } from './entities/notion-connection.entity';
 
-// Modules
+// Common module (global)
+import { CommonModule } from './common/common.module';
+
+// Feature modules
 import { ChatModule } from './chat/chat.module';
 import { ProjectsModule } from './projects/projects.module';
 import { SupabaseModule } from './supabase/supabase.module';
@@ -34,6 +37,9 @@ import { NotionModule } from './notion/notion.module';
       useFactory: getDatabaseConfig,
       inject: [ConfigService],
     }),
+
+    // Global common module
+    CommonModule,
 
     // Feature modules
     TypeOrmModule.forFeature([

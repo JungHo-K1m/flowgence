@@ -77,7 +77,6 @@ export function MermaidDiagram({
           setIsRendered(true);
         }
       } catch (err) {
-        console.error("Mermaid 렌더링 오류:", err);
         setError(
           err instanceof Error
             ? err.message

@@ -116,8 +116,6 @@ export async function POST(req: NextRequest) {
       { status: 200 },
     );
   } catch (error) {
-    console.error("문의 메일 발송 실패:", error);
-
     return NextResponse.json(
       {
         message: "문의 처리 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요.",

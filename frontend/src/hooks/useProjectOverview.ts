@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { isDevelopmentMode, DUMMY_PROJECT_OVERVIEW } from '@/lib/dummyData';
+import { API_BASE_URL } from '@/lib/constants';
 
 interface ProjectOverview {
   serviceCoreElements: {
@@ -91,7 +92,6 @@ export const useProjectOverview = () => {
     if (!isDevelopmentMode()) return;
 
     // 즉시 더미 데이터 설정
-    console.log('[DEV MODE] 자동으로 더미 프로젝트 개요 데이터 설정');
     hasInitializedDevMode.current = true;
     setOverview(DUMMY_PROJECT_OVERVIEW as ProjectOverview);
     setAiMessage("프로젝트 개요가 분석되었습니다. (개발 모드)");
@@ -115,7 +115,6 @@ export const useProjectOverview = () => {
     try {
       // 개발 모드: 더미 데이터 반환
       if (isDevelopmentMode()) {
-        console.log('[DEV MODE] 더미 프로젝트 개요 데이터 사용');
         await new Promise(resolve => setTimeout(resolve, 300)); // 짧은 로딩 시뮬레이션
 
         setOverview(DUMMY_PROJECT_OVERVIEW as ProjectOverview);
@@ -127,8 +126,7 @@ export const useProjectOverview = () => {
       }
 
       // Railway 백엔드로 직접 요청
-      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
-      const requestUrl = `${backendUrl}/chat/message`;
+      const requestUrl = `${API_BASE_URL}/chat/message`;
       
       const response = await fetch(requestUrl, {
         method: 'POST',
@@ -150,7 +148,6 @@ export const useProjectOverview = () => {
       
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('API 오류 응답:', errorData);
         throw new Error(`API Error: ${response.status} - ${errorData.error || 'Unknown error'}`);
       }
       
@@ -215,7 +212,6 @@ export const useProjectOverview = () => {
         lastAiMessageRef.current = data.aiMessage.content;
       }
     } catch (err) {
-      console.error('프로젝트 개요 생성 오류:', err);
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       
       // Claude API 529 (Overloaded) 에러 처리

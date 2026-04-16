@@ -26,22 +26,16 @@ export function ChatInput({
     if (disabled || !message.trim()) {
       return;
     }
-    console.log("ChatInput - 현재 단계:", currentStep, "사용자:", !!user);
-
     // 1단계에서는 로그인 없이 채팅 허용, 2단계부터는 로그인 요구
     if (currentStep === 1) {
       // 1단계: 로그인 없이 채팅 허용
-      console.log("1단계: 로그인 없이 채팅 허용");
       onSendMessage(message.trim());
       setMessage("");
     } else {
       // 2단계 이상: 로그인 요구
-      console.log("2단계 이상: 로그인 요구");
       if (!user) {
-        console.log("사용자 없음 - 로그인 모달 표시");
         setShowLoginModal(true);
       } else {
-        console.log("로그인된 사용자 - 채팅 전송");
         onSendMessage(message.trim());
         setMessage("");
       }

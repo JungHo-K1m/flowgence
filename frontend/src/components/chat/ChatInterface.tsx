@@ -318,8 +318,6 @@ export function ChatInterface({
         }
       }
     } catch (error: any) {
-      console.error("AI 응답 오류:", error);
-
       // 529 (Overloaded) 또는 503 에러 처리
       const errorContent = 
         (error.message && (error.message.includes('529') || error.message.includes('Overloaded') || error.message.includes('overloaded'))) ||

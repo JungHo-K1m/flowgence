@@ -5,6 +5,7 @@ import {
   RequirementsExtractionRequest
 } from '@/types/requirements';
 import { isDevelopmentMode, DUMMY_REQUIREMENTS } from '@/lib/dummyData';
+import { API_BASE_URL } from '@/lib/constants';
 
 interface ProjectInput {
   description: string;
@@ -36,20 +37,12 @@ export const useRequirementsExtraction = () => {
     const requestHash = JSON.stringify({ input, messages });
     
     if (lastRequestHashRef.current === requestHash) {
-      console.log('동일한 요청으로 인한 중복 호출 방지');
       return;
     }
 
     if (state.isLoading) {
-      console.log('이미 요구사항 추출 중입니다');
       return;
     }
-
-    console.log('요구사항 추출 시작:', { 
-      description: input.description, 
-      serviceType: input.serviceType,
-      messagesCount: messages.length 
-    });
 
     setState(prev => ({
       ...prev,
@@ -62,7 +55,6 @@ export const useRequirementsExtraction = () => {
     try {
       // 개발 모드: 더미 데이터 반환
       if (isDevelopmentMode()) {
-        console.log('[DEV MODE] 더미 요구사항 데이터 사용');
         await new Promise(resolve => setTimeout(resolve, 1500)); // 로딩 시뮬레이션
 
         setState(prev => ({
@@ -77,8 +69,7 @@ export const useRequirementsExtraction = () => {
       }
 
       // Railway 백엔드로 직접 요청
-      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
-      const response = await fetch(`${backendUrl}/chat/requirements/extract`, {
+      const response = await fetch(`${API_BASE_URL}/chat/requirements/extract`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -90,8 +81,6 @@ export const useRequirementsExtraction = () => {
         })
       });
       
-      console.log('요구사항 추출 API 응답 상태:', response.status);
-      
       if (!response.ok) {
         let errorData;
         try {
@@ -99,8 +88,6 @@ export const useRequirementsExtraction = () => {
         } catch {
           errorData = { error: 'Unknown error' };
         }
-        console.error('요구사항 추출 API 오류 응답:', errorData);
-        
         // 529 (Overloaded) 또는 503 에러 처리
         if (response.status === 503 || response.status === 529 || 
             errorData.type === 'overloaded_error' ||
@@ -115,8 +102,7 @@ export const useRequirementsExtraction = () => {
       }
       
       const data = await response.json();
-      console.log('요구사항 추출 API 응답 데이터:', data);
-      
+
       setState(prev => ({
         ...prev,
         extractedRequirements: data,
@@ -127,8 +113,6 @@ export const useRequirementsExtraction = () => {
 
       return data;
     } catch (err: any) {
-      console.error('요구사항 추출 오류:', err);
-      
       // 529 (Overloaded) 에러 처리
       if (err.type === 'overloaded_error' || 
           (err instanceof Error && (err.message.includes('529') || err.message.includes('Overloaded') || err.message.includes('사용량이 많아')))) {

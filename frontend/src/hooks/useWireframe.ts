@@ -12,8 +12,6 @@ export function useWireframe() {
     setError(null);
 
     try {
-      console.log("와이어프레임 생성 요청:", projectId);
-
       const response = await fetch("/api/wireframes/generate", {
         method: "POST",
         headers: {
@@ -28,12 +26,10 @@ export function useWireframe() {
         throw new Error(data.message || "와이어프레임 생성 실패");
       }
 
-      console.log("와이어프레임 생성 성공:", data.spec);
       setWireframe(data.spec);
       return data;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "알 수 없는 오류";
-      console.error("와이어프레임 생성 오류:", errorMessage);
       setError(errorMessage);
       throw err;
     } finally {
@@ -46,8 +42,6 @@ export function useWireframe() {
     setError(null);
 
     try {
-      console.log("AI 편집 요청:", projectId, prompt);
-
       const response = await fetch("/api/wireframes/apply-edit", {
         method: "POST",
         headers: {
@@ -62,12 +56,10 @@ export function useWireframe() {
         throw new Error(data.message || "AI 편집 실패");
       }
 
-      console.log("AI 편집 성공:", data.spec);
       setWireframe(data.spec);
       return data;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "알 수 없는 오류";
-      console.error("AI 편집 오류:", errorMessage);
       setError(errorMessage);
       throw err;
     } finally {
